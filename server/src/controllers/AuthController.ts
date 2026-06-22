@@ -1,0 +1,91 @@
+import { FastifyRequest, FastifyReply } from 'fastify';
+import { CreateUserSchema, LoginSchema } from '../models/User.js';
+import { userService } from '../services/UserService.js';
+
+export async function register(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const data = CreateUserSchema.parse(request.body);
+    const user = await userService.createUser(data);
+
+    const token = request.server.jwt.sign({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    });
+
+    reply.code(201).send({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      token,
+    });
+  } catch (error: any) {
+    if (error.message.includes('Email já cadastrado')) {
+      reply.code(400).send({ error: error.message });
+    } else if (error.issues) {
+      reply.code(400).send({ error: error.issues });
+    } else {
+      reply.code(500).send({ error: 'Erro ao registrar usuário' });
+    }
+  }
+}
+
+export async function login(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const { email, password } = LoginSchema.parse(request.body);
+    const user = await userService.getUserByEmail(email);
+
+    if (!user) {
+      reply.code(401).send({ error: 'Email ou senha incorretos' });
+      return;
+    }
+
+    const passwordValid = await userService.verifyPassword(password, user.password_hash);
+
+    if (!passwordValid) {
+      reply.code(401).send({ error: 'Email ou senha incorretos' });
+      return;
+    }
+
+    const token = request.server.jwt.sign({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    });
+
+    reply.send({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      token,
+    });
+  } catch (error: any) {
+    if (error.issues) {
+      reply.code(400).send({ error: error.issues });
+    } else {
+      reply.code(500).send({ error: 'Erro ao fazer login' });
+    }
+  }
+}
+
+export async function getProfile(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const user = await userService.getUserById(request.user!.id);
+
+    if (!user) {
+      reply.code(404).send({ error: 'Usuário não encontrado' });
+      return;
+    }
+
+    reply.send({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    });
+  } catch (error) {
+    reply.code(500).send({ error: 'Erro ao buscar perfil' });
+  }
+}

@@ -14,10 +14,10 @@ function getDefaultApiBaseUrl() {
   }
 
   if (Platform.OS === 'web') {
-    return 'http://localhost:3000';
+    return 'http://137.131.143.164:3000';
   }
 
-  return 'http://localhost:3000';
+  return 'http://137.131.143.164:3000';
 }
 
 function resolveApiBaseUrl() {

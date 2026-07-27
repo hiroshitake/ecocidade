@@ -4,4 +4,4 @@
 
 [build.environment]
   NODE_VERSION = "20"
-  EXPO_PUBLIC_API_URL = "https://seu-backend-na-vps-oracle.com"
+  EXPO_PUBLIC_API_URL = "http://137.131.143.164:3000"

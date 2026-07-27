@@ -2,13 +2,12 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { C, S } from '../constants/theme';
-import { updateUserProfile } from '../services/auth';
-import { auth } from '../services/firebase';
+import { getCurrentUserData, updateUserProfile } from '../services/auth';
 
 const cityOptions = [
-  { id: 'sao-paulo', name: 'São Paulo' },
-  { id: 'rio-de-janeiro', name: 'Rio de Janeiro' },
-  { id: 'belo-horizonte', name: 'Belo Horizonte' },
+  { id: 'orlândia', name: 'Orlândia' },
+  { id: 'morro-agudo', name: 'Morro Agudo' },
+  { id: 'sales-oliveira', name: 'Sales Oliveira' },
 ];
 
 export default function SelectCityScreen() {
@@ -18,12 +17,21 @@ export default function SelectCityScreen() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!auth.currentUser) {
-      router.replace('/login');
-      return;
-    }
+    const verifySession = async () => {
+      try {
+        const user = await getCurrentUserData();
+        if (!user) {
+          router.replace('/login');
+          return;
+        }
+      } catch (error) {
+        router.replace('/login');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    setLoading(false);
+    verifySession();
   }, [router]);
 
   const handleSaveCity = async () => {
@@ -40,11 +48,12 @@ export default function SelectCityScreen() {
 
     setSubmitting(true);
     try {
-      if (!auth.currentUser) {
+      const user = await getCurrentUserData();
+      if (!user?.id) {
         throw new Error('Usuário não autenticado.');
       }
 
-      await updateUserProfile(auth.currentUser.uid, { city });
+      await updateUserProfile(user.id, { city });
       router.replace('/map');
     } catch (error: any) {
       Alert.alert('Erro', error.message || 'Não foi possível salvar a cidade. Tente novamente.');

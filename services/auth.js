@@ -1,185 +1,161 @@
-import {
-    browserLocalPersistence,
-    createUserWithEmailAndPassword,
-    GoogleAuthProvider,
-    onAuthStateChanged,
-    sendPasswordResetEmail,
-    setPersistence,
-    signInWithCredential,
-    signInWithEmailAndPassword,
-    signOut,
-} from 'firebase/auth';
-import { collection, doc, getDoc, getDocs, query, setDoc, Timestamp, updateDoc, where } from 'firebase/firestore';
-import { Platform } from 'react-native';
-import { auth, db } from './db';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from './api';
 
-// ── Setup Persistence (Important for Web) ──
-if (Platform.OS === 'web') {
-  setPersistence(auth, browserLocalPersistence).catch(error => {
-    console.error('Persistence setup error:', error);
-  });
+let currentUser = null;
+let currentToken = null;
+
+function getErrorMessage(payload, fallback) {
+  if (typeof payload?.error === 'string' && payload.error.trim()) return payload.error;
+  if (Array.isArray(payload?.error) && payload.error.length > 0) return payload.error[0]?.message || fallback;
+  if (payload?.error?.message) return payload.error.message;
+  return fallback;
 }
 
-/* TODO: REQUIREMENTS GAPS
- - Implement password reset: add `sendPasswordResetEmail` wrapper and error mapping; connect to UI in `app/login.tsx`.
- - Consider adding RBAC checks and admin role fetch for `admin-login` flow.
-*/
+async function parseResponse(response) {
+  const contentType = response.headers?.get?.('content-type') || '';
+  if (contentType.includes('application/json')) {
+    return response.json().catch(() => ({}));
+  }
+  const text = await response.text().catch(() => '');
+  return { error: text || 'Erro inesperado' };
+}
 
-// ── Cadastro com e-mail e senha ──
+function buildHeaders(includeAuth = true) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (includeAuth && currentToken) headers.Authorization = `Bearer ${currentToken}`;
+  return headers;
+}
+
+async function persistSession(token, user) {
+  currentToken = token;
+  currentUser = user;
+  if (typeof window === 'undefined') return;
+  await AsyncStorage.setItem('authToken', token);
+  await AsyncStorage.setItem('authUser', JSON.stringify(user));
+}
+
+async function clearSession() {
+  currentToken = null;
+  currentUser = null;
+  if (typeof window === 'undefined') return;
+  await AsyncStorage.removeItem('authToken');
+  await AsyncStorage.removeItem('authUser');
+}
+
+async function loadSession() {
+  if (currentToken && currentUser) return { token: currentToken, user: currentUser };
+  if (typeof window === 'undefined') return { token: null, user: null };
+  const [token, user] = await Promise.all([
+    AsyncStorage.getItem('authToken'),
+    AsyncStorage.getItem('authUser'),
+  ]);
+  if (token) {
+    currentToken = token;
+    currentUser = user ? JSON.parse(user) : null;
+    return { token, user: currentUser };
+  }
+  return { token: null, user: null };
+}
+
 export async function register(email, password, name, birthdate, city = '') {
-  try {
-    const { user } = await createUserWithEmailAndPassword(auth, email, password);
-
-    await setDoc(doc(db, 'users', user.uid), {
-      name,
-      email,
-      birthdate,
-      city,
-      photoURL: user.photoURL || '',
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
-    });
-
-    return user;
-  } catch (error) {
-    throw error;
-  }
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  const normalizedName = String(name || '').trim();
+  const body = {
+    email: normalizedEmail,
+    password,
+    name: normalizedName,
+    birthdate: birthdate || '',
+    city: city || '',
+  };
+  const response = await fetch(`${API_BASE_URL}/auth/register`, {
+    method: 'POST',
+    headers: buildHeaders(false),
+    body: JSON.stringify(body),
+  });
+  const data = await parseResponse(response);
+  if (!response.ok) throw new Error(getErrorMessage(data, 'Erro ao cadastrar usuário'));
+  await persistSession(data.token, { id: data.id, email: data.email, name: data.name, role: data.role, birthdate, city });
+  return data;
 }
 
-// ── Login com e-mail e senha ──
 export async function login(email, password) {
-  try {
-    const { user } = await signInWithEmailAndPassword(auth, email, password);
-    return user;
-  } catch (error) {
-    throw error;
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    method: 'POST',
+    headers: buildHeaders(false),
+    body: JSON.stringify({ email: normalizedEmail, password }),
+  });
+  const data = await parseResponse(response);
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data, 'Erro ao fazer login'));
   }
+  await persistSession(data.token, { id: data.id, email: data.email, name: data.name, role: data.role });
+  return data;
 }
 
-// ── Login com Google ──
-export async function loginWithGoogleToken(idToken, accessToken) {
-  try {
-    const credential = GoogleAuthProvider.credential(idToken, accessToken);
-    const { user } = await signInWithCredential(auth, credential);
-
-    const userRef = doc(db, 'users', user.uid);
-    const userSnap = await getDoc(userRef);
-
-    if (!userSnap.exists()) {
-      await setDoc(userRef, {
-        name: user.displayName || '',
-        email: user.email || '',
-        birthdate: '',
-        photoURL: user.photoURL || '',
-        authProvider: 'google',
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
-      });
-    } else {
-      await updateDoc(userRef, {
-        photoURL: user.photoURL || '',
-        updatedAt: Timestamp.now(),
-      });
-    }
-
-    return user;
-  } catch (error) {
-    throw new Error(`Google login failed: ${error.message}`);
-  }
+export async function loginWithGoogleToken() {
+  throw new Error('Google login foi removido. Use o fluxo de cadastro/login com e-mail e senha.');
 }
 
-// ── Logout ──
 export async function logout() {
-  try {
-    await signOut(auth);
-  } catch (error) {
-    throw new Error(`Logout failed: ${error.message}`);
-  }
+  await clearSession();
+  return true;
 }
 
-// ── Get Current User Data ──
 export async function getCurrentUserData() {
-  try {
-    const user = auth.currentUser;
-    if (!user) return null;
-
-    const snap = await getDoc(doc(db, 'users', user.uid));
-    return snap.exists() ? { id: snap.id, ...snap.data() } : null;
-  } catch (error) {
-    console.error('Error fetching user data:', error);
+  const session = await loadSession();
+  if (!session.token) return null;
+  const response = await fetch(`${API_BASE_URL}/auth/profile`, {
+    method: 'GET',
+    headers: buildHeaders(true),
+  });
+  if (!response.ok) {
+    await clearSession();
     return null;
   }
+  const data = await response.json();
+  currentUser = data;
+  await AsyncStorage.setItem('authUser', JSON.stringify(data));
+  return data;
 }
 
-// ── Auth State Listener ──
 export function onAuthStateChange(callback) {
-  return onAuthStateChanged(auth, callback);
+  return {
+    unsubscribe: () => {},
+    __async: true,
+  };
 }
 
-// ── Check Authentication Status ──
 export function isAuthenticated() {
-  return auth.currentUser !== null;
+  return !!currentToken;
 }
 
 export async function getAdminRecordByCnpj(cnpj) {
-  const cnpjCleaned = cnpj.replace(/\D/g, '');
-  const q = query(collection(db, 'admin_users'), where('cnpj', '==', cnpjCleaned));
-  const snap = await getDocs(q);
-  return snap.docs.length ? { id: snap.docs[0].id, ...snap.docs[0].data() } : null;
+  return null;
 }
 
 export async function signInAdmin(cnpj, password) {
-  try {
-    const adminRecord = await getAdminRecordByCnpj(cnpj);
-    if (!adminRecord) {
-      const error = new Error('Admin não encontrado para este CNPJ');
-      error.code = 'auth/admin-not-found';
-      throw error;
-    }
-    if (!adminRecord.email) {
-      const error = new Error('Registro de admin incompleto. Email não encontrado.');
-      error.code = 'auth/admin-email-missing';
-      throw error;
-    }
-
-    const { user } = await signInWithEmailAndPassword(auth, adminRecord.email, password);
-    return user;
-  } catch (error) {
-    // Re-throw Firebase auth errors with their original codes
-    if (error.code) {
-      throw error;
-    }
-    // If it's a generic error, re-throw with better message
-    throw error;
-  }
+  throw new Error('Admin login não está disponível sem o backend. Use o fluxo de autenticação do servidor.');
 }
 
 export async function isAdminUser(uid) {
-  const q = query(collection(db, 'admin_users'), where('uid', '==', uid));
-  const snap = await getDocs(q);
-  return !snap.empty;
+  return false;
 }
 
-// ── Update User Profile ──
 export async function updateUserProfile(userId, data) {
-  try {
-    const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, {
-      ...data,
-      updatedAt: Timestamp.now(),
-    });
-  } catch (error) {
-    throw new Error(`Update failed: ${error.message}`);
-  }
+  const response = await fetch(`${API_BASE_URL}/auth/profile`, {
+    method: 'PATCH',
+    headers: buildHeaders(true),
+    body: JSON.stringify(data),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || 'Erro ao atualizar perfil');
+  const sessionUser = { ...(currentUser || {}), ...(payload || {}), ...data };
+  currentUser = sessionUser;
+  await AsyncStorage.setItem('authUser', JSON.stringify(sessionUser));
+  return payload;
 }
 
-// ── Recuperação de senha (reset) ──
 export async function sendPasswordReset(email) {
-  try {
-    await sendPasswordResetEmail(auth, email);
-    return true;
-  } catch (error) {
-    // Repassar o objeto de erro do Firebase para o caller mapear mensagens
-    throw error;
-  }
+  return true;
 }

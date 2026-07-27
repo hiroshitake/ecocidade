@@ -1,20 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { onAuthStateChanged } from 'firebase/auth';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { C, S } from '../../constants/theme';
 import { getCurrentUserData, logout } from '../../services/auth';
-import { auth } from '../../services/firebase';
 
 export default function ProfileScreen() {
   interface UserData {
@@ -32,17 +30,15 @@ export default function ProfileScreen() {
   const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        setUserData(null);
-        setLoading(false);
-        router.replace('/login');
-        return;
-      }
-
+    const loadProfile = async () => {
       setLoading(true);
       try {
         const data = (await getCurrentUserData()) as any | null;
+        if (!data) {
+          setUserData(null);
+          router.replace('/login');
+          return;
+        }
 
         let createdAt: Date | null = null;
         if (data?.createdAt) {
@@ -56,11 +52,11 @@ export default function ProfileScreen() {
 
         setUserData({
           id: data?.id,
-          name: data?.name || auth.currentUser?.displayName || 'Usuário',
-          email: data?.email || auth.currentUser?.email || '',
+          name: data?.name || 'Usuário',
+          email: data?.email || '',
           birthdate: data?.birthdate || 'Não informado',
           city: data?.city || 'Não informado',
-          photoURL: auth.currentUser?.photoURL || data?.photoURL || null,
+          photoURL: data?.photoURL || null,
           createdAt,
         });
       } catch (error) {
@@ -68,9 +64,9 @@ export default function ProfileScreen() {
       } finally {
         setLoading(false);
       }
-    });
+    };
 
-    return unsubscribe;
+    loadProfile();
   }, [router]);
 
   const handleLogout = async () => {

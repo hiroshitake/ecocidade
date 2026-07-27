@@ -14,7 +14,7 @@ import { ThemedText } from '../themed-text';
 import { ThemedView } from '../themed-view';
 
 // Importar MapView apenas se não for web
-let MapView, Heatmap, Marker;
+let MapView: any, Heatmap: any, Marker: any;
 if (Platform.OS !== 'web') {
   const maps = require('react-native-maps');
   MapView = maps.default;
@@ -51,9 +51,10 @@ export default function SecurityAnalysisScreen() {
     try {
       setLoading(true);
       const reports = await getAllReports();
+      const reportList = Array.isArray(reports) ? reports : [];
 
       // Filtrar apenas denúncias de segurança
-      const securityReports = reports.filter(r =>
+      const securityReports = reportList.filter((r: any) =>
         SECURITY_CATEGORIES.includes(r.category?.toLowerCase() || '')
       );
 
@@ -73,7 +74,7 @@ export default function SecurityAnalysisScreen() {
       const areaMap: { [key: string]: number } = {};
       const heatmapPoints: Array<{ latitude: number; longitude: number; weight: number }> = [];
 
-      securityReports.forEach(report => {
+      securityReports.forEach((report: any) => {
         // Áreas de alto risco
         const address = report.location?.address?.split(',')[0] || 'Desconhecida';
         areaMap[address] = (areaMap[address] || 0) + 1;
@@ -202,7 +203,7 @@ export default function SecurityAnalysisScreen() {
               </MapView>
             ) : (
               <View style={styles.mapPlaceholder}>
-                <MaterialCommunityIcons name="map-alert" size={48} color={C.text3} />
+                <MaterialCommunityIcons name="alert-circle-outline" size={48} color={C.text3} />
                 <ThemedText style={styles.mapPlaceholderText}>Mapa disponível apenas em mobile</ThemedText>
               </View>
             )}

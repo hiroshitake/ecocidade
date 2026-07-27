@@ -1,6 +1,34 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+const placeholderApiUrls = new Set([
+  '',
+  'https://seu-backend-na-vps-oracle.com',
+  'https://seu-backend-oracle.free.ping',
+  'https://seu-backend-oracle.free.ping?',
+]);
+
+function getDefaultApiBaseUrl() {
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:3000';
+  }
+
+  if (Platform.OS === 'web') {
+    return 'http://localhost:3000';
+  }
+
+  return 'http://localhost:3000';
+}
+
+function resolveApiBaseUrl() {
+  const configuredApiUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
+  if (configuredApiUrl && !placeholderApiUrls.has(configuredApiUrl)) {
+    return configuredApiUrl;
+  }
+  return getDefaultApiBaseUrl();
+}
+
+export const API_BASE_URL = resolveApiBaseUrl();
 
 class ApiClient {
   private baseUrl: string;
@@ -13,6 +41,11 @@ class ApiClient {
 
   private async loadToken() {
     try {
+      if (typeof window === 'undefined') {
+        this.token = null;
+        return;
+      }
+
       this.token = await AsyncStorage.getItem('authToken');
     } catch (error) {
       console.error('Erro ao carregar token:', error);
@@ -115,11 +148,12 @@ class ApiClient {
     }
 
     const headers = await this.getHeaders();
-    delete headers['Content-Type'];
+    const headersObject = new Headers(headers as HeadersInit);
+    headersObject.delete('Content-Type');
 
     const response = await fetch(`${this.baseUrl}/reports`, {
       method: 'POST',
-      headers,
+      headers: headersObject,
       body: formData,
     });
 

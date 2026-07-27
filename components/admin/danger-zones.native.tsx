@@ -18,7 +18,7 @@ import { ThemedText } from '../themed-text';
 import { ThemedView } from '../themed-view';
 
 // Importar MapView apenas se não for web
-let MapView, Circle, Marker;
+let MapView: any, Circle: any, Marker: any;
 if (Platform.OS !== 'web') {
   const maps = require('react-native-maps');
   MapView = maps.default;
@@ -44,12 +44,12 @@ export default function DangerZonesScreen() {
   const [description, setDescription] = useState('');
   const [severity, setSeverity] = useState<'baixa' | 'media' | 'alta'>('media');
   const [radius, setRadius] = useState(500);
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<any>(null);
   const router = useRouter();
 
   const loadDangerZones = useCallback(async () => {
     try {
-      const zones = await getDangerZones();
+      const zones = (await getDangerZones()) as DangerZone[];
       setDangerZones(zones);
     } catch (error) {
       console.error('Erro ao carregar zonas de perigo:', error);
@@ -234,7 +234,7 @@ export default function DangerZonesScreen() {
         </>
       ) : (
         <View style={styles.mapPlaceholder}>
-          <MaterialCommunityIcons name="map-alert" size={48} color={C.text3} />
+          <MaterialCommunityIcons name="alert-circle-outline" size={48} color={C.text3} />
           <ThemedText style={styles.mapPlaceholderText}>Mapa disponível apenas em mobile</ThemedText>
         </View>
       )}
@@ -363,6 +363,13 @@ export default function DangerZonesScreen() {
 }
 
 const styles = StyleSheet.create({
+  markerIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   container: {
     flex: 1,
   },

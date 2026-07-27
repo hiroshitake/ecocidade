@@ -1,13 +1,32 @@
-import { FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyReply, FastifyRequest } from 'fastify';
+import fs from 'fs/promises';
+import path from 'path';
+import { env } from '../config/env.js';
 import { CreateReportSchema, UpdateReportSchema } from '../models/Report.js';
 import { reportService } from '../services/ReportService.js';
-import path from 'path';
-import fs from 'fs/promises';
-import { env } from '../config/env.js';
+
+export async function createAnonymousReport(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const body = request.body as any;
+    const rawData = body?.data && typeof body.data === 'string' ? JSON.parse(body.data) : body;
+    const data = CreateReportSchema.parse(rawData || {});
+
+    const report = await reportService.createReport(null, data, undefined);
+    reply.code(201).send(report);
+  } catch (error: any) {
+    if (error.issues) {
+      reply.code(400).send({ error: error.issues });
+    } else {
+      reply.code(500).send({ error: 'Erro ao criar relatório anônimo' });
+    }
+  }
+}
 
 export async function createReport(request: FastifyRequest, reply: FastifyReply) {
   try {
-    const data = CreateReportSchema.parse(request.body);
+    const body = request.body as any;
+    const rawData = body?.data && typeof body.data === 'string' ? JSON.parse(body.data) : body;
+    const data = CreateReportSchema.parse(rawData || {});
     let imageUrl: string | undefined;
 
     // Handle file upload if provided
@@ -23,7 +42,7 @@ export async function createReport(request: FastifyRequest, reply: FastifyReply)
       imageUrl = `/uploads/${filename}`;
     }
 
-    const report = await reportService.createReport(request.user!.id, data, imageUrl);
+    const report = await reportService.createReport((request.user as { id?: string } | undefined)?.id ?? null, data, imageUrl);
 
     reply.code(201).send(report);
   } catch (error: any) {
@@ -35,9 +54,9 @@ export async function createReport(request: FastifyRequest, reply: FastifyReply)
   }
 }
 
-export async function getReport(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+export async function getReport(request: FastifyRequest<any>, reply: FastifyReply) {
   try {
-    const { id } = request.params;
+    const { id } = request.params as { id: string };
     const report = await reportService.getReportById(id);
 
     if (!report) {
@@ -53,7 +72,7 @@ export async function getReport(request: FastifyRequest<{ Params: { id: string }
 
 export async function getUserReports(request: FastifyRequest, reply: FastifyReply) {
   try {
-    const reports = await reportService.getReportsByUserId(request.user!.id);
+    const reports = await reportService.getReportsByUserId((request.user as { id?: string } | undefined)?.id ?? '');
     reply.send(reports);
   } catch (error) {
     reply.code(500).send({ error: 'Erro ao buscar relatórios' });
@@ -72,9 +91,9 @@ export async function getAllReports(request: FastifyRequest<{ Querystring: { lim
   }
 }
 
-export async function updateReport(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+export async function updateReport(request: FastifyRequest<any>, reply: FastifyReply) {
   try {
-    const { id } = request.params;
+    const { id } = request.params as { id: string };
     const data = UpdateReportSchema.parse(request.body);
 
     const report = await reportService.getReportById(id);
@@ -83,7 +102,7 @@ export async function updateReport(request: FastifyRequest<{ Params: { id: strin
       return;
     }
 
-    if (report.user_id !== request.user!.id && request.user?.role !== 'admin') {
+    if (report.user_id !== (request.user as any)?.id && (request.user as any)?.role !== 'admin') {
       reply.code(403).send({ error: 'Acesso negado' });
       return;
     }
@@ -99,9 +118,9 @@ export async function updateReport(request: FastifyRequest<{ Params: { id: strin
   }
 }
 
-export async function deleteReport(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+export async function deleteReport(request: FastifyRequest<any>, reply: FastifyReply) {
   try {
-    const { id } = request.params;
+    const { id } = request.params as { id: string };
 
     const report = await reportService.getReportById(id);
     if (!report) {
@@ -109,7 +128,7 @@ export async function deleteReport(request: FastifyRequest<{ Params: { id: strin
       return;
     }
 
-    if (report.user_id !== request.user!.id && request.user?.role !== 'admin') {
+    if (report.user_id !== (request.user as any)?.id && (request.user as any)?.role !== 'admin') {
       reply.code(403).send({ error: 'Acesso negado' });
       return;
     }

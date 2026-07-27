@@ -41,7 +41,7 @@ export default function AdminDashboard() {
   const loadStats = useCallback(async () => {
     try {
       setLoading(true);
-      const reports = await getAllReports();
+      const reports = (await getAllReports()) as any[];
 
       // Processar estatísticas
       const newStats: ReportStats = {

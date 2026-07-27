@@ -4,12 +4,9 @@
  - RNF: consider inline validation and measurable response times for login.
 */
 import { Ionicons } from '@expo/vector-icons';
-import { makeRedirectUri } from 'expo-auth-session';
-import * as Google from 'expo-auth-session/providers/google';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { onAuthStateChanged } from 'firebase/auth';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -25,128 +22,9 @@ import {
 } from 'react-native';
 import { C, S } from '../constants/theme';
 import { formatBirthDate, formatEmail } from '../functions/masks';
-import { getCurrentUserData, login, loginWithGoogleToken, register, sendPasswordReset } from '../services/auth';
-import { auth } from '../services/firebase';
+import { getCurrentUserData, login, register, sendPasswordReset } from '../services/auth';
 
 WebBrowser.maybeCompleteAuthSession();
-
-interface GoogleSignInButtonProps {
-  loading: boolean;
-  setLoading: React.Dispatch<React.SetStateAction<boolean>>;
-  onSuccess: () => void;
-}
-
-function GoogleSignInButton({ loading, setLoading, onSuccess }: GoogleSignInButtonProps) {
-  const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
-  const googleExpoClientId = process.env.EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID;
-  const googleIosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
-  const googleAndroidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID;
-
-  const isWeb = Platform.OS === 'web';
-  const googleAvailable = isWeb
-    ? Boolean(googleWebClientId)
-    : Boolean(googleExpoClientId || googleAndroidClientId || googleIosClientId);
-
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    expoClientId: googleExpoClientId || undefined,
-    iosClientId: googleIosClientId || undefined,
-    androidClientId: googleAndroidClientId || undefined,
-    webClientId: isWeb ? googleWebClientId : undefined,
-    responseType: 'id_token',
-    scopes: ['profile', 'email'],
-    redirectUri: makeRedirectUri({
-      scheme: 'ecocidadeapp',
-      useProxy: true,
-    }),
-  });
-
-  useEffect(() => {
-    if (!response) return;
-
-    const handleGoogleResponse = async () => {
-      try {
-        if (response.type === 'success') {
-          const { id_token, access_token } = response.params;
-
-          if (!id_token) {
-            Alert.alert('Erro', 'Token não recebido. Tente novamente.');
-            setLoading(false);
-            return;
-          }
-
-          await loginWithGoogleToken(id_token, access_token);
-          onSuccess();
-        } else if (response.type === 'error') {
-          Alert.alert('Erro', `Autenticação falhou: ${response.params?.error}`);
-          setLoading(false);
-        } else if (
-          response.type === 'dismiss' ||
-          response.type === 'cancel'
-        ) {
-          setLoading(false);
-        }
-      } catch (error: any) {
-        Alert.alert(
-          'Erro',
-          error.message || 'Falha ao entrar com Google. Tente novamente.'
-        );
-        console.error('Google login error:', error);
-        setLoading(false);
-      }
-    };
-
-    handleGoogleResponse();
-  }, [response, setLoading, onSuccess]);
-
-  const handleGoogle = async () => {
-    if (!googleAvailable) {
-      Alert.alert(
-        'Configuração Incompleta',
-        'Preencha os Client IDs do Google no arquivo .env'
-      );
-      return;
-    }
-
-    if (!request) {
-      Alert.alert('Erro', 'Não foi possível iniciar o login com Google.');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await promptAsync();
-    } catch (error: any) {
-      Alert.alert('Erro', 'Erro ao iniciar login com Google.');
-      console.error('Google prompt error:', error);
-      setLoading(false);
-    }
-  };
-
-  return (
-    <>
-      <TouchableOpacity
-        style={[
-          styles.btnOutline,
-          loading && { opacity: 0.6 },
-          !googleAvailable && { opacity: 0.5 },
-        ]}
-        onPress={handleGoogle}
-        disabled={loading || !googleAvailable}
-      >
-        {loading ? (
-          <ActivityIndicator color={C.primary} size="small" />
-        ) : (
-          <Text style={styles.btnOutlineText}>🇬 Google</Text>
-        )}
-      </TouchableOpacity>
-      {!googleAvailable && (
-        <Text style={styles.googleHint}>
-          Configure os Client IDs do Google no .env
-        </Text>
-      )}
-    </>
-  );
-}
 
 export default function LoginScreen() {
   const [tab, setTab] = useState<'login' | 'register'>('login');
@@ -157,45 +35,69 @@ export default function LoginScreen() {
   const [city, setCity] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState('');
   const [resetModalVisible, setResetModalVisible] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
   const router = useRouter();
   const cities = [
-    { id: 'sao-paulo', name: 'São Paulo' },
-    { id: 'rio-de-janeiro', name: 'Rio de Janeiro' },
-    { id: 'belo-horizonte', name: 'Belo Horizonte' },
+    { id: 'orlândia', name: 'Orlândia' },
+    { id: 'morro-agudo', name: 'Morro Agudo' },
+    { id: 'sales-oliveira', name: 'Sales Oliveira' },
   ];
-  const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
-  const isWeb = Platform.OS === 'web';
-  const googleAvailable = !isWeb || Boolean(googleWebClientId);
+  const resetForm = () => {
+    setEmail('');
+    setPassword('');
+    setName('');
+    setBirthdate('');
+    setCity('');
+    setShowPass(false);
+    setFormError('');
+  };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        router.replace('/map');
+    const bootstrap = async () => {
+      try {
+        const user = await getCurrentUserData();
+        if (user) {
+          router.replace('/map');
+        }
+      } catch (error) {
+        console.error('Auth bootstrap error:', error);
       }
-    });
-    return unsubscribe;
+    };
+
+    bootstrap();
   }, [router]);
 
   // ── LOGIN ──
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Atenção', 'Preencha e-mail e senha.');
+    const normalizedEmail = formatEmail(email);
+    setFormError('');
+
+    if (!normalizedEmail) {
+      const msg = 'Informe um e-mail válido para entrar.';
+      setFormError(msg);
+      Alert.alert('Atenção', msg);
       return;
     }
+    if (!password || password.length < 6) {
+      const msg = 'A senha deve ter no mínimo 6 caracteres.';
+      setFormError(msg);
+      Alert.alert('Atenção', msg);
+      return;
+    }
+
     setLoading(true);
     try {
-      await login(email, password);
+      await login(normalizedEmail, password);
+      resetForm();
       router.replace('/map');
     } catch (error: any) {
-      const msg =
-        error.code === 'auth/user-not-found'    ? 'Usuário não encontrado.' :
-        error.code === 'auth/wrong-password'    ? 'Senha incorreta.' :
-        error.code === 'auth/invalid-email'     ? 'E-mail inválido.' :
-        error.code === 'auth/too-many-requests' ? 'Muitas tentativas. Tente mais tarde.' :
-        'Erro ao entrar. Tente novamente.';
+      const msg = typeof error?.message === 'string' && error.message.trim()
+        ? error.message
+        : 'E-mail ou senha inválidos. Verifique os dados e tente novamente.';
+      setFormError(msg);
       Alert.alert('Erro', msg);
     } finally {
       setLoading(false);
@@ -229,31 +131,53 @@ export default function LoginScreen() {
 
   // ── CADASTRO ──
   const handleRegister = async () => {
-    if (!name || !email || !password || !city) {
-      Alert.alert('Atenção', 'Preencha todos os campos obrigatórios.');
+    const trimmedName = name.trim();
+    const normalizedEmail = formatEmail(email);
+    setFormError('');
+
+    if (!trimmedName || trimmedName.length < 2) {
+      const msg = 'Informe um nome válido.';
+      setFormError(msg);
+      Alert.alert('Atenção', msg);
       return;
     }
-    if (password.length < 6) {
-      Alert.alert('Atenção', 'A senha deve ter no mínimo 6 caracteres.');
+    if (!normalizedEmail) {
+      const msg = 'Informe um e-mail válido.';
+      setFormError(msg);
+      Alert.alert('Atenção', msg);
+      return;
+    }
+    if (!password || password.length < 6) {
+      const msg = 'A senha deve ter no mínimo 6 caracteres.';
+      setFormError(msg);
+      Alert.alert('Atenção', msg);
+      return;
+    }
+    if (!city) {
+      const msg = 'Selecione uma cidade para continuar.';
+      setFormError(msg);
+      Alert.alert('Atenção', msg);
       return;
     }
 
     const selectedCity = cities.find((item) => item.id === city)?.name;
     if (!selectedCity) {
-      Alert.alert('Atenção', 'Selecione uma cidade válida.');
+      const msg = 'Selecione uma cidade válida.';
+      setFormError(msg);
+      Alert.alert('Atenção', msg);
       return;
     }
 
     setLoading(true);
     try {
-      await register(email, password, name, birthdate, selectedCity);
+      await register(normalizedEmail, password, trimmedName, birthdate, selectedCity);
+      resetForm();
       router.replace('/map');
     } catch (error: any) {
-      const msg =
-        error.code === 'auth/email-already-in-use' ? 'Este e-mail já está cadastrado.' :
-        error.code === 'auth/invalid-email'         ? 'E-mail inválido.' :
-        error.code === 'auth/weak-password'         ? 'Senha muito fraca.' :
-        'Erro ao criar conta. Tente novamente.';
+      const msg = typeof error?.message === 'string' && error.message.trim()
+        ? error.message
+        : 'Erro ao criar conta. Tente novamente.';
+      setFormError(msg);
       Alert.alert('Erro', msg);
     } finally {
       setLoading(false);
@@ -263,7 +187,7 @@ export default function LoginScreen() {
   // ── GOOGLE ──
   const handleGoogleSuccess = async () => {
     try {
-      const data = await getCurrentUserData();
+      const data = (await getCurrentUserData()) as any;
       if (!data?.city) {
         router.replace('/select-city');
       } else {
@@ -340,7 +264,7 @@ export default function LoginScreen() {
                 placeholder="seu@email.com"
                 placeholderTextColor={C.text3}
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(text) => setEmail(formatEmail(text))}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 editable={!loading}
@@ -361,6 +285,13 @@ export default function LoginScreen() {
                   <Ionicons name={showPass ? 'eye-off' : 'eye'} size={20} color={C.text3} />
                 </TouchableOpacity>
               </View>
+
+              {formError ? (
+                <View style={styles.errorBox}>
+                  <Ionicons name="alert-circle" size={16} color="#b91c1c" />
+                  <Text style={styles.errorText}>{formError}</Text>
+                </View>
+              ) : null}
 
               <TouchableOpacity
                 style={styles.forgotBtn}
@@ -383,28 +314,6 @@ export default function LoginScreen() {
                     </>
                 }
               </TouchableOpacity>
-
-              <View style={styles.dividerRow}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>ou continue com</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              {googleAvailable ? (
-                <GoogleSignInButton loading={loading} setLoading={setLoading} onSuccess={handleGoogleSuccess} />
-              ) : (
-                <View>
-                  <TouchableOpacity
-                    style={[styles.btnOutline, { opacity: 0.6 }]}
-                    disabled
-                  >
-                    <Text style={styles.btnOutlineText}>🇬  Google</Text>
-                  </TouchableOpacity>
-                  <Text style={styles.googleHint}>
-                    Preencha EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID no .env para usar login pelo Google na web.
-                  </Text>
-                </View>
-              )}
             </View>
           )}
 
@@ -480,6 +389,13 @@ export default function LoginScreen() {
                 editable={!loading}
               />
 
+              {formError ? (
+                <View style={styles.errorBox}>
+                  <Ionicons name="alert-circle" size={16} color="#b91c1c" />
+                  <Text style={styles.errorText}>{formError}</Text>
+                </View>
+              ) : null}
+
               <TouchableOpacity
                 style={[styles.btnPrimary, { backgroundColor: C.eco }, loading && { opacity: 0.6 }]}
                 onPress={handleRegister}
@@ -493,28 +409,6 @@ export default function LoginScreen() {
                     </>
                 }
               </TouchableOpacity>
-
-              <View style={styles.dividerRow}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>ou continue com</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              {googleAvailable ? (
-                <GoogleSignInButton loading={loading} setLoading={setLoading} onSuccess={handleGoogleSuccess} />
-              ) : (
-                <View>
-                  <TouchableOpacity
-                    style={[styles.btnOutline, { opacity: 0.6 }]}
-                    disabled
-                  >
-                    <Text style={styles.btnOutlineText}>🇬  Google</Text>
-                  </TouchableOpacity>
-                  <Text style={styles.googleHint}>
-                    Preencha EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID no .env para usar login pelo Google na web.
-                  </Text>
-                </View>
-              )}
             </View>
           )}
         </View>
@@ -614,6 +508,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 13,
     fontSize: 15, marginBottom: 16,
   },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 14,
+  },
+  errorText: {
+    color: '#b91c1c',
+    fontSize: 13,
+    flex: 1,
+  },
   eyeBtn: { position: 'absolute', right: 14, top: 13 },
   forgotBtn: { alignSelf: 'flex-end', marginBottom: 24, marginTop: -8 },
   forgotText: { fontSize: 13, color: C.primary, fontWeight: '600' },
@@ -656,12 +567,6 @@ const styles = StyleSheet.create({
   },
   cityOptionTextActive: {
     color: C.primary,
-  },
-  errorText: {
-    color: '#D32F2F',
-    marginTop: -8,
-    marginBottom: 16,
-    fontSize: 13,
   },
   googleHint: {
     marginTop: 10,

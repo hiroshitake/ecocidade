@@ -1,4 +1,4 @@
-import { FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyReply, FastifyRequest } from 'fastify';
 import { CreateSecurityAnalysisSchema } from '../models/SecurityAnalysis.js';
 import { securityAnalysisService } from '../services/SecurityAnalysisService.js';
 
@@ -17,9 +17,9 @@ export async function createSecurityAnalysis(request: FastifyRequest, reply: Fas
   }
 }
 
-export async function getSecurityAnalysis(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+export async function getSecurityAnalysis(request: FastifyRequest<any>, reply: FastifyReply) {
   try {
-    const { id } = request.params;
+    const { id } = request.params as { id: string };
     const analysis = await securityAnalysisService.getAnalysisById(id);
 
     if (!analysis) {
@@ -53,9 +53,9 @@ export async function getSecurityAnalysesByZone(request: FastifyRequest<{ Params
   }
 }
 
-export async function updateSecurityAnalysis(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+export async function updateSecurityAnalysis(request: FastifyRequest<any>, reply: FastifyReply) {
   try {
-    const { id } = request.params;
+    const { id } = request.params as { id: string };
     const analysis = await securityAnalysisService.getAnalysisById(id);
 
     if (!analysis) {
@@ -63,7 +63,7 @@ export async function updateSecurityAnalysis(request: FastifyRequest<{ Params: {
       return;
     }
 
-    const updated = await securityAnalysisService.updateAnalysis(id, request.body);
+    const updated = await securityAnalysisService.updateAnalysis(id, request.body as Parameters<typeof securityAnalysisService.updateAnalysis>[1]);
     reply.send(updated);
   } catch (error: any) {
     if (error.issues) {
@@ -74,9 +74,9 @@ export async function updateSecurityAnalysis(request: FastifyRequest<{ Params: {
   }
 }
 
-export async function deleteSecurityAnalysis(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+export async function deleteSecurityAnalysis(request: FastifyRequest<any>, reply: FastifyReply) {
   try {
-    const { id } = request.params;
+    const { id } = request.params as { id: string };
     const analysis = await securityAnalysisService.getAnalysisById(id);
 
     if (!analysis) {

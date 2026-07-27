@@ -3,11 +3,10 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
-import { onAuthStateChanged } from 'firebase/auth';
 import { HapticTab } from '../../components/haptic-tab';
 import { C, Colors } from '../../constants/theme';
 import { useColorScheme } from '../../hooks/use-color-scheme';
-import { auth } from '../../services/firebase';
+import { getCurrentUserData } from '../../services/auth';
 
 export default function TabLayout() {
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -17,17 +16,24 @@ export default function TabLayout() {
   const theme = Colors[colorScheme ?? 'light'];
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setIsAuthenticated(true);
-      } else {
+    const bootstrap = async () => {
+      try {
+        const user = await getCurrentUserData();
+        if (user) {
+          setIsAuthenticated(true);
+        } else {
+          setIsAuthenticated(false);
+          router.replace('/login');
+        }
+      } catch (error) {
         setIsAuthenticated(false);
         router.replace('/login');
+      } finally {
+        setCheckingAuth(false);
       }
-      setCheckingAuth(false);
-    });
+    };
 
-    return unsubscribe;
+    bootstrap();
   }, [router]);
 
   if (checkingAuth) {

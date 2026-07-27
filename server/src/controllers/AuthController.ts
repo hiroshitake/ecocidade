@@ -1,6 +1,21 @@
-import { FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyReply, FastifyRequest } from 'fastify';
 import { CreateUserSchema, LoginSchema } from '../models/User.js';
 import { userService } from '../services/UserService.js';
+
+function getFriendlyMessage(error: any): string {
+  if (typeof error?.message === 'string' && error.message.trim()) {
+    return error.message;
+  }
+
+  if (Array.isArray(error?.issues) && error.issues.length > 0) {
+    const firstIssue = error.issues[0];
+    if (typeof firstIssue?.message === 'string' && firstIssue.message.trim()) {
+      return firstIssue.message;
+    }
+  }
+
+  return 'Dados inválidos.';
+}
 
 export async function register(request: FastifyRequest, reply: FastifyReply) {
   try {
@@ -21,10 +36,10 @@ export async function register(request: FastifyRequest, reply: FastifyReply) {
       token,
     });
   } catch (error: any) {
-    if (error.message.includes('Email já cadastrado')) {
+    if (typeof error?.message === 'string' && error.message.includes('Email já cadastrado')) {
       reply.code(400).send({ error: error.message });
-    } else if (error.issues) {
-      reply.code(400).send({ error: error.issues });
+    } else if (error?.issues) {
+      reply.code(400).send({ error: getFriendlyMessage(error) });
     } else {
       reply.code(500).send({ error: 'Erro ao registrar usuário' });
     }
@@ -62,8 +77,8 @@ export async function login(request: FastifyRequest, reply: FastifyReply) {
       token,
     });
   } catch (error: any) {
-    if (error.issues) {
-      reply.code(400).send({ error: error.issues });
+    if (error?.issues) {
+      reply.code(400).send({ error: getFriendlyMessage(error) });
     } else {
       reply.code(500).send({ error: 'Erro ao fazer login' });
     }
@@ -72,7 +87,7 @@ export async function login(request: FastifyRequest, reply: FastifyReply) {
 
 export async function getProfile(request: FastifyRequest, reply: FastifyReply) {
   try {
-    const user = await userService.getUserById(request.user!.id);
+    const user = await userService.getUserById((request.user as { id?: string } | undefined)?.id ?? '');
 
     if (!user) {
       reply.code(404).send({ error: 'Usuário não encontrado' });

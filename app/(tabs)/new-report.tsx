@@ -2,20 +2,19 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
-import { getFunctions, httpsCallable } from 'firebase/functions';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import MapComponent from '../../components/map';
 import { C, S } from '../../constants/theme';
-import { auth, firebaseApp } from '../../services/firebase';
+import { getCurrentUserData } from '../../services/auth';
 import { createReport } from '../../services/reports';
 
 /* TODO: REQUIREMENTS GAPS
@@ -24,9 +23,6 @@ import { createReport } from '../../services/reports';
  - RNF-02 Validacao inline (erros por campo) em vez de apenas Alerts.
  - RNF-01 Performance: implementar compressão/resize antes do upload para cumprir 5s.
 */
-
-const CLOUDINARY_CLOUD_NAME = 'dbtgw4ylr';
-const CLOUDINARY_UPLOAD_PRESET = 'ecocidade_preset';
 
 const CATEGORIES = [
   { id: 'buraco',      icon: 'construct'           as const, label: 'Buraco na rua'    },
@@ -68,17 +64,41 @@ export default function NewReportScreen() {
     setDescription('');
     setLoading(false);
     setProtocol('');
+    setAddressQuery('');
+    setSelectedAddress('');
+    setSelectedLocation(null);
+    setSuggestions([]);
+    setShowSuggestions(false);
+    setAddressError('');
   };
 
-  // ── Selecionar foto ──
-  const handlePickPhoto = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permissão negada', 'Precisamos de acesso à sua galeria para adicionar fotos.');
+  // ── Selecionar ou capturar foto ──
+  const handlePickPhoto = async (source: 'library' | 'camera' = 'library') => {
+    if (source === 'library') {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permissão negada', 'Precisamos de acesso à sua galeria para adicionar fotos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.7,
+      });
+      if (!result.canceled) {
+        setPhotoUri(result.assets[0].uri);
+      }
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permissão negada', 'Precisamos de acesso à câmera para tirar fotos.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
       quality: 0.7,
     });
@@ -87,39 +107,12 @@ export default function NewReportScreen() {
     }
   };
 
-  // ── Fazer upload da foto no Cloudinary ──
-  const uploadPhoto = async (uri: string): Promise<string> => {
-    const formData = new FormData();
-
-    // Monta o arquivo no formato que o Cloudinary espera
-    const filename = uri.split('/').pop() ?? 'photo.jpg';
-    const match = /\.(\w+)$/.exec(filename);
-    const type = match ? `image/${match[1]}` : 'image/jpeg';
-
-    formData.append('file', { uri, name: filename, type } as any);
-    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-    // Pasta organizada por usuário dentro do Cloudinary
-    formData.append('folder', `reports/${auth.currentUser!.uid}`);
-
-    const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
-      {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Accept': 'application/json',
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error?.message ?? 'Falha no upload da imagem.');
-    }
-
-    const data = await response.json();
-    // Retorna a URL segura (HTTPS) gerada pelo Cloudinary
-    return data.secure_url as string;
+  const handlePhotoOptions = () => {
+    Alert.alert('Adicionar foto', 'Escolha uma opção', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Galeria', onPress: () => handlePickPhoto('library') },
+      { text: 'Câmera', onPress: () => handlePickPhoto('camera') },
+    ]);
   };
 
   const loadUserLocation = async () => {
@@ -153,6 +146,7 @@ export default function NewReportScreen() {
   const handleAddressSearch = async () => {
     if (!addressQuery.trim()) {
       setAddressError('Digite um endereço para buscar.');
+      setShowSuggestions(false);
       return;
     }
 
@@ -183,8 +177,6 @@ export default function NewReportScreen() {
   };
 
   const PLACES_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY;
-  const USE_PLACES_PROXY = (process.env.EXPO_PUBLIC_USE_PLACES_PROXY === '1' || process.env.EXPO_PUBLIC_USE_PLACES_PROXY === 'true');
-  const functionsClient = USE_PLACES_PROXY ? getFunctions(firebaseApp) : null;
   const [placesSessionToken, setPlacesSessionToken] = useState<string | null>(null);
 
   const generateSessionToken = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`;
@@ -201,14 +193,7 @@ export default function NewReportScreen() {
       if (!placesSessionToken) setPlacesSessionToken(generateSessionToken());
       const token = placesSessionToken || generateSessionToken();
 
-      if (USE_PLACES_PROXY && functionsClient) {
-        // Call Firebase Callable Function to proxy the request (server holds API key)
-        const callable = httpsCallable(functionsClient, 'placesAutocomplete');
-        const res: any = await callable({ input, sessiontoken: token });
-        const predictions = res.data?.predictions || [];
-        setSuggestions(predictions);
-        setShowSuggestions(predictions.length > 0);
-      } else if (PLACES_KEY) {
+      if (PLACES_KEY) {
         const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&key=${PLACES_KEY}&components=country:br&types=geocode&sessiontoken=${token}`;
         const res = await fetch(url);
         const data = await res.json();
@@ -254,15 +239,6 @@ export default function NewReportScreen() {
   const fetchPlaceDetails = async (placeId: string, description: string) => {
     try {
       const token = placesSessionToken || '';
-      if (USE_PLACES_PROXY && functionsClient) {
-        const callable = httpsCallable(functionsClient, 'placesDetails');
-        const res: any = await callable({ placeId, sessiontoken: token });
-        const loc = res.data?.location;
-        const formatted = res.data?.result?.formatted_address || description;
-        if (loc) return { latitude: loc.lat, longitude: loc.lng, address: formatted };
-        return null;
-      }
-
       if (!PLACES_KEY) return null;
       const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&key=${PLACES_KEY}&fields=geometry,formatted_address&sessiontoken=${token}`;
       const res = await fetch(url);
@@ -280,13 +256,11 @@ export default function NewReportScreen() {
 
   // Debounce suggestions when user types
   useEffect(() => {
-    if (!addressQuery) {
+    if (!addressQuery.trim()) {
       setSuggestions([]);
       setShowSuggestions(false);
       return;
     }
-
-    if (!PLACES_KEY) return;
 
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
@@ -300,9 +274,10 @@ export default function NewReportScreen() {
     loadUserLocation();
   }, []);
 
-  // ── Enviar denúncia ao Firestore ──
+  // ── Enviar denúncia ao backend ──
   const handleSubmit = async () => {
-    if (!auth.currentUser) {
+    const user = await getCurrentUserData();
+    if (!user?.id) {
       Alert.alert('Erro', 'Você precisa estar logado para enviar uma denúncia.');
       return;
     }
@@ -314,15 +289,7 @@ export default function NewReportScreen() {
 
     setLoading(true);
     try {
-      let photoURL: string | undefined = undefined;
-
-      // Se o usuário escolheu uma foto, faz upload no Cloudinary primeiro
-      if (photoUri) {
-        photoURL = await uploadPhoto(photoUri);
-      }
-
-      // Salva no Firestore
-      const reportId = await createReport(auth.currentUser.uid, {
+      const reportId = await createReport(user.id, {
         category: selectedCat!,
         description,
         location: {
@@ -330,7 +297,7 @@ export default function NewReportScreen() {
           longitude: selectedLocation.longitude,
           address: selectedAddress || 'Localização selecionada',
         },
-        photoURL: photoURL ?? undefined,
+        photoPath: photoUri ?? undefined,
       });
 
       // Guarda o protocolo gerado para mostrar na tela de sucesso
@@ -468,6 +435,7 @@ export default function NewReportScreen() {
                         onPress={async () => {
                           setAddressQuery(s.description);
                           setShowSuggestions(false);
+                          setAddressError('');
                           // If suggestion comes from Google (has place_id) use details, otherwise use lat/lon from Nominatim
                           if (s.place_id && PLACES_KEY) {
                             const details = await fetchPlaceDetails(s.place_id, s.description);
@@ -531,7 +499,7 @@ export default function NewReportScreen() {
             {/* Foto */}
             <Text style={[styles.label, { marginTop: 16 }]}>FOTO (OPCIONAL)</Text>
             {!photoUri ? (
-              <TouchableOpacity style={styles.photoUpload} onPress={handlePickPhoto}>
+              <TouchableOpacity style={styles.photoUpload} onPress={handlePhotoOptions}>
                 <Ionicons name="camera" size={36} color={C.primary} />
                 <Text style={styles.photoTitle}>Adicionar foto</Text>
                 <Text style={styles.photoSub}>Câmera ou galeria</Text>

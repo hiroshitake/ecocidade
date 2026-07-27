@@ -179,7 +179,6 @@ export default function MapComponent({
             touchZoom: true,
             doubleClickZoom: true,
             dragging: true,
-            tap: true,
             inertia: true,
             closePopupOnClick: false,
           }).setView([-23.5505, -46.6333], 13);
@@ -255,8 +254,8 @@ export default function MapComponent({
         })
         .addTo(markerLayerRef.current);
 
-      marker.on('click', function () {
-        this.openPopup();
+      marker.on('click', () => {
+        marker.openPopup();
         onSelectReportRef.current?.(report);
       });
     });

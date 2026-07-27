@@ -1,15 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import MapComponent from '../../components/map';
 import { C, S } from '../../constants/theme';
@@ -21,9 +20,6 @@ import { createSecurityReport } from '../../services/reports';
  - RNF-02 Improve geolocation accuracy/fallbacks for precise coordinates.
 */
 
-const CLOUDINARY_CLOUD_NAME = 'dbtgw4ylr';
-const CLOUDINARY_UPLOAD_PRESET = 'ecocidade_preset';
-
 const SEC_CATS = [
   { id: 'crime',   icon: 'shield-checkmark' as const, label: 'Crime/Furto'       },
   { id: 'tumulto', icon: 'people'           as const, label: 'Tumulto'            },
@@ -34,60 +30,8 @@ const SEC_CATS = [
 export default function SecurityScreen() {
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [description, setDescription] = useState('');
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-
-  // ── Selecionar foto da galeria ──
-  const handlePickPhoto = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permissão negada', 'Precisamos de acesso à sua galeria para adicionar fotos.');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.7,
-    });
-    if (!result.canceled) {
-      setPhotoUri(result.assets[0].uri);
-    }
-  };
-
-  // ── Upload anônimo no Cloudinary ──
-  // Pasta separada e sem userId para manter anonimato
-  const uploadPhoto = async (uri: string): Promise<string> => {
-    const formData = new FormData();
-
-    const filename = uri.split('/').pop() ?? 'photo.jpg';
-    const match = /\.(\w+)$/.exec(filename);
-    const type = match ? `image/${match[1]}` : 'image/jpeg';
-
-    formData.append('file', { uri, name: filename, type } as any);
-    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-    // Pasta anônima — sem userId para preservar identidade
-    formData.append('folder', 'security_reports/anonymous');
-
-    const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
-      {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Accept': 'application/json',
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error?.message ?? 'Falha no upload da imagem.');
-    }
-
-    const data = await response.json();
-    return data.secure_url as string;
-  };
 
   // ── Enviar denúncia anônima ──
   const handleSubmit = async () => {
@@ -102,11 +46,6 @@ export default function SecurityScreen() {
 
     setLoading(true);
     try {
-      let photoURL: string | undefined = undefined;
-      if (photoUri) {
-        photoURL = await uploadPhoto(photoUri);
-      }
-
       await createSecurityReport({
         category: selectedCat,
         description: description.trim(),
@@ -115,7 +54,7 @@ export default function SecurityScreen() {
           latitude: -23.55052,
           longitude: -46.633308,
         },
-        photoURL: photoURL ?? undefined,
+        photoURL: undefined,
       });
 
       Alert.alert(
@@ -203,24 +142,6 @@ export default function SecurityScreen() {
           editable={!loading}
         />
 
-        {/* ── FOTO ── */}
-        <Text style={[styles.label, { marginTop: 16 }]}>FOTO (OPCIONAL)</Text>
-        {!photoUri ? (
-          <TouchableOpacity style={styles.photoUpload} onPress={handlePickPhoto} disabled={loading}>
-            <Ionicons name="camera" size={36} color={C.primary} />
-            <Text style={styles.photoTitle}>Adicionar evidência</Text>
-            <Text style={styles.photoSub}>Apenas autoridades terão acesso</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.photoSelectedRow}>
-            <Ionicons name="image" size={20} color={C.eco} />
-            <Text style={styles.photoSelectedText}>Foto selecionada ✓</Text>
-            <TouchableOpacity onPress={() => setPhotoUri(null)} style={{ marginLeft: 'auto' }} disabled={loading}>
-              <Ionicons name="close" size={18} color={C.eco} />
-            </TouchableOpacity>
-          </View>
-        )}
-
         {/* ── BOTÕES ── */}
         <TouchableOpacity
           style={[styles.btnDanger, { marginTop: 24 }, loading && { opacity: 0.6 }]}
@@ -291,18 +212,6 @@ const styles = StyleSheet.create({
     fontSize: 15, minHeight: 120,
   },
 
-  photoUpload: {
-    backgroundColor: C.surface2, borderWidth: 2, borderColor: C.border2,
-    borderStyle: 'dashed', borderRadius: 14, padding: 28,
-    alignItems: 'center', gap: 8,
-  },
-  photoTitle: { fontSize: 14, fontWeight: '600', color: C.text2 },
-  photoSub:   { fontSize: 12, color: C.text3 },
-  photoSelectedRow: {
-    backgroundColor: C.ecoLight, borderRadius: 10, padding: 12,
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-  },
-  photoSelectedText: { fontSize: 13, color: C.eco, fontWeight: '600' },
 
   btnDanger: {
     backgroundColor: C.danger, borderRadius: 12,

@@ -2,17 +2,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Modal,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Modal,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { C, S } from '../../constants/theme';
-import { auth } from '../../services/firebase';
+import { getCurrentUserData } from '../../services/auth';
 import { getReportTimeline, getUserReports } from '../../services/reports';
 
 /* TODO: REQUIREMENTS GAPS
@@ -60,9 +60,10 @@ export default function ReportsScreen() {
 
   // ── Carregar denúncias do usuário ──
   const loadReports = useCallback(async () => {
-    if (!auth.currentUser) return;
     try {
-      const data = await getUserReports(auth.currentUser.uid);
+      const user = await getCurrentUserData();
+      if (!user?.id) return;
+      const data = await getUserReports(user.id);
       setReports(data);
     } catch (e) {
       console.error(e);

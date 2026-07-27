@@ -1,4 +1,4 @@
-import { pool, checkConnection } from './config/database.js';
+import { checkConnection, pool } from '../config/database.js';
 
 const queries = `
 -- Users table
@@ -9,14 +9,15 @@ CREATE TABLE IF NOT EXISTS users (
   name VARCHAR(255) NOT NULL,
   role VARCHAR(50) DEFAULT 'user',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_users_email (email)
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
 -- Reports table
 CREATE TABLE IF NOT EXISTS reports (
   id UUID PRIMARY KEY,
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   title VARCHAR(255) NOT NULL,
   description TEXT NOT NULL,
   latitude DECIMAL(10, 8) NOT NULL,
@@ -26,10 +27,11 @@ CREATE TABLE IF NOT EXISTS reports (
   image_url TEXT,
   status VARCHAR(50) DEFAULT 'pending',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_reports_user_id (user_id),
-  INDEX idx_reports_status (status)
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_reports_user_id ON reports(user_id);
+CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
 
 -- Danger zones table
 CREATE TABLE IF NOT EXISTS danger_zones (
@@ -42,9 +44,10 @@ CREATE TABLE IF NOT EXISTS danger_zones (
   severity VARCHAR(50) NOT NULL,
   active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_danger_zones_active (active)
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_danger_zones_active ON danger_zones(active);
 
 -- Security analyses table
 CREATE TABLE IF NOT EXISTS security_analyses (
@@ -57,9 +60,10 @@ CREATE TABLE IF NOT EXISTS security_analyses (
   longitude DECIMAL(11, 8) NOT NULL,
   radius DECIMAL(10, 2) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_security_analyses_zone_id (zone_id)
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_security_analyses_zone_id ON security_analyses(zone_id);
 `;
 
 async function runMigrations() {

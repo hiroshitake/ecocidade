@@ -1,10 +1,8 @@
 import { Stack, useRouter } from 'expo-router';
-import { onAuthStateChanged } from 'firebase/auth';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { C } from '../../constants/theme';
-import { isAdminUser } from '../../services/auth';
-import { auth } from '../../services/firebase';
+import { getCurrentUserData } from '../../services/auth';
 
 export default function AdminLayout() {
   const [checking, setChecking] = useState(true);
@@ -12,27 +10,25 @@ export default function AdminLayout() {
   const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
+    const bootstrap = async () => {
+      try {
+        const user = await getCurrentUserData();
+        if (!user || user.role !== 'admin') {
+          setAuthorized(false);
+          setChecking(false);
+          router.replace('/admin-login');
+          return;
+        }
+
+        setAuthorized(true);
+      } catch (error) {
         setAuthorized(false);
+      } finally {
         setChecking(false);
-        router.replace('/admin-login');
-        return;
       }
+    };
 
-      const admin = await isAdminUser(user.uid);
-      if (!admin) {
-        setAuthorized(false);
-        setChecking(false);
-        router.replace('/admin-login');
-        return;
-      }
-
-      setAuthorized(true);
-      setChecking(false);
-    });
-
-    return unsubscribe;
+    bootstrap();
   }, [router]);
 
   if (checking) {

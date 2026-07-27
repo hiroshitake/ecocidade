@@ -152,7 +152,6 @@ export default function MapComponent({
       <UrlTile
         urlTemplate="https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"
         maximumZ={19}
-        attribution="© OpenStreetMap contributors"
       />
       {userLocation ? (
         <Marker

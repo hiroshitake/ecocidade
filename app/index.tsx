@@ -1,20 +1,25 @@
-import { useEffect, useState } from 'react';
 import { Redirect } from 'expo-router';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../services/firebase';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { getCurrentUserData } from '../services/auth';
 
 export default function Index() {
   const [checking, setChecking] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    // Verifica se o usuário já está autenticado no Firebase
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setIsLoggedIn(!!user);
-      setChecking(false);
-    });
-    return unsubscribe; // limpa o listener ao desmontar
+    const bootstrap = async () => {
+      try {
+        const user = await getCurrentUserData();
+        setIsLoggedIn(!!user);
+      } catch (error) {
+        setIsLoggedIn(false);
+      } finally {
+        setChecking(false);
+      }
+    };
+
+    bootstrap();
   }, []);
 
   // Enquanto verifica, mostra um loading

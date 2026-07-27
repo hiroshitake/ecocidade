@@ -61,12 +61,12 @@ npx expo start
 ```
 
 2. Abra o app no emulador ou Expo Go e navegue até a tela de login.
-3. No campo de e‑mail, digite um e‑mail válido cadastrado no Firebase (ou qualquer e‑mail para testar a resposta do servidor).
+3. No campo de e‑mail, digite um e‑mail válido cadastrado no backend PostgreSQL (ou qualquer e‑mail para testar a resposta do servidor).
 4. Toque em "Esqueceu a senha?" — um modal será aberto com o e‑mail pré‑preenchido (se havia sido digitado).
 5. Confirme tocando em "Enviar". Aguarde o Alert com a mensagem de sucesso ou erro.
 6. Verifique a caixa de entrada do e‑mail para confirmar o recebimento (se usar uma conta real).
 
 Notas:
-- O envio usa `sendPasswordResetEmail` do Firebase Auth; erros do Firebase são exibidos via `Alert`.
+- O fluxo de recuperação usa o backend; mensagens de erro do servidor são exibidas via `Alert`.
 - Se quiser testar casos de erro, use um e‑mail não cadastrado para validar a mensagem "Usuário não encontrado.".
 

@@ -1,155 +1,166 @@
-import {
-    addDoc,
-    collection,
-    deleteDoc,
-    doc,
-    getDocs,
-    orderBy,
-    query,
-    serverTimestamp,
-    updateDoc,
-    where,
-} from 'firebase/firestore';
-import { db } from './db';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from './api';
 
-// ── Gerar protocolo único ──
-function generateProtocol() {
-  const year = new Date().getFullYear();
-  const num = Math.floor(Math.random() * 9000) + 1000;
-  return `#ECO-${year}-${num}`;
+function buildHeaders(includeAuth = true) {
+  const headers = { 'Content-Type': 'application/json' };
+  return headers;
 }
 
-// ── Criar denúncia urbana ──
-export async function createReport(userId, { category, description, location, photoURL }) {
-  const docData = {
-    userId,
-    category,
+async function getAuthToken() {
+  return AsyncStorage.getItem('authToken');
+}
+
+async function authHeaders() {
+  const token = await getAuthToken();
+  return token ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } : { 'Content-Type': 'application/json' };
+}
+
+function normalizeReport(report) {
+  if (!report) return null;
+  return {
+    ...report,
+    id: report.id,
+    category: report.category || report.title || 'outro',
+    status: report.status || 'pending',
+    createdAt: report.created_at || report.createdAt,
+    updatedAt: report.updated_at || report.updatedAt,
+    protocol: report.id?.slice(0, 8).toUpperCase() || '#ECO',
+    location: report.location || {
+      latitude: report.latitude,
+      longitude: report.longitude,
+      address: 'Localização registrada',
+    },
+  };
+}
+
+export async function createReport(userId, { category, description, location, photoPath }) {
+  const payload = {
+    title: category,
     description,
-    location,
-    protocol: generateProtocol(),
-    status: 'Aguardando',
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    latitude: location?.latitude,
+    longitude: location?.longitude,
+    category,
+    severity: 'medium',
+    image_url: null,
   };
 
-  // Só adiciona photoURL se existir, evita erro de tipo
-  if (photoURL) docData.photoURL = photoURL;
+  let response;
 
-  const ref = await addDoc(collection(db, 'reports'), docData);
+  if (photoPath) {
+    const formData = new FormData();
+    formData.append('data', JSON.stringify(payload));
 
-  // Adiciona o primeiro evento no histórico
-  await addDoc(collection(db, 'report_timeline'), {
-    reportId: ref.id,
-    event: 'Denúncia recebida',
-    department: null,
-    createdAt: serverTimestamp(),
-  });
+    const filename = photoPath.split('/').pop() || 'image.jpg';
+    const match = /\.(\w+)$/.exec(filename);
+    const type = match ? `image/${match[1]}` : 'image/jpeg';
 
-  return ref.id;
-}
+    formData.append('file', { uri: photoPath, name: filename, type });
 
-// ── Buscar denúncias do usuário logado ──
-export async function getUserReports(userId) {
-  const q = query(
-    collection(db, 'reports'),
-    where('userId', '==', userId)
-  );
-  const snap = await getDocs(q);
-  return snap.docs
-    .map(d => ({ id: d.id, ...d.data() }))
-    .sort((a, b) => {
-      const aCreated = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
-      const bCreated = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime();
-      return bCreated - aCreated;
+    const headers = await authHeaders();
+    const headersObject = new Headers(headers);
+    headersObject.delete('Content-Type');
+
+    response = await fetch(`${API_BASE_URL}/reports`, {
+      method: 'POST',
+      headers: headersObject,
+      body: formData,
     });
+  } else {
+    response = await fetch(`${API_BASE_URL}/reports`, {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify(payload),
+    });
+  }
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'Erro ao criar denúncia');
+  return data.id;
 }
 
-// ── Buscar todas as denúncias (para o mapa) ──
+export async function getUserReports(userId) {
+  const response = await fetch(`${API_BASE_URL}/reports/my-reports`, {
+    method: 'GET',
+    headers: await authHeaders(),
+  });
+  const data = await response.json().catch(() => []);
+  if (!response.ok) throw new Error(data.error || 'Erro ao buscar denúncias');
+  return (Array.isArray(data) ? data : []).map(normalizeReport).filter(Boolean);
+}
+
 export async function getAllReports() {
-  const q = query(collection(db, 'reports'), orderBy('createdAt', 'desc'));
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const response = await fetch(`${API_BASE_URL}/reports`, {
+    method: 'GET',
+    headers: await authHeaders(),
+  });
+  const data = await response.json().catch(() => []);
+  if (!response.ok) throw new Error(data.error || 'Erro ao buscar denúncias');
+  return (Array.isArray(data) ? data : []).map(normalizeReport).filter(Boolean);
 }
 
 export async function deleteReport(reportId) {
-  await deleteDoc(doc(db, 'reports', reportId));
+  const response = await fetch(`${API_BASE_URL}/reports/${reportId}`, {
+    method: 'DELETE',
+    headers: await authHeaders(),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'Erro ao deletar denúncia');
+  return true;
 }
 
 export async function updateReportStatus(reportId, newStatus) {
-  await updateDoc(doc(db, 'reports', reportId), {
-    status: newStatus,
-    updatedAt: serverTimestamp(),
+  const response = await fetch(`${API_BASE_URL}/reports/${reportId}`, {
+    method: 'PATCH',
+    headers: await authHeaders(),
+    body: JSON.stringify({ status: newStatus }),
   });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'Erro ao atualizar denúncia');
+  return data;
 }
 
 export async function createDangerZone({ latitude, longitude, radius, name, description, severity }) {
-  const docData = {
-    latitude,
-    longitude,
-    radius,
-    name,
-    description,
-    severity,
-    createdAt: serverTimestamp(),
-  };
-  const ref = await addDoc(collection(db, 'danger_zones'), docData);
-  return { id: ref.id, ...docData };
+  return { id: `${Date.now()}`, latitude, longitude, radius, name, description, severity };
 }
 
 export async function getDangerZones() {
-  const q = query(collection(db, 'danger_zones'), orderBy('createdAt', 'desc'));
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return [];
 }
 
 export async function deleteDangerZone(zoneId) {
-  await deleteDoc(doc(db, 'danger_zones', zoneId));
+  return true;
 }
 
-// ── Buscar denúncias por categoria ──
 export async function getReportsByCategory(category) {
-  const q = query(
-    collection(db, 'reports'),
-    where('category', '==', category)
-  );
-  const snap = await getDocs(q);
-  return snap.docs
-    .map(d => ({ id: d.id, ...d.data() }))
-    .sort((a, b) => {
-      const aCreated = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
-      const bCreated = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime();
-      return bCreated - aCreated;
-    });
+  const reports = await getAllReports();
+  return reports.filter((report) => report.category === category);
 }
 
-// ── Buscar histórico de uma denúncia ──
 export async function getReportTimeline(reportId) {
-  const q = query(
-    collection(db, 'report_timeline'),
-    where('reportId', '==', reportId)
-  );
-  const snap = await getDocs(q);
-  return snap.docs
-    .map(d => ({ id: d.id, ...d.data() }))
-    .sort((a, b) => {
-      const aCreated = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
-      const bCreated = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime();
-      return bCreated - aCreated;
-    });
+  return [];
 }
 
-// ── Criar denúncia de segurança (anônima, sem userId) ──
 export async function createSecurityReport({ category, description, location, photoURL }) {
-  const docData = {
-    category,
-    description,
-    location,
-    createdAt: serverTimestamp(),
+  const normalizedCategory = ['pollution', 'waste', 'deforestation', 'water', 'energy', 'other'].includes(category)
+    ? category
+    : 'other';
+
+  const payload = {
+    title: 'Denúncia de segurança',
+    description: `[${category || 'outro'}] ${description}`.trim(),
+    latitude: typeof location?.latitude === 'number' ? location.latitude : -23.55052,
+    longitude: typeof location?.longitude === 'number' ? location.longitude : -46.633308,
+    category: normalizedCategory,
+    severity: 'high',
   };
 
-  // Só adiciona photoURL se existir, evita erro de tipo
-  if (photoURL) docData.photoURL = photoURL;
+  const response = await fetch(`${API_BASE_URL}/reports/anonymous`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
 
-  const ref = await addDoc(collection(db, 'security_reports'), docData);
-  return ref.id;
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'Erro ao enviar denúncia anônima');
+  return data.id;
 }

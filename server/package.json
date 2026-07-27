@@ -8,8 +8,8 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "migrate": "npm run build && node dist/database/migrate.js",
-    "seed": "npm run build && node dist/database/seed.js",
+    "migrate": "npx tsx src/database/migrate.ts",
+    "seed": "npx tsx src/database/seed.ts",
     "lint": "eslint src --ext .ts"
   },
   "dependencies": {
@@ -23,7 +23,9 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.0",
     "@types/node": "^20.11.0",
+    "@types/pg": "^8.11.0",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3"
   }

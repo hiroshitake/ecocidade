@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const ReportSchema = z.object({
   id: z.string().uuid(),
-  user_id: z.string().uuid(),
+  user_id: z.string().uuid().nullable(),
   title: z.string(),
   description: z.string(),
   latitude: z.number(),
@@ -19,7 +19,7 @@ export type Report = z.infer<typeof ReportSchema>;
 
 export const CreateReportSchema = z.object({
   title: z.string().min(1, 'Título é obrigatório'),
-  description: z.string().min(10, 'Descrição deve ter no mínimo 10 caracteres'),
+  description: z.string().min(1, 'Descrição é obrigatória'),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
   category: z.enum(['pollution', 'waste', 'deforestation', 'water', 'energy', 'other']),

@@ -1,4 +1,4 @@
-import { FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyReply, FastifyRequest } from 'fastify';
 import { CreateDangerZoneSchema } from '../models/DangerZone.js';
 import { dangerZoneService } from '../services/DangerZoneService.js';
 
@@ -51,9 +51,9 @@ export async function getActiveDangerZones(request: FastifyRequest, reply: Fasti
   }
 }
 
-export async function updateDangerZone(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+export async function updateDangerZone(request: FastifyRequest<any>, reply: FastifyReply) {
   try {
-    const { id } = request.params;
+    const { id } = request.params as { id: string };
     const zone = await dangerZoneService.getDangerZoneById(id);
 
     if (!zone) {
@@ -61,7 +61,7 @@ export async function updateDangerZone(request: FastifyRequest<{ Params: { id: s
       return;
     }
 
-    const updated = await dangerZoneService.updateDangerZone(id, request.body);
+    const updated = await dangerZoneService.updateDangerZone(id, request.body as Parameters<typeof dangerZoneService.updateDangerZone>[1]);
     reply.send(updated);
   } catch (error: any) {
     if (error.issues) {
@@ -72,9 +72,9 @@ export async function updateDangerZone(request: FastifyRequest<{ Params: { id: s
   }
 }
 
-export async function deleteDangerZone(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+export async function deleteDangerZone(request: FastifyRequest<any>, reply: FastifyReply) {
   try {
-    const { id } = request.params;
+    const { id } = request.params as { id: string };
     const zone = await dangerZoneService.getDangerZoneById(id);
 
     if (!zone) {

@@ -1,0 +1,7 @@
+[build]
+  command = "npm run build:web"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+  EXPO_PUBLIC_API_URL = "https://seu-backend-na-vps-oracle.com"

@@ -1,9 +1,9 @@
-import { pool } from '../config/database.js';
-import { CreateReport, UpdateReport, Report } from '../models/Report.js';
 import { randomUUID } from 'crypto';
+import { pool } from '../config/database.js';
+import { CreateReport, Report, UpdateReport } from '../models/Report.js';
 
 export class ReportService {
-  async createReport(userId: string, data: CreateReport, imageUrl?: string): Promise<Report> {
+  async createReport(userId: string | null, data: CreateReport, imageUrl?: string): Promise<Report> {
     const id = randomUUID();
     const now = new Date();
 
@@ -15,7 +15,7 @@ export class ReportService {
 
     const result = await pool.query(query, [
       id,
-      userId,
+      userId ?? null,
       data.title,
       data.description,
       data.latitude,

@@ -1,6 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { onAuthStateChanged } from 'firebase/auth';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
@@ -16,8 +15,7 @@ import { ThemedText } from '../components/themed-text';
 import { ThemedView } from '../components/themed-view';
 import { C } from '../constants/theme';
 import { formatCNPJ } from '../functions/masks';
-import { isAdminUser, signInAdmin } from '../services/auth';
-import { auth } from '../services/firebase';
+import { getCurrentUserData, signInAdmin } from '../services/auth';
 
 /* TODO: REQUIREMENTS GAPS
  - Replace simulated admin test login with a real admin RBAC flow.
@@ -33,26 +31,26 @@ export default function AdminLoginScreen() {
   const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        console.log('Admin login: no user authenticated');
-        return;
-      }
+    const bootstrap = async () => {
+      try {
+        const user = await getCurrentUserData();
+        if (!user) {
+          console.log('Admin login: no user authenticated');
+          return;
+        }
 
-      console.log('Admin login: user authenticated', user.uid);
-      const isAdmin = await isAdminUser(user.uid);
-      console.log('Admin login: isAdmin check result', isAdmin);
-      
-      if (isAdmin) {
-        console.log('Admin login: redirecting to dashboard');
-        router.replace('/(admin)/dashboard');
-      } else {
-        console.log('Admin login: user not admin, redirecting to map');
-        router.replace('/map');
+        const isAdmin = user.role === 'admin';
+        if (isAdmin) {
+          router.replace('/(admin)/dashboard');
+        } else {
+          router.replace('/map');
+        }
+      } catch (error) {
+        console.error('Admin bootstrap error:', error);
       }
-    });
+    };
 
-    return unsubscribe;
+    bootstrap();
   }, [router]);
 
   const handleLogin = async () => {
@@ -78,19 +76,10 @@ export default function AdminLoginScreen() {
         return;
       }
 
-      // Map Firebase error codes
       let msg = 'Falha ao autenticar. Verifique os dados e tente novamente.';
-      
-      if (error.code === 'auth/admin-not-found') {
-        msg = 'CNPJ não encontrado no sistema.';
-      } else if (error.code === 'auth/admin-email-missing') {
-        msg = 'Admin sem e-mail configurado.';
-      } else if (error.code === 'auth/wrong-password') {
-        msg = 'Senha incorreta.';
-      } else if (error.code === 'auth/user-not-found') {
-        msg = 'Usuário não encontrado.';
-      } else if (error.code === 'auth/invalid-email') {
-        msg = 'E-mail inválido.';
+
+      if (typeof error?.message === 'string' && error.message.trim()) {
+        msg = error.message;
       }
 
       console.log('Showing alert:', msg);

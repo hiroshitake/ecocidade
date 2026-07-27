@@ -229,7 +229,7 @@ export default function ManageReportsScreen() {
                         onPress={() => handleStatusChange(option.id)}
                       >
                         <MaterialCommunityIcons
-                          name={option.icon}
+                          name={option.icon as any}
                           size={28}
                           color={option.color}
                         />

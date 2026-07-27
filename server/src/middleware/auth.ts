@@ -1,27 +1,26 @@
-import { FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyReply, FastifyRequest } from 'fastify';
 
-declare global {
-  namespace FastifyInstance {
-    interface FastifyInstance {
-      authenticate: any;
-    }
-  }
-}
+type AuthUser = {
+  id: string;
+  email: string;
+  role: string;
+};
 
-declare module 'fastify' {
-  interface FastifyRequest {
-    user?: {
-      id: string;
-      email: string;
-      role: string;
-    };
-  }
+function getRequestUser(request: FastifyRequest): AuthUser | undefined {
+  const user = request.user as Partial<AuthUser> | undefined;
+  if (!user) return undefined;
+
+  return {
+    id: typeof user.id === 'string' ? user.id : '',
+    email: typeof user.email === 'string' ? user.email : '',
+    role: typeof user.role === 'string' ? user.role : 'user',
+  };
 }
 
 export async function authenticateToken(request: FastifyRequest, reply: FastifyReply) {
   try {
     await request.jwtVerify();
-  } catch (error) {
+  } catch {
     reply.code(401).send({ error: 'Token inválido ou expirado' });
   }
 }
@@ -29,10 +28,11 @@ export async function authenticateToken(request: FastifyRequest, reply: FastifyR
 export async function authenticateAdmin(request: FastifyRequest, reply: FastifyReply) {
   try {
     await request.jwtVerify();
-    if (request.user?.role !== 'admin') {
+    const user = getRequestUser(request);
+    if (user?.role !== 'admin') {
       reply.code(403).send({ error: 'Acesso negado. Apenas administradores.' });
     }
-  } catch (error) {
+  } catch {
     reply.code(401).send({ error: 'Token inválido ou expirado' });
   }
 }

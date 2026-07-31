@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 const placeholderApiUrls = new Set([
@@ -13,15 +14,17 @@ function getDefaultApiBaseUrl() {
     return 'http://10.0.2.2:3000';
   }
 
-  if (Platform.OS === 'web') {
-    return 'http://137.131.143.164:3000';
-  }
-
-  return 'http://137.131.143.164:3000';
+  return 'http://localhost:3000';
 }
 
 function resolveApiBaseUrl() {
-  const configuredApiUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
+  const configuredApiUrl = String(
+    Constants.expoConfig?.extra?.EXPO_PUBLIC_API_URL ??
+    Constants.manifest?.extra?.EXPO_PUBLIC_API_URL ??
+    process.env.EXPO_PUBLIC_API_URL ??
+    ''
+  ).trim();
+
   if (configuredApiUrl && !placeholderApiUrls.has(configuredApiUrl)) {
     return configuredApiUrl;
   }

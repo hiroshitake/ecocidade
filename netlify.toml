@@ -4,4 +4,10 @@
 
 [build.environment]
   NODE_VERSION = "20"
-  EXPO_PUBLIC_API_URL = "http://137.131.143.164:3000"
+  EXPO_PUBLIC_API_URL = "https://ecocidadetcc.netlify.app/api"
+
+[[redirects]]
+  from = "/api/*"
+  to = "http://137.131.143.164:3000/:splat"
+  status = 200
+  force = true

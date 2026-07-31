@@ -26,6 +26,8 @@ const allowedOrigins = Array.from(new Set([
   'http://localhost:3000',
   'http://10.0.2.2:3000',
   'http://localhost:19000',
+  'http://localhost:19006',
+  'http://127.0.0.1:19006',
   'http://localhost:8081',
 ]));
 

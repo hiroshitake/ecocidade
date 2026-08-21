@@ -1,221 +1,252 @@
-/* TODO: REQUIREMENTS GAPS
- - RF-06 'Esqueci minha senha' flow not implemented — integrate sendPasswordResetEmail in services/auth and wire this button.
- - RF-07 Terms of Use / Privacy links missing — add links to documents or webviews.
- - RNF: consider inline validation and measurable response times for login.
-*/
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
-import React, { useEffect, useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
 import {
     ActivityIndicator,
     Alert,
     KeyboardAvoidingView,
-    Modal,
     Platform,
     ScrollView,
     StatusBar,
     StyleSheet,
-    Text, TextInput, TouchableOpacity,
+    Text,
+    TextInput,
+    TouchableOpacity,
     View,
-} from 'react-native';
-import { C, S } from '../constants/theme';
-import { formatBirthDate, formatEmail } from '../functions/masks';
-import { getCurrentUserData, login, register, sendPasswordReset } from '../services/auth';
-
-WebBrowser.maybeCompleteAuthSession();
+} from "react-native";
+import { InlineError } from "../components/InlineError";
+import { C, S } from "../constants/theme";
+import { useToast } from "../context/toast-context";
+import { formatBirthDate } from "../functions/masks";
+import { getCurrentUserData, signIn, signUp } from "../services/auth";
+import {
+    getSupabaseSessionUser,
+    isSupabaseConfigured,
+    signInWithSupabase,
+    signUpWithSupabase,
+} from "../services/supabase";
 
 export default function LoginScreen() {
-  const [tab, setTab] = useState<'login' | 'register'>('login');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [birthdate, setBirthdate] = useState('');
-  const [city, setCity] = useState('');
+  const [tab, setTab] = useState<"login" | "register">("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [birthdate, setBirthdate] = useState("");
+  const [selectedCity, setSelectedCity] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [formError, setFormError] = useState('');
-  const [resetModalVisible, setResetModalVisible] = useState(false);
-  const [resetEmail, setResetEmail] = useState('');
-  const [resetLoading, setResetLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({
+    email: "",
+    password: "",
+    name: "",
+    birthdate: "",
+    city: "",
+  });
   const router = useRouter();
-  const cities = [
-    { id: 'orlândia', name: 'Orlândia' },
-    { id: 'morro-agudo', name: 'Morro Agudo' },
-    { id: 'sales-oliveira', name: 'Sales Oliveira' },
+  const toast = useToast();
+
+  const cityOptions = [
+    { id: "orlândia", name: "Orlândia" },
+    { id: "morro-agudo", name: "Morro Agudo" },
+    { id: "sales-oliveira", name: "Sales Oliveira" },
+    { id: "nuporanga", name: "Nuporanga" },
   ];
-  const resetForm = () => {
-    setEmail('');
-    setPassword('');
-    setName('');
-    setBirthdate('');
-    setCity('');
-    setShowPass(false);
-    setFormError('');
+
+  const isValidEmail = (value: string) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+  const isValidBirthdate = (value: string) => {
+    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return false;
+    const [day, month, year] = value.split("/").map(Number);
+    const date = new Date(year, month - 1, day);
+    return (
+      date.getFullYear() === year &&
+      date.getMonth() === month - 1 &&
+      date.getDate() === day
+    );
   };
 
-  useEffect(() => {
-    const bootstrap = async () => {
-      try {
-        const user = await getCurrentUserData();
-        if (user) {
-          router.replace('/map');
+  const setError = (field: keyof typeof fieldErrors, message: string) => {
+    setFieldErrors((prev) => ({ ...prev, [field]: message }));
+  };
+
+  const clearErrors = () => {
+    setFieldErrors({
+      email: "",
+      password: "",
+      name: "",
+      birthdate: "",
+      city: "",
+    });
+  };
+
+  const handleTabChange = (nextTab: "login" | "register") => {
+    setTab(nextTab);
+    clearErrors();
+  };
+
+  const handleAuth = async () => {
+    clearErrors();
+
+    if (!email.trim()) {
+      setError("email", "Informe seu e-mail.");
+      return;
+    }
+
+    if (!isValidEmail(email.trim())) {
+      setError("email", "Informe um e-mail válido.");
+      return;
+    }
+
+    if (!password.trim()) {
+      setError("password", "Informe sua senha.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("password", "A senha deve ter no mínimo 6 caracteres.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      let currentUser = null;
+
+      if (isSupabaseConfigured()) {
+        await signInWithSupabase(email.trim().toLowerCase(), password);
+        currentUser = await getSupabaseSessionUser();
+        if (currentUser) {
+          await AsyncStorage.setItem(
+            "ecocidade.user",
+            JSON.stringify(currentUser),
+          );
         }
-      } catch (error) {
-        console.error('Auth bootstrap error:', error);
-      }
-    };
-
-    bootstrap();
-  }, [router]);
-
-  // ── LOGIN ──
-  const handleLogin = async () => {
-    const normalizedEmail = formatEmail(email);
-    setFormError('');
-
-    if (!normalizedEmail) {
-      const msg = 'Informe um e-mail válido para entrar.';
-      setFormError(msg);
-      Alert.alert('Atenção', msg);
-      return;
-    }
-    if (!password || password.length < 6) {
-      const msg = 'A senha deve ter no mínimo 6 caracteres.';
-      setFormError(msg);
-      Alert.alert('Atenção', msg);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await login(normalizedEmail, password);
-      resetForm();
-      router.replace('/map');
-    } catch (error: any) {
-      const msg = typeof error?.message === 'string' && error.message.trim()
-        ? error.message
-        : 'E-mail ou senha inválidos. Verifique os dados e tente novamente.';
-      setFormError(msg);
-      Alert.alert('Erro', msg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePasswordReset = async (emailToUse?: string) => {
-    const target = (emailToUse || resetEmail || email || '').trim();
-    if (!target || !target.includes('@')) {
-      Alert.alert('Informe o e-mail', 'Digite um e‑mail válido para receber o link de recuperação.');
-      return;
-    }
-    setResetLoading(true);
-    try {
-      await sendPasswordReset(target);
-      Alert.alert('Enviado', 'Enviamos um e-mail com instruções para redefinir sua senha. Verifique sua caixa de entrada.');
-      setResetModalVisible(false);
-      setResetEmail('');
-    } catch (error: any) {
-      const msg =
-        error.code === 'auth/user-not-found'    ? 'Usuário não encontrado.' :
-        error.code === 'auth/invalid-email'     ? 'E-mail inválido.' :
-        error.code === 'auth/too-many-requests' ? 'Muitas tentativas. Tente mais tarde.' :
-        'Falha ao enviar e-mail. Tente novamente.';
-      Alert.alert('Erro', msg);
-      console.error('Password reset error:', error);
-    } finally {
-      setResetLoading(false);
-    }
-  };
-
-  // ── CADASTRO ──
-  const handleRegister = async () => {
-    const trimmedName = name.trim();
-    const normalizedEmail = formatEmail(email);
-    setFormError('');
-
-    if (!trimmedName || trimmedName.length < 2) {
-      const msg = 'Informe um nome válido.';
-      setFormError(msg);
-      Alert.alert('Atenção', msg);
-      return;
-    }
-    if (!normalizedEmail) {
-      const msg = 'Informe um e-mail válido.';
-      setFormError(msg);
-      Alert.alert('Atenção', msg);
-      return;
-    }
-    if (!password || password.length < 6) {
-      const msg = 'A senha deve ter no mínimo 6 caracteres.';
-      setFormError(msg);
-      Alert.alert('Atenção', msg);
-      return;
-    }
-    if (!city) {
-      const msg = 'Selecione uma cidade para continuar.';
-      setFormError(msg);
-      Alert.alert('Atenção', msg);
-      return;
-    }
-
-    const selectedCity = cities.find((item) => item.id === city)?.name;
-    if (!selectedCity) {
-      const msg = 'Selecione uma cidade válida.';
-      setFormError(msg);
-      Alert.alert('Atenção', msg);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await register(normalizedEmail, password, trimmedName, birthdate, selectedCity);
-      resetForm();
-      router.replace('/map');
-    } catch (error: any) {
-      const msg = typeof error?.message === 'string' && error.message.trim()
-        ? error.message
-        : 'Erro ao criar conta. Tente novamente.';
-      setFormError(msg);
-      Alert.alert('Erro', msg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ── GOOGLE ──
-  const handleGoogleSuccess = async () => {
-    try {
-      const data = (await getCurrentUserData()) as any;
-      if (!data?.city) {
-        router.replace('/select-city');
       } else {
-        router.replace('/map');
+        await signIn(email.trim().toLowerCase(), password);
+        currentUser = await getCurrentUserData();
       }
-    } catch (error) {
-      console.error('Falha ao verificar cidade do usuário:', error);
-      router.replace('/map');
+
+      // After login, do not force city selection. Always go to map.
+      router.replace("/map");
+    } catch (error: any) {
+      console.error("Erro no login:", error);
+      let msg = error.message || "Não foi possível entrar.";
+      if (msg.includes("Invalid login credentials")) {
+        msg =
+          'E-mail ou senha incorretos. Se você ainda não tem conta, acesse a aba "Cadastrar".';
+      } else if (msg.includes("Email not confirmed")) {
+        msg = "E-mail ainda não confirmado. Verifique sua caixa de entrada.";
+      }
+      toast.addToast(msg, "error");
+    } finally {
+      setLoading(false);
     }
   };
 
+  const handleRegister = async () => {
+    clearErrors();
+
+    if (!name.trim()) {
+      setError("name", "Informe seu nome completo.");
+      return;
+    }
+
+    if (name.trim().length < 2) {
+      setError("name", "O nome deve ter pelo menos 2 caracteres.");
+      return;
+    }
+
+    if (!email.trim()) {
+      setError("email", "Informe seu e-mail.");
+      return;
+    }
+
+    if (!isValidEmail(email.trim())) {
+      setError("email", "Informe um e-mail válido.");
+      return;
+    }
+
+    if (!password.trim()) {
+      setError("password", "Informe uma senha.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("password", "A senha deve ter no mínimo 6 caracteres.");
+      return;
+    }
+
+    if (birthdate.trim() && !isValidBirthdate(birthdate.trim())) {
+      setError("birthdate", "Data inválida. Use o formato DD/MM/AAAA.");
+      return;
+    }
+
+    if (!selectedCity) {
+      setError("city", "Selecione sua cidade.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const cityName = cityOptions.find((c) => c.id === selectedCity)?.name;
+      if (isSupabaseConfigured()) {
+        const res = await signUpWithSupabase(
+          email.trim().toLowerCase(),
+          password,
+          name.trim(),
+          cityName,
+        );
+        const user = await getSupabaseSessionUser();
+        if (user) {
+          await AsyncStorage.setItem("ecocidade.user", JSON.stringify(user));
+        } else if (res.user && !res.session) {
+          Alert.alert(
+            "Conta Criada com Sucesso!",
+            "Sua conta foi criada.\n\nSe a confirmação de e-mail estiver desativada, já pode entrar. Caso contrário, confirme o e-mail recebido.",
+          );
+          setTab("login");
+          return;
+        }
+      } else {
+        await signUp(
+          email.trim().toLowerCase(),
+          password,
+          name.trim(),
+          cityName,
+        );
+      }
+
+      // After successful registration, go to map (profile already contains city)
+      router.replace("/map");
+    } catch (error: any) {
+      console.error("Erro no cadastro:", error);
+      let msg = error.message || "Não foi possível criar a conta.";
+      const lowerMsg = msg.toLowerCase();
+      if (
+        lowerMsg.includes("already registered") ||
+        lowerMsg.includes("already been registered") ||
+        lowerMsg.includes("email already") ||
+        lowerMsg.includes("user already")
+      ) {
+        msg = "E-mail já cadastrado";
+      }
+      toast.addToast(msg, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <StatusBar barStyle="light-content" />
-      <ScrollView
-        style={styles.root}
-        contentContainerStyle={styles.scrollContent}
-        bounces={false}
-        keyboardShouldPersistTaps="handled"
-      >
-
-        {/* ── GRADIENT HEADER ── */}
+      <ScrollView style={styles.root} bounces={false}>
         <LinearGradient
-          colors={['#1a5fd4', '#0d3d96']}
+          colors={["#1a5fd4", "#0d3d96"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 0.4, y: 1 }}
           style={styles.header}
@@ -228,7 +259,9 @@ export default function LoginScreen() {
               <Text style={styles.logoText}>
                 ECO<Text style={styles.logoGreen}>cidade</Text>
               </Text>
-              <Text style={styles.logoSub}>Zeladoria &amp; Segurança Urbana</Text>
+              <Text style={styles.logoSub}>
+                Zeladoria &amp; Segurança Urbana
+              </Text>
             </View>
           </View>
           <Text style={styles.headline}>Sua cidade mais inteligente.</Text>
@@ -237,26 +270,27 @@ export default function LoginScreen() {
           </Text>
         </LinearGradient>
 
-        {/* ── FORM AREA ── */}
         <View style={styles.formArea}>
-
-          {/* TAB BAR */}
           <View style={styles.tabBar}>
-            {(['login', 'register'] as const).map(t => (
+            {(["login", "register"] as const).map((t) => (
               <TouchableOpacity
                 key={t}
                 style={[styles.tabBtn, tab === t && styles.tabBtnActive]}
-                onPress={() => setTab(t)}
+                onPress={() => handleTabChange(t)}
               >
-                <Text style={[styles.tabBtnText, tab === t && styles.tabBtnTextActive]}>
-                  {t === 'login' ? 'Entrar' : 'Cadastrar'}
+                <Text
+                  style={[
+                    styles.tabBtnText,
+                    tab === t && styles.tabBtnTextActive,
+                  ]}
+                >
+                  {t === "login" ? "Entrar" : "Cadastrar"}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          {/* ── LOGIN ── */}
-          {tab === 'login' && (
+          {tab === "login" && (
             <View>
               <Text style={styles.label}>E-MAIL</Text>
               <TextInput
@@ -264,10 +298,16 @@ export default function LoginScreen() {
                 placeholder="seu@email.com"
                 placeholderTextColor={C.text3}
                 value={email}
-                onChangeText={(text) => setEmail(formatEmail(text))}
+                onChangeText={(value) => {
+                  setEmail(value);
+                  if (fieldErrors.email) setError("email", "");
+                }}
                 keyboardType="email-address"
                 autoCapitalize="none"
-                editable={!loading}
+              />
+              <InlineError
+                message={fieldErrors.email}
+                visible={Boolean(fieldErrors.email)}
               />
 
               <Text style={styles.label}>SENHA</Text>
@@ -277,48 +317,68 @@ export default function LoginScreen() {
                   placeholder="Mínimo 6 caracteres"
                   placeholderTextColor={C.text3}
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={(value) => {
+                    setPassword(value);
+                    if (fieldErrors.password) setError("password", "");
+                  }}
                   secureTextEntry={!showPass}
-                  editable={!loading}
                 />
-                <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPass(p => !p)}>
-                  <Ionicons name={showPass ? 'eye-off' : 'eye'} size={20} color={C.text3} />
+                <TouchableOpacity
+                  style={styles.eyeBtn}
+                  onPress={() => setShowPass((prev) => !prev)}
+                >
+                  <Ionicons
+                    name={showPass ? "eye-off" : "eye"}
+                    size={20}
+                    color={C.text3}
+                  />
                 </TouchableOpacity>
               </View>
+              <InlineError
+                message={fieldErrors.password}
+                visible={Boolean(fieldErrors.password)}
+              />
 
-              {formError ? (
-                <View style={styles.errorBox}>
-                  <Ionicons name="alert-circle" size={16} color="#b91c1c" />
-                  <Text style={styles.errorText}>{formError}</Text>
-                </View>
-              ) : null}
-
-              <TouchableOpacity
-                style={styles.forgotBtn}
-                onPress={() => { setResetEmail(email); setResetModalVisible(true); }}
-                disabled={loading}
-              >
+              <TouchableOpacity style={styles.forgotBtn}>
                 <Text style={styles.forgotText}>Esqueceu a senha?</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.btnPrimary, loading && { opacity: 0.6 }]}
-                onPress={handleLogin}
+                style={styles.btnPrimary}
+                onPress={handleAuth}
                 disabled={loading}
               >
-                {loading
-                  ? <Text style={styles.btnText}>Entrando...</Text>
-                  : <>
-                      <Ionicons name="log-in" size={20} color="white" />
-                      <Text style={styles.btnText}>Entrar</Text>
-                    </>
+                {loading ? (
+                  <ActivityIndicator color="white" size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="log-in" size={20} color="white" />
+                    <Text style={styles.btnText}>Entrar</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>ou continue com</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              <TouchableOpacity
+                style={styles.btnOutline}
+                onPress={() =>
+                  Alert.alert(
+                    "Em breve",
+                    "O login com Google será habilitado em seguida.",
+                  )
                 }
+              >
+                <Text style={styles.btnOutlineText}>🇬 Google</Text>
               </TouchableOpacity>
             </View>
           )}
 
-          {/* ── CADASTRO ── */}
-          {tab === 'register' && (
+          {tab === "register" && (
             <View>
               <Text style={styles.label}>NOME COMPLETO</Text>
               <TextInput
@@ -326,8 +386,14 @@ export default function LoginScreen() {
                 placeholder="Seu nome completo"
                 placeholderTextColor={C.text3}
                 value={name}
-                onChangeText={setName}
-                editable={!loading}
+                onChangeText={(value) => {
+                  setName(value);
+                  if (fieldErrors.name) setError("name", "");
+                }}
+              />
+              <InlineError
+                message={fieldErrors.name}
+                visible={Boolean(fieldErrors.name)}
               />
 
               <Text style={styles.label}>DATA DE NASCIMENTO</Text>
@@ -336,28 +402,43 @@ export default function LoginScreen() {
                 placeholder="DD/MM/AAAA"
                 placeholderTextColor={C.text3}
                 value={birthdate}
-                onChangeText={(text) => setBirthdate(formatBirthDate(text))}
-                keyboardType="number-pad"
-                maxLength={10}
-                editable={!loading}
+                keyboardType="numeric"
+                onChangeText={(value) => {
+                  const formattedValue = formatBirthDate(value);
+                  setBirthdate(formattedValue);
+                  if (fieldErrors.birthdate) setError("birthdate", "");
+                }}
+              />
+              <InlineError
+                message={fieldErrors.birthdate}
+                visible={Boolean(fieldErrors.birthdate)}
               />
 
               <Text style={styles.label}>CIDADE</Text>
-              <View style={styles.cityList}>
-                {cities.map((item) => (
+              <View
+                style={{
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  gap: 10,
+                  marginBottom: 12,
+                }}
+              >
+                {cityOptions.map((item) => (
                   <TouchableOpacity
                     key={item.id}
                     style={[
                       styles.cityOption,
-                      city === item.id && styles.cityOptionActive,
+                      selectedCity === item.id && styles.cityOptionActive,
                     ]}
-                    onPress={() => setCity(item.id)}
-                    disabled={loading}
+                    onPress={() => {
+                      setSelectedCity(item.id);
+                      if (fieldErrors.city) setError("city", "");
+                    }}
                   >
                     <Text
                       style={[
                         styles.cityOptionText,
-                        city === item.id && styles.cityOptionTextActive,
+                        selectedCity === item.id && styles.cityOptionTextActive,
                       ]}
                     >
                       {item.name}
@@ -365,6 +446,10 @@ export default function LoginScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
+              <InlineError
+                message={fieldErrors.city}
+                visible={Boolean(fieldErrors.city)}
+              />
 
               <Text style={styles.label}>E-MAIL</Text>
               <TextInput
@@ -372,10 +457,16 @@ export default function LoginScreen() {
                 placeholder="seu@email.com"
                 placeholderTextColor={C.text3}
                 value={email}
-                onChangeText={(text) => setEmail(formatEmail(text))}
+                onChangeText={(value) => {
+                  setEmail(value);
+                  if (fieldErrors.email) setError("email", "");
+                }}
                 keyboardType="email-address"
                 autoCapitalize="none"
-                editable={!loading}
+              />
+              <InlineError
+                message={fieldErrors.email}
+                visible={Boolean(fieldErrors.email)}
               />
 
               <Text style={styles.label}>SENHA</Text>
@@ -384,249 +475,201 @@ export default function LoginScreen() {
                 placeholder="Mínimo 6 caracteres"
                 placeholderTextColor={C.text3}
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(value) => {
+                  setPassword(value);
+                  if (fieldErrors.password) setError("password", "");
+                }}
                 secureTextEntry
-                editable={!loading}
+              />
+              <InlineError
+                message={fieldErrors.password}
+                visible={Boolean(fieldErrors.password)}
               />
 
-              {formError ? (
-                <View style={styles.errorBox}>
-                  <Ionicons name="alert-circle" size={16} color="#b91c1c" />
-                  <Text style={styles.errorText}>{formError}</Text>
-                </View>
-              ) : null}
-
               <TouchableOpacity
-                style={[styles.btnPrimary, { backgroundColor: C.eco }, loading && { opacity: 0.6 }]}
+                style={[styles.btnPrimary, { backgroundColor: C.eco }]}
                 onPress={handleRegister}
                 disabled={loading}
               >
-                {loading
-                  ? <Text style={styles.btnText}>Criando conta...</Text>
-                  : <>
-                      <Ionicons name="person-add" size={20} color="white" />
-                      <Text style={styles.btnText}>Criar conta</Text>
-                    </>
-                }
+                {loading ? (
+                  <ActivityIndicator color="white" size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="person-add" size={20} color="white" />
+                    <Text style={styles.btnText}>Criar conta</Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
           )}
-        </View>
 
-        {/* Legal Links */}
-        <View style={styles.linksRow}>
-          <TouchableOpacity onPress={() => router.push('/terms')}>
-            <Text style={styles.linkText}>Termos de Uso</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/privacy')}>
-            <Text style={styles.linkText}>Política de Privacidade</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.adminSection}>
-          <TouchableOpacity
-            style={styles.adminBtn}
-            onPress={() => router.push('/admin-login')}
-          >
-            <Ionicons name="shield-checkmark" size={18} color={C.primary} />
-            <Text style={styles.adminBtnText}>Acesso Administrativo</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-      {/* Reset Password Modal */}
-      <Modal
-        visible={resetModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setResetModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={[styles.label, { marginBottom: 8 }]}>Digite seu e‑mail</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="seu@email.com"
-              placeholderTextColor={C.text3}
-              value={resetEmail}
-              onChangeText={setResetEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              editable={!resetLoading}
-            />
-            <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
-              <TouchableOpacity style={[styles.btnOutline, { flex: 1 }]} onPress={() => setResetModalVisible(false)} disabled={resetLoading}>
-                <Text style={styles.btnOutlineText}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.btnPrimary, { flex: 1 }]} onPress={() => handlePasswordReset(resetEmail)} disabled={resetLoading}>
-                {resetLoading ? <ActivityIndicator color="white" /> : <Text style={styles.btnText}>Enviar</Text>}
-              </TouchableOpacity>
-            </View>
+          <View style={styles.adminArea}>
+            <TouchableOpacity
+              style={styles.adminBtn}
+              onPress={() => router.push("/admin-login")}
+            >
+              <Ionicons name="shield-checkmark" size={18} color={C.primary} />
+              <Text style={styles.adminBtnText}>
+                Acesso do Servidor / Admin
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={C.primary} />
+            </TouchableOpacity>
           </View>
         </View>
-      </Modal>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.surface },
-  scrollContent: { flexGrow: 1, paddingBottom: 40 },
-
-  // Header
-  header: { paddingTop: Platform.OS === 'ios' ? 60 : 48, paddingBottom: 40, paddingHorizontal: 24 },
-  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 32 },
-  logoIcon: {
-    width: 48, height: 48, borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.3)',
+  header: {
+    paddingTop: Platform.OS === "ios" ? 60 : 48,
+    paddingBottom: 40,
+    paddingHorizontal: 24,
   },
-  logoText: { fontSize: 26, fontWeight: '800', color: 'white', letterSpacing: -0.5 },
-  logoGreen: { color: '#4ade80' },
-  logoSub: { fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: '500' },
-  headline: { fontSize: 28, fontWeight: '800', color: 'white', lineHeight: 34, marginBottom: 8 },
-  subheadline: { color: 'rgba(255,255,255,0.75)', fontSize: 14 },
-
-  // Form area
+  logoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 32,
+  },
+  logoIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.3)",
+  },
+  logoText: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "white",
+    letterSpacing: -0.5,
+  },
+  logoGreen: { color: "#4ade80" },
+  logoSub: { fontSize: 11, color: "rgba(255,255,255,0.7)", fontWeight: "500" },
+  headline: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "white",
+    lineHeight: 34,
+    marginBottom: 8,
+  },
+  subheadline: { color: "rgba(255,255,255,0.75)", fontSize: 14 },
   formArea: { backgroundColor: C.surface, padding: 24, paddingBottom: 48 },
-
-  // Tab bar
-  tabBar: { flexDirection: 'row', backgroundColor: C.surface2, borderRadius: 12, padding: 4, marginBottom: 24 },
-  tabBtn: { flex: 1, paddingVertical: 9, borderRadius: 9, alignItems: 'center' },
+  tabBar: {
+    flexDirection: "row",
+    backgroundColor: C.surface2,
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 24,
+  },
+  tabBtn: {
+    flex: 1,
+    paddingVertical: 9,
+    borderRadius: 9,
+    alignItems: "center",
+  },
   tabBtnActive: { backgroundColor: C.surface, ...S.shadow.sm },
-  tabBtnText: { fontSize: 14, fontWeight: '600', color: C.text2 },
+  tabBtnText: { fontSize: 14, fontWeight: "600", color: C.text2 },
   tabBtnTextActive: { color: C.primary },
-
-  // Inputs
   label: {
-    fontSize: 12, fontWeight: '600', color: C.text3,
-    letterSpacing: 0.5, marginBottom: 6, textTransform: 'uppercase',
+    fontSize: 12,
+    fontWeight: "600",
+    color: C.text3,
+    letterSpacing: 0.5,
+    marginBottom: 6,
+    textTransform: "uppercase",
   },
   input: {
-    backgroundColor: C.surface2, color: C.text,
-    borderWidth: 1.5, borderColor: C.border, borderRadius: 12,
-    paddingHorizontal: 16, paddingVertical: 13,
-    fontSize: 15, marginBottom: 16,
-  },
-  errorBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#fef2f2',
-    borderWidth: 1,
-    borderColor: '#fecaca',
+    backgroundColor: C.surface2,
+    color: C.text,
+    borderWidth: 1.5,
+    borderColor: C.border,
     borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    fontSize: 15,
+    marginBottom: 8,
   },
-  errorText: {
-    color: '#b91c1c',
-    fontSize: 13,
-    flex: 1,
-  },
-  eyeBtn: { position: 'absolute', right: 14, top: 13 },
-  forgotBtn: { alignSelf: 'flex-end', marginBottom: 24, marginTop: -8 },
-  forgotText: { fontSize: 13, color: C.primary, fontWeight: '600' },
-
-  // Buttons
+  eyeBtn: { position: "absolute", right: 14, top: 13 },
+  forgotBtn: { alignSelf: "flex-end", marginBottom: 24, marginTop: -8 },
+  forgotText: { fontSize: 13, color: C.primary, fontWeight: "600" },
   btnPrimary: {
-    backgroundColor: C.primary, borderRadius: 12,
-    paddingVertical: 14, flexDirection: 'row',
-    alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: C.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
     ...S.shadow.sm,
   },
-  btnText: { color: 'white', fontSize: 15, fontWeight: '700' },
+  btnText: { color: "white", fontSize: 15, fontWeight: "700" },
   btnOutline: {
-    borderWidth: 1.5, borderColor: C.primary, borderRadius: 12,
-    paddingVertical: 13, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: C.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
   },
-  btnOutlineText: { color: C.primary, fontSize: 15, fontWeight: '600' },
-  cityList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 16,
+  btnOutlineText: { color: C.primary, fontSize: 15, fontWeight: "600" },
+  adminArea: {
+    marginTop: 28,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: C.border,
   },
+  adminBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: C.surface2,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+  adminBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: C.primary,
+  },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginVertical: 20,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: C.border },
+  dividerText: { fontSize: 12, color: C.text3, fontWeight: "500" },
   cityOption: {
     borderWidth: 1.5,
     borderColor: C.border,
     borderRadius: 12,
     paddingVertical: 10,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     backgroundColor: C.surface2,
   },
   cityOptionActive: {
     borderColor: C.primary,
-    backgroundColor: 'rgba(49, 130, 206, 0.12)',
+    backgroundColor: "rgba(49, 130, 206, 0.12)",
   },
   cityOptionText: {
     color: C.text,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   cityOptionTextActive: {
     color: C.primary,
-  },
-  googleHint: {
-    marginTop: 10,
-    color: C.text3,
-    fontSize: 13,
-    textAlign: 'center',
-  },
-
-  // Divider
-  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 20 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: C.border },
-  dividerText: { fontSize: 12, color: C.text3, fontWeight: '500' },
-
-  // Admin
-  adminSection: { paddingHorizontal: 24, paddingBottom: 24 },
-  adminBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: C.primary,
-    borderRadius: 12,
-    paddingVertical: 12,
-    gap: 8,
-  },
-  adminBtnText: {
-    color: C.primary,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  modalContent: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 18,
-  },
-  modalInput: {
-    backgroundColor: '#f6f7fb',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: '#e6e9f0',
-  },
-  linksRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 24,
-    paddingHorizontal: 24,
-    marginTop: 20,
-    marginBottom: 12,
-  },
-  linkText: {
-    color: C.text3,
-    fontSize: 13,
-    textDecorationLine: 'underline',
   },
 });

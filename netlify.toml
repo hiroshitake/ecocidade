@@ -3,11 +3,8 @@
   publish = "dist"
 
 [build.environment]
-  NODE_VERSION = "20"
-  EXPO_PUBLIC_API_URL = "https://ecocidadetcc.netlify.app/api"
-
-[[redirects]]
-  from = "/api/*"
-  to = "http://137.131.143.164:3000/:splat"
-  status = 200
-  force = true
+  NODE_VERSION = "22"
+  EXPO_PUBLIC_API_URL = "https://ecocidadetcc2026.netlify.app"
+  EXPO_PUBLIC_SITE_URL = "https://ecocidadetcc2026.netlify.app"
+  EXPO_PUBLIC_SUPABASE_URL = "https://nuudsaiwhdielmsbbkwm.supabase.co"
+  EXPO_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51dWRzYWl3aGRpZWxtc2Jia3dtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYwNjUwNTcsImV4cCI6MjEwMTY0MTA1N30.74NW6WFuWcmUiJRYcc2h1OfAQ_ywlP4CgMQItbYoieA"

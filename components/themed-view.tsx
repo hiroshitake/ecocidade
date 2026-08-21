@@ -8,7 +8,7 @@ export type ThemedViewProps = ViewProps & {
 };
 
 export function ThemedView({ style, lightColor, darkColor, ...otherProps }: ThemedViewProps) {
-  const backgroundColor = useThemeColor({ light: lightColor, dark: darkColor }, 'surface');
+  const backgroundColor = useThemeColor({ light: lightColor, dark: darkColor }, 'bg');
 
   return <View style={[{ backgroundColor }, style]} {...otherProps} />;
 }

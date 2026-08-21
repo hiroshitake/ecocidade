@@ -1,6 +1,7 @@
-﻿'use client';
+﻿"use client";
 
-import { CSSProperties, useEffect, useRef, useState } from 'react';
+import { CSSProperties, useEffect, useRef, useState } from "react";
+import { StyleSheet as RNStyleSheet } from "react-native";
 
 interface Report {
   id: string;
@@ -19,7 +20,7 @@ interface Zone {
   longitude: number;
   radius: number;
   name?: string;
-  severity?: 'baixa' | 'media' | 'alta';
+  severity?: "baixa" | "media" | "alta";
 }
 
 interface MapComponentProps {
@@ -29,7 +30,10 @@ interface MapComponentProps {
   userLocation?: { latitude: number; longitude: number } | null;
   selectedLocation?: { latitude: number; longitude: number } | null;
   selectLocation?: boolean;
-  onSelectLocation?: (location: { latitude: number; longitude: number }) => void;
+  onSelectLocation?: (location: {
+    latitude: number;
+    longitude: number;
+  }) => void;
   onSelectReport?: (report: Report) => void;
   onZoneClick?: (zone: Zone) => void;
 }
@@ -53,7 +57,10 @@ export default function MapComponent({
   const userMarkerRef = useRef<any>(null);
   const selectedMarkerRef = useRef<any>(null);
   const hasSetInitialViewRef = useRef(false);
-  const previousSelectedLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
+  const previousCenteredLocationRef = useRef<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const onSelectLocationRef = useRef(onSelectLocation);
   const onSelectReportRef = useRef(onSelectReport);
 
@@ -66,16 +73,18 @@ export default function MapComponent({
   }, [onSelectLocation]);
 
   useEffect(() => {
-    if (!mapRef.current || typeof window === 'undefined') return;
+    if (!mapRef.current || typeof window === "undefined") return;
 
     const initMap = async () => {
       try {
-        const L = await import('leaflet').then(m => m.default);
-        require('leaflet/dist/leaflet.css');
+        const L = await import("leaflet").then((m) => m.default);
+        require("leaflet/dist/leaflet.css");
 
         const DefaultIcon = L.icon({
-          iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+          iconUrl:
+            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+          shadowUrl:
+            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
           iconSize: [25, 41],
           iconAnchor: [12, 41],
         });
@@ -83,9 +92,9 @@ export default function MapComponent({
         L.Marker.prototype.setIcon(DefaultIcon);
         (window as any).L = L;
 
-        if (!document.getElementById('ecocidade-pulse-style')) {
-          const style = document.createElement('style');
-          style.id = 'ecocidade-pulse-style';
+        if (!document.getElementById("ecocidade-pulse-style")) {
+          const style = document.createElement("style");
+          style.id = "ecocidade-pulse-style";
           style.innerHTML = `
             .ecocidade-pulse {
               width: 28px;
@@ -183,13 +192,13 @@ export default function MapComponent({
             closePopupOnClick: false,
           }).setView([-23.5505, -46.6333], 13);
 
-          L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
+          L.tileLayer("https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png", {
+            attribution: "© OpenStreetMap contributors",
             maxZoom: 19,
             minZoom: 2,
           }).addTo(map);
 
-          map.on('click', (e: any) => {
+          map.on("click", (e: any) => {
             if (selectLocation && onSelectLocationRef.current) {
               onSelectLocationRef.current({
                 latitude: e.latlng.lat,
@@ -205,7 +214,7 @@ export default function MapComponent({
 
         setIsLoading(false);
       } catch (error) {
-        console.error('Error loading map:', error);
+        console.error("Error loading map:", error);
         setIsLoading(false);
       }
     };
@@ -221,7 +230,7 @@ export default function MapComponent({
   }, []);
 
   useEffect(() => {
-    if (!markerLayerRef.current || typeof window === 'undefined') return;
+    if (!markerLayerRef.current || typeof window === "undefined") return;
     const L = (window as any).L;
     if (!L) return;
 
@@ -231,21 +240,25 @@ export default function MapComponent({
     }
 
     const validReports = reports.filter(
-      (report) => report.location?.latitude != null && report.location?.longitude != null
+      (report) =>
+        report.location?.latitude != null && report.location?.longitude != null,
     );
 
     validReports.forEach((report) => {
       const popupContent = `
         <div style="max-width:280px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 4px;">
-          <strong style="display:block; margin-bottom:8px; color: #0d1b36; font-size: 14px;">${report.category || 'Denúncia'}</strong>
-          <div style="margin-bottom:8px; color: #4a5568; font-size: 13px; line-height: 1.4;">${report.description || 'Sem descrição'}</div>
-          ${report.location?.address ? `<small style="color:#8897b0; font-size: 12px;">${report.location.address}</small>` : ''}
+          <strong style="display:block; margin-bottom:8px; color: #0d1b36; font-size: 14px;">${report.category || "Denúncia"}</strong>
+          <div style="margin-bottom:8px; color: #4a5568; font-size: 13px; line-height: 1.4;">${report.description || "Sem descrição"}</div>
+          ${report.location?.address ? `<small style="color:#8897b0; font-size: 12px;">${report.location.address}</small>` : ""}
         </div>
       `;
 
-      const marker = L.marker([report.location!.latitude!, report.location!.longitude!], {
+      const marker = L.marker(
+        [report.location!.latitude!, report.location!.longitude!],
+        {
           interactive: true,
-        })
+        },
+      )
         .bindPopup(popupContent, {
           maxWidth: 300,
           closeButton: true,
@@ -254,7 +267,7 @@ export default function MapComponent({
         })
         .addTo(markerLayerRef.current);
 
-      marker.on('click', () => {
+      marker.on("click", () => {
         marker.openPopup();
         onSelectReportRef.current?.(report);
       });
@@ -265,15 +278,18 @@ export default function MapComponent({
         userMarkerRef.current.remove();
       }
       const pulseIcon = L.divIcon({
-        className: 'ecocidade-pulse',
+        className: "ecocidade-pulse",
         iconSize: [18, 18],
         iconAnchor: [9, 9],
       });
-      userMarkerRef.current = L.marker([userLocation.latitude, userLocation.longitude], {
-        icon: pulseIcon,
-        interactive: false,
-      })
-        .bindPopup('<strong>Você está aqui</strong>')
+      userMarkerRef.current = L.marker(
+        [userLocation.latitude, userLocation.longitude],
+        {
+          icon: pulseIcon,
+          interactive: false,
+        },
+      )
+        .bindPopup("<strong>Você está aqui</strong>")
         .addTo(markerLayerRef.current);
     }
 
@@ -282,22 +298,30 @@ export default function MapComponent({
         selectedMarkerRef.current.remove();
       }
       const selectedIcon = L.divIcon({
-        className: 'ecocidade-selected-marker',
+        className: "ecocidade-selected-marker",
         iconSize: [32, 40],
         iconAnchor: [16, 40],
       });
-      selectedMarkerRef.current = L.marker([selectedLocation.latitude, selectedLocation.longitude], {
-        icon: selectedIcon,
-        interactive: false,
-      })
+      selectedMarkerRef.current = L.marker(
+        [selectedLocation.latitude, selectedLocation.longitude],
+        {
+          icon: selectedIcon,
+          interactive: false,
+        },
+      )
         .bindPopup('<strong style="color: #0d1b36;">Local selecionado</strong>')
         .addTo(markerLayerRef.current);
     }
 
     if (zones && zoneLayerRef.current) {
       zones.forEach((zone) => {
-        const severity = zone.severity || 'baixa';
-        const color = severity === 'alta' ? '#d92020' : severity === 'media' ? '#d97706' : '#1fa660';
+        const severity = zone.severity || "baixa";
+        const color =
+          severity === "alta"
+            ? "#d92020"
+            : severity === "media"
+              ? "#d97706"
+              : "#1fa660";
         const circle = L.circle([zone.latitude, zone.longitude], {
           radius: zone.radius,
           color,
@@ -306,56 +330,60 @@ export default function MapComponent({
           weight: 2,
         }).addTo(zoneLayerRef.current);
 
-        circle.bindPopup(`<strong>${zone.name || 'Zona de perigo'}</strong>`);
-        circle.on('click', () => onZoneClick?.(zone));
+        circle.bindPopup(`<strong>${zone.name || "Zona de perigo"}</strong>`);
+        circle.on("click", () => onZoneClick?.(zone));
       });
     }
 
     const map = mapInstanceRef.current;
     if (!map) return;
 
-    const selectedLocationChanged =
-      selectedLocation &&
-      (!previousSelectedLocationRef.current ||
-        selectedLocation.latitude !== previousSelectedLocationRef.current.latitude ||
-        selectedLocation.longitude !== previousSelectedLocationRef.current.longitude);
+    const centerTarget = selectedLocation || userLocation;
+    const locationChanged =
+      centerTarget &&
+      (!previousCenteredLocationRef.current ||
+        centerTarget.latitude !==
+          previousCenteredLocationRef.current.latitude ||
+        centerTarget.longitude !==
+          previousCenteredLocationRef.current.longitude);
 
     if (!hasSetInitialViewRef.current) {
-      if (selectedLocation) {
-        map.setView([selectedLocation.latitude, selectedLocation.longitude], 13);
-      } else if (userLocation) {
-        map.setView([userLocation.latitude, userLocation.longitude], 13);
+      if (centerTarget) {
+        map.setView([centerTarget.latitude, centerTarget.longitude], 13);
       } else if (zones && zones.length > 0) {
         const first = zones[0];
         map.setView([first.latitude, first.longitude], 13);
       } else if (validReports.length > 0) {
         const first = validReports[0];
-        map.setView([first.location!.latitude!, first.location!.longitude!], 13);
+        map.setView(
+          [first.location!.latitude!, first.location!.longitude!],
+          13,
+        );
       }
       hasSetInitialViewRef.current = true;
-    } else if (selectedLocationChanged) {
+    } else if (locationChanged && centerTarget) {
       map.setView(
-        [selectedLocation!.latitude, selectedLocation!.longitude],
-        map.getZoom ? map.getZoom() : 13
+        [centerTarget.latitude, centerTarget.longitude],
+        map.getZoom ? map.getZoom() : 13,
       );
     }
 
-    previousSelectedLocationRef.current = selectedLocation || null;
+    previousCenteredLocationRef.current = centerTarget || null;
   }, [reports, userLocation, selectedLocation, zones, onZoneClick]);
 
   return (
     <div
       ref={mapRef}
       style={{
-        width: '100%',
-        height: '100%',
-        minHeight: '400px',
-        background: isLoading ? '#e0e0e0' : 'transparent',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        touchAction: 'auto',
-        ...style,
+        width: "100%",
+        height: "100%",
+        minHeight: "400px",
+        background: isLoading ? "#e0e0e0" : "transparent",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        touchAction: "auto",
+        ...((style as any) ? RNStyleSheet.flatten(style as any) : {}),
       }}
     >
       {isLoading && <div>Carregando mapa...</div>}

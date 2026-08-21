@@ -1,111 +1,100 @@
-import { Tabs, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { Tabs } from "expo-router";
+import React from "react";
+import { Platform, StyleSheet, View } from "react-native";
 
-import { Ionicons } from '@expo/vector-icons';
-import { HapticTab } from '../../components/haptic-tab';
-import { C, Colors } from '../../constants/theme';
-import { useColorScheme } from '../../hooks/use-color-scheme';
-import { getCurrentUserData } from '../../services/auth';
+import { HapticTab } from "../../components/haptic-tab";
+import { IconSymbol } from "../../components/ui/icon-symbol";
+import { C } from "../../constants/theme";
+import { useColorScheme } from "../../hooks/use-color-scheme";
 
 export default function TabLayout() {
-  const [checkingAuth, setCheckingAuth] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const router = useRouter();
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? 'light'];
-
-  useEffect(() => {
-    const bootstrap = async () => {
-      try {
-        const user = await getCurrentUserData();
-        if (user) {
-          setIsAuthenticated(true);
-        } else {
-          setIsAuthenticated(false);
-          router.replace('/login');
-        }
-      } catch (error) {
-        setIsAuthenticated(false);
-        router.replace('/login');
-      } finally {
-        setCheckingAuth(false);
-      }
-    };
-
-    bootstrap();
-  }, [router]);
-
-  if (checkingAuth) {
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color={C.primary} />
-      </View>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return null;
-  }
+  const isMobile = Platform.OS !== "web";
 
   return (
     <Tabs
       screenOptions={{
+        tabBarActiveTintColor: C.primary,
+        tabBarInactiveTintColor: "#8aa0c2",
         headerShown: false,
         tabBarButton: HapticTab,
-        tabBarActiveTintColor: theme.tint,
-        tabBarInactiveTintColor: theme.text3,
-        tabBarShowLabel: true,
-        tabBarLabelStyle: { fontSize: 12, marginBottom: 6 },
+        tabBarShowLabel: !isMobile,
         tabBarStyle: {
-          position: 'absolute',
-          height: 70,
-          paddingTop: 8,
-          paddingBottom: 12,
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
-          backgroundColor: theme.surface,
-          borderTopWidth: 0,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -6 },
-          shadowOpacity: 0.06,
-          shadowRadius: 24,
-          elevation: 12,
+          backgroundColor: "#ffffff",
+          borderTopColor: "#e4ecfa",
+          borderTopWidth: 1,
+          height: isMobile ? 74 : 88,
+          paddingBottom: isMobile ? 12 : 10,
+          paddingTop: isMobile ? 8 : 10,
+          shadowColor: "#1a5fd4",
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
+          elevation: 8,
         },
-      }}>
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: "700",
+          marginTop: 2,
+        },
+        tabBarIconStyle: {
+          marginTop: isMobile ? 0 : 0,
+        },
+      }}
+    >
       <Tabs.Screen
         name="map"
         options={{
-          title: 'Mapa',
-          tabBarIcon: ({ color }) => <Ionicons name="map" size={20} color={color} />,
+          title: "Mapa",
+          tabBarIcon: ({ color }) => (
+            <View style={styles.tabIconWrap}>
+              <IconSymbol size={26} name="map.fill" color={color} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
         name="new-report"
         options={{
-          title: 'Nova',
-          tabBarIcon: ({ color }) => <Ionicons name="add-circle" size={20} color={color} />,
+          title: "Nova Denúncia",
+          tabBarIcon: ({ color }) => (
+            <View style={styles.tabIconWrap}>
+              <IconSymbol size={26} name="plus.circle.fill" color={color} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
         name="reports"
         options={{
-          title: 'Denúncias',
-          tabBarIcon: ({ color }) => <Ionicons name="list" size={20} color={color} />,
+          title: "Denúncias",
+          tabBarIcon: ({ color }) => (
+            <View style={styles.tabIconWrap}>
+              <IconSymbol size={26} name="list.bullet" color={color} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
         name="security"
         options={{
-          title: 'Segurança',
-          tabBarIcon: ({ color }) => <Ionicons name="shield-checkmark" size={20} color={color} />,
+          title: "Segurança",
+          tabBarIcon: ({ color }) => (
+            <View style={styles.tabIconWrap}>
+              <IconSymbol size={26} name="shield.fill" color={color} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Perfil',
-          tabBarIcon: ({ color }) => <Ionicons name="person" size={20} color={color} />,
+          title: "Perfil",
+          tabBarIcon: ({ color }) => (
+            <View style={styles.tabIconWrap}>
+              <IconSymbol size={26} name="person.fill" color={color} />
+            </View>
+          ),
         }}
       />
     </Tabs>
@@ -113,10 +102,11 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
-  loading: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: C.surface,
+  tabIconWrap: {
+    width: 32,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
   },
 });

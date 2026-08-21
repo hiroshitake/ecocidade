@@ -7,7 +7,7 @@ import { ThemedText } from '../../components/themed-text';
 import { ThemedView } from '../../components/themed-view';
 import { C, S } from '../../constants/theme';
 import { logout } from '../../services/auth';
-import { getAllReports } from '../../services/reports';
+import { getAdminReports } from '../../services/reports';
 
 /* TODO: REQUIREMENTS GAPS
  - RNF-01 RBAC: ensure only users with admin role (CNPJ-based) can access this route; integrate role checks on auth state.
@@ -41,7 +41,7 @@ export default function AdminDashboard() {
   const loadStats = useCallback(async () => {
     try {
       setLoading(true);
-      const reports = (await getAllReports()) as any[];
+      const reports = (await getAdminReports()) as any[];
 
       // Processar estatísticas
       const newStats: ReportStats = {

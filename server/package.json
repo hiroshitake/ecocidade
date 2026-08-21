@@ -9,6 +9,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "migrate": "npx tsx src/database/migrate.ts",
+    "migrate:supabase": "npx tsx src/database/migrate_supabase.ts",
     "seed": "npx tsx src/database/seed.ts",
     "lint": "eslint src --ext .ts"
   },

@@ -2,29 +2,22 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { ThemedText } from '../components/themed-text';
 import { ThemedView } from '../components/themed-view';
 import { C } from '../constants/theme';
-import { formatCNPJ } from '../functions/masks';
 import { getCurrentUserData, signInAdmin } from '../services/auth';
 
-/* TODO: REQUIREMENTS GAPS
- - Replace simulated admin test login with a real admin RBAC flow.
- - Use CNPJ-only input and store admin identifiers securely.
-*/
-const ADMIN_TEST_CNPJ = '12345678900';
-
 export default function AdminLoginScreen() {
-  const [cnpj, setCnpj] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -43,7 +36,11 @@ export default function AdminLoginScreen() {
         if (isAdmin) {
           router.replace('/(admin)/dashboard');
         } else {
-          router.replace('/map');
+          Alert.alert(
+            'Acesso negado',
+            'Seu usuário não tem permissão de administrador. Você será redirecionado.',
+            [{ text: 'OK', onPress: () => router.replace('/map') }]
+          );
         }
       } catch (error) {
         console.error('Admin bootstrap error:', error);
@@ -54,27 +51,21 @@ export default function AdminLoginScreen() {
   }, [router]);
 
   const handleLogin = async () => {
-    if (!cnpj.trim() || !password.trim()) {
-      Alert.alert('Erro', 'Por favor, preencha todos os campos');
+    if (!email.trim() || !password.trim()) {
+      Alert.alert('Erro', 'Por favor, preencha e-mail e senha');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      Alert.alert('E-mail inválido', 'Informe um e-mail válido.');
       return;
     }
 
-    const cleanCnpj = cnpj.replace(/\D/g, '');
     setLoading(true);
 
     try {
-      await signInAdmin(cleanCnpj, password);
-      // Se chegou aqui, autenticou com sucesso - o listener vai redirecionar
+      await signInAdmin(email.trim().toLowerCase(), password);
     } catch (error: any) {
-      console.log('Admin login error:', error.code, error.message);
-      
-      // Check demo credentials
-      const isDemo = cleanCnpj === ADMIN_TEST_CNPJ && password === '123456';
-      if (isDemo) {
-        router.replace('/(admin)/dashboard');
-        setLoading(false);
-        return;
-      }
+      console.log('Admin login error:', error?.code, error?.message);
 
       let msg = 'Falha ao autenticar. Verifique os dados e tente novamente.';
 
@@ -82,7 +73,6 @@ export default function AdminLoginScreen() {
         msg = error.message;
       }
 
-      console.log('Showing alert:', msg);
       Alert.alert('Acesso Negado', msg);
       setLoading(false);
     }
@@ -103,17 +93,17 @@ export default function AdminLoginScreen() {
 
           {/* Form */}
           <View style={styles.form}>
-            {/* CNPJ Input */}
             <View style={styles.inputContainer}>
-              <MaterialCommunityIcons name="card-account-details" size={20} color={C.primary} />
+              <MaterialCommunityIcons name="email" size={20} color={C.primary} />
               <TextInput
                 style={styles.input}
-                placeholder="CNPJ"
+                placeholder="E-mail do administrador"
                 placeholderTextColor={C.text3}
-                value={cnpj}
-                onChangeText={(text) => setCnpj(formatCNPJ(text))}
+                value={email}
+                onChangeText={setEmail}
                 editable={!loading}
-                keyboardType="number-pad"
+                keyboardType="email-address"
+                autoCapitalize="none"
               />
             </View>
 
@@ -150,11 +140,10 @@ export default function AdminLoginScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Demo Credentials */}
           <View style={styles.demoContainer}>
             <ThemedText style={styles.demoLabel}>Credenciais de Teste:</ThemedText>
-            <ThemedText style={styles.demoText}>CNPJ: 123.456.789-00</ThemedText>
-            <ThemedText style={styles.demoText}>Senha: 123456</ThemedText>
+            <ThemedText style={styles.demoText}>E-mail: admin@ecocidade.com</ThemedText>
+            <ThemedText style={styles.demoText}>Senha: a senha cadastrada no Supabase</ThemedText>
           </View>
 
           {/* Footer */}

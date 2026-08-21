@@ -1,17 +1,31 @@
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { C, S } from '../constants/theme';
-import { getCurrentUserData, updateUserProfile } from '../services/auth';
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+    ActivityIndicator,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from "react-native";
+import { C, S } from "../../constants/theme";
+import { getCurrentUserData, updateUserProfile } from "../../services/auth";
+import {
+  getCityIdByName,
+  isSupabaseConfigured,
+  updateSupabaseProfile,
+} from "../../services/supabase";
 
 const cityOptions = [
-  { id: 'orlândia', name: 'Orlândia' },
-  { id: 'morro-agudo', name: 'Morro Agudo' },
-  { id: 'sales-oliveira', name: 'Sales Oliveira' },
+  { id: "orlândia", name: "Orlândia" },
+  { id: "morro-agudo", name: "Morro Agudo" },
+  { id: "sales-oliveira", name: "Sales Oliveira" },
+  { id: "nuporanga", name: "Nuporanga" },
 ];
 
 export default function SelectCityScreen() {
-  const [selectedCity, setSelectedCity] = useState('');
+  const [selectedCity, setSelectedCity] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
@@ -21,11 +35,11 @@ export default function SelectCityScreen() {
       try {
         const user = await getCurrentUserData();
         if (!user) {
-          router.replace('/login');
+          router.replace("/login");
           return;
         }
       } catch (error) {
-        router.replace('/login');
+        router.replace("/login");
       } finally {
         setLoading(false);
       }
@@ -36,13 +50,13 @@ export default function SelectCityScreen() {
 
   const handleSaveCity = async () => {
     if (!selectedCity) {
-      Alert.alert('Atenção', 'Selecione uma cidade para continuar.');
+      Alert.alert("Atenção", "Selecione uma cidade para continuar.");
       return;
     }
 
     const city = cityOptions.find((item) => item.id === selectedCity)?.name;
     if (!city) {
-      Alert.alert('Atenção', 'Cidade inválida. Tente novamente.');
+      Alert.alert("Atenção", "Cidade inválida. Tente novamente.");
       return;
     }
 
@@ -50,14 +64,25 @@ export default function SelectCityScreen() {
     try {
       const user = await getCurrentUserData();
       if (!user?.id) {
-        throw new Error('Usuário não autenticado.');
+        throw new Error("Usuário não autenticado.");
       }
 
-      await updateUserProfile(user.id, { city });
-      router.replace('/map');
+      if (isSupabaseConfigured()) {
+        const cityId = await getCityIdByName(city);
+        if (!cityId) {
+          throw new Error("Cidade não encontrada no catálogo do servidor.");
+        }
+        await updateSupabaseProfile(user.id, { city_id: cityId, city });
+      } else {
+        await updateUserProfile(user.id, { city });
+      }
+      router.replace("/map");
     } catch (error: any) {
-      Alert.alert('Erro', error.message || 'Não foi possível salvar a cidade. Tente novamente.');
-      console.error('Erro ao salvar cidade:', error);
+      Alert.alert(
+        "Erro",
+        error.message || "Não foi possível salvar a cidade. Tente novamente.",
+      );
+      console.error("Erro ao salvar cidade:", error);
     } finally {
       setSubmitting(false);
     }
@@ -72,7 +97,10 @@ export default function SelectCityScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.root} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      contentContainerStyle={styles.root}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.card}>
         <Text style={styles.title}>Escolha sua cidade</Text>
         <Text style={styles.subtitle}>
@@ -103,23 +131,31 @@ export default function SelectCityScreen() {
         </View>
 
         <TouchableOpacity
-          style={[styles.btn, styles.btnPrimary, submitting && { opacity: 0.6 }]}
+          style={[
+            styles.btn,
+            styles.btnPrimary,
+            submitting && { opacity: 0.6 },
+          ]}
           onPress={handleSaveCity}
           disabled={submitting}
         >
           {submitting ? (
             <ActivityIndicator color="white" size="small" />
           ) : (
-            <Text style={[styles.btnText, { color: 'white' }]}>Salvar cidade</Text>
+            <Text style={[styles.btnText, { color: "white" }]}>
+              Salvar cidade
+            </Text>
           )}
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.btn, styles.btnOutline]}
-          onPress={() => router.replace('/login')}
+          onPress={() => router.replace("/login")}
           disabled={submitting}
         >
-          <Text style={[styles.btnText, { color: C.primary }]}>Voltar ao login</Text>
+          <Text style={[styles.btnText, { color: C.primary }]}>
+            Voltar ao login
+          </Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -129,21 +165,21 @@ export default function SelectCityScreen() {
 const styles = StyleSheet.create({
   root: {
     flexGrow: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     padding: 24,
     backgroundColor: C.bg,
   },
   loading: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     backgroundColor: C.bg,
   },
   card: {
     backgroundColor: C.surface,
     borderRadius: S.radius.xl,
     padding: 24,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.08,
     shadowOffset: { width: 0, height: 8 },
     shadowRadius: 20,
@@ -151,7 +187,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: "700",
     color: C.text,
     marginBottom: 8,
   },
@@ -162,8 +198,8 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   cityList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 10,
     marginBottom: 24,
   },
@@ -177,12 +213,12 @@ const styles = StyleSheet.create({
   },
   cityOptionActive: {
     borderColor: C.primary,
-    backgroundColor: 'rgba(49, 130, 206, 0.12)',
+    backgroundColor: "rgba(49, 130, 206, 0.12)",
   },
   cityOptionText: {
     color: C.text,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   cityOptionTextActive: {
     color: C.primary,
@@ -190,8 +226,8 @@ const styles = StyleSheet.create({
   btn: {
     borderRadius: 12,
     paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 12,
   },
   btnPrimary: {
@@ -204,6 +240,6 @@ const styles = StyleSheet.create({
   },
   btnText: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 });

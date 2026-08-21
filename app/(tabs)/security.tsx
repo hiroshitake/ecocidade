@@ -1,88 +1,239 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
+  Image,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
-import MapComponent from '../../components/map';
-import { C, S } from '../../constants/theme';
-import { createSecurityReport } from '../../services/reports';
-
-/* TODO: REQUIREMENTS GAPS
- - RF-01 Pino ajustável por toque não implementado: enable `selectLocation` on MapComponent and let user confirm.
- - RNF-01 Provide optional 'Report anonymously' toggle in UI (currently always anonymous in folder naming).
- - RNF-02 Improve geolocation accuracy/fallbacks for precise coordinates.
-*/
+} from "react-native";
+import MapComponent from "../../components/map";
+import { C, S } from "../../constants/theme";
+import { resolveUserLocationForSubmission } from "../../services/auth";
+import { createReport } from "../../services/reports";
+import {
+  createSupabaseReport,
+  isSupabaseConfigured,
+} from "../../services/supabase";
 
 const SEC_CATS = [
-  { id: 'crime',   icon: 'shield-checkmark' as const, label: 'Crime/Furto'       },
-  { id: 'tumulto', icon: 'people'           as const, label: 'Tumulto'            },
-  { id: 'perigo',  icon: 'warning'          as const, label: 'Situação perigosa'  },
-  { id: 'outro',   icon: 'alert-circle'     as const, label: 'Outro'              },
+  { id: "crime", icon: "shield-checkmark" as const, label: "Crime/Furto" },
+  { id: "tumulto", icon: "people" as const, label: "Tumulto" },
+  { id: "perigo", icon: "warning" as const, label: "Situação perigosa" },
+  { id: "outro", icon: "alert-circle" as const, label: "Outro" },
 ];
 
 export default function SecurityScreen() {
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
-  const [description, setDescription] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [description, setDescription] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [userLocation, setUserLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+
   const router = useRouter();
 
-  // ── Enviar denúncia anônima ──
-  const handleSubmit = async () => {
+  useEffect(() => {
+    (async () => {
+      const result = await resolveUserLocationForSubmission();
+      if (result.location) {
+        setUserLocation(result.location);
+        setSelectedLocation((prev) => prev ?? result.location);
+        setLocationError(null);
+      } else {
+        setLocationError(
+          "Não foi possível obter sua localização GPS. Verifique o GPS e tente novamente.",
+        );
+      }
+    })();
+  }, []);
+
+  const submit = async () => {
     if (!selectedCat) {
-      Alert.alert('Atenção', 'Selecione o tipo de ocorrência.');
+      Alert.alert("Atenção", "Selecione o tipo de ocorrência.");
       return;
     }
     if (!description.trim()) {
-      Alert.alert('Atenção', 'Descreva a situação antes de enviar.');
+      Alert.alert(
+        "Descrição obrigatória",
+        "Descreva a situação para que as autoridades possam agir adequadamente.",
+      );
+      return;
+    }
+    const locationToSubmit = selectedLocation ?? userLocation;
+
+    if (!locationToSubmit) {
+      Alert.alert(
+        "Localização obrigatória",
+        locationError ||
+          "Não foi possível obter sua localização GPS. Ative o GPS e tente novamente.",
+      );
       return;
     }
 
-    setLoading(true);
     try {
-      await createSecurityReport({
-        category: selectedCat,
-        description: description.trim(),
-        location: {
-          // Substitua pelos valores reais do GPS quando integrar localização
-          latitude: -23.55052,
-          longitude: -46.633308,
-        },
-        photoURL: undefined,
-      });
+      setSubmitting(true);
+      const catObj = SEC_CATS.find((c) => c.id === selectedCat);
+      const label = catObj ? catObj.label : selectedCat;
+
+      if (isSupabaseConfigured()) {
+        await createSupabaseReport({
+          title: `Segurança: ${label}`,
+          description: description || "Ocorrência de segurança registrada.",
+          latitude: locationToSubmit.latitude,
+          longitude: locationToSubmit.longitude,
+          category: "seguranca",
+          severity: "high",
+          status: "pending",
+          imageUri: photoUri,
+        });
+      } else {
+        await createReport(undefined, {
+          category: "seguranca",
+          description,
+          location: locationToSubmit,
+        });
+      }
 
       Alert.alert(
-        '✅ Enviado',
-        'Denúncia anônima enviada com sucesso!\n\nApenas as autoridades competentes terão acesso. Sua identidade está protegida.',
-        [{ text: 'OK', onPress: () => router.push('/map') }]
+        "✅ Denúncia Enviada",
+        "Denúncia anônima enviada com sucesso!\n\nApenas as autoridades competentes terão acesso. Sua identidade está protegida.",
+        [{ text: "OK", onPress: () => router.push("/map") }],
       );
     } catch (error: any) {
-      Alert.alert('Erro', 'Não foi possível enviar a denúncia. Tente novamente.');
-      console.error(error);
+      let msg = error?.message || "Tente novamente mais tarde.";
+      if (msg.includes("fora da área permitida")) {
+        msg =
+          "Você está fora da área de cobertura da sua cidade. Denúncias de segurança devem ser feitas dentro dos limites da cidade cadastrada.";
+      }
+      Alert.alert("Erro ao enviar denúncia", msg);
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
+  };
+
+  const handlePickPhoto = async () => {
+    try {
+      if (Platform.OS === "web") {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/*";
+        input.style.display = "none";
+
+        input.onchange = async (event: Event) => {
+          const file = (event.target as HTMLInputElement).files?.[0];
+          if (!file) return;
+
+          const reader = new FileReader();
+          reader.onload = () => {
+            if (typeof reader.result === "string") {
+              setPhotoUri(reader.result);
+            }
+          };
+          reader.readAsDataURL(file);
+        };
+
+        input.click();
+        return;
+      }
+
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permissão necessária",
+          "Precisamos de permissão para acessar suas fotos.",
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.7,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setPhotoUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error("Erro ao abrir fotos:", error);
+      Alert.alert("Erro", "Não foi possível acessar a galeria de fotos.");
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    try {
+      if (Platform.OS === "web") {
+        Alert.alert(
+          "Funcionalidade não disponível",
+          "Tirar foto não é suportado no web. Use a galeria.",
+        );
+        return;
+      }
+
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permissão necessária",
+          "Precisamos de permissão para acessar a câmera.",
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.7,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setPhotoUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error("Erro ao abrir câmera:", error);
+      Alert.alert("Erro", "Não foi possível abrir a câmera.");
+    }
+  };
+
+  const showPhotoOptions = () => {
+    if (Platform.OS === "web") {
+      handlePickPhoto();
+      return;
+    }
+
+    Alert.alert("Adicionar foto", "Escolha uma opção", [
+      { text: "Tirar foto", onPress: handleTakePhoto },
+      { text: "Escolher da galeria", onPress: handlePickPhoto },
+      { text: "Cancelar", style: "cancel" },
+    ]);
   };
 
   const callEmergency = () => {
     Alert.alert(
-      'Emergência',
-      'Em caso de emergência real, ligue:\n\n🚓 190 — Polícia\n🚑 192 — SAMU\n🚒 193 — Bombeiros'
+      "Emergência",
+      "Em caso de emergência real, ligue:\n\n🚓 190 — Polícia\n🚑 192 — SAMU\n🚒 193 — Bombeiros",
     );
   };
 
   return (
     <View style={styles.root}>
-
       {/* HEADER */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.push('/map')}>
+        <TouchableOpacity onPress={() => router.push("/map")}>
           <Ionicons name="arrow-back" size={24} color={C.text2} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Denúncia de Segurança</Text>
@@ -96,12 +247,17 @@ export default function SecurityScreen() {
       >
         {/* ── AVISO ANÔNIMO ── */}
         <View style={styles.anonCard}>
-          <Ionicons name="shield-checkmark" size={22} color={C.eco} style={{ flexShrink: 0 }} />
+          <Ionicons
+            name="shield-checkmark"
+            size={22}
+            color={C.eco}
+            style={{ flexShrink: 0 }}
+          />
           <View style={{ flex: 1 }}>
             <Text style={styles.anonTitle}>100% Anônimo</Text>
             <Text style={styles.anonText}>
-              Sua identidade nunca é registrada. Somente a prefeitura e autoridades
-              competentes têm acesso a esta denúncia.
+              Sua identidade nunca é registrada. Somente a prefeitura e
+              autoridades competentes têm acesso a esta denúncia.
             </Text>
           </View>
         </View>
@@ -109,12 +265,14 @@ export default function SecurityScreen() {
         {/* ── TIPO DE OCORRÊNCIA ── */}
         <Text style={styles.label}>TIPO DE OCORRÊNCIA</Text>
         <View style={styles.catGrid}>
-          {SEC_CATS.map(cat => (
+          {SEC_CATS.map((cat) => (
             <TouchableOpacity
               key={cat.id}
-              style={[styles.catBtn, selectedCat === cat.id && styles.catBtnSelected]}
+              style={[
+                styles.catBtn,
+                selectedCat === cat.id && styles.catBtnSelected,
+              ]}
               onPress={() => setSelectedCat(cat.id)}
-              disabled={loading}
             >
               <Ionicons name={cat.icon} size={28} color={C.primary} />
               <Text style={styles.catLabel}>{cat.label}</Text>
@@ -125,7 +283,13 @@ export default function SecurityScreen() {
         {/* ── LOCALIZAÇÃO ── */}
         <Text style={[styles.label, { marginTop: 16 }]}>LOCALIZAÇÃO ATUAL</Text>
         <View style={styles.miniMapWrap}>
-          <MapComponent style={styles.miniMap} />
+          <MapComponent
+            style={styles.miniMap}
+            userLocation={userLocation}
+            selectedLocation={selectedLocation}
+            selectLocation={true}
+            onSelectLocation={setSelectedLocation}
+          />
         </View>
 
         {/* ── DESCRIÇÃO ── */}
@@ -139,26 +303,58 @@ export default function SecurityScreen() {
           multiline
           numberOfLines={5}
           textAlignVertical="top"
-          editable={!loading}
         />
+
+        {/* FOTO (OPCIONAL) */}
+        <Text style={[styles.label, { marginTop: 16 }]}>FOTO (OPCIONAL)</Text>
+        {!photoUri ? (
+          <TouchableOpacity
+            style={styles.photoUpload}
+            onPress={showPhotoOptions}
+          >
+            <Ionicons name="camera" size={36} color={C.primary} />
+            <Text style={styles.photoTitle}>Adicionar foto</Text>
+            <Text style={styles.photoSub}>
+              Tirar foto ou escolher da galeria
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.photoSelectedRow}>
+            <Image
+              source={{ uri: photoUri }}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 6,
+                marginRight: 10,
+              }}
+            />
+            <Text style={styles.photoSelectedText}>Foto selecionada ✓</Text>
+            <TouchableOpacity
+              onPress={() => setPhotoUri(null)}
+              style={{ marginLeft: "auto" }}
+            >
+              <Ionicons name="close" size={18} color={C.eco} />
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* ── BOTÕES ── */}
         <TouchableOpacity
-          style={[styles.btnDanger, { marginTop: 24 }, loading && { opacity: 0.6 }]}
-          onPress={handleSubmit}
-          disabled={loading}
+          style={[
+            styles.btnDanger,
+            { marginTop: 24, opacity: submitting ? 0.7 : 1 },
+          ]}
+          onPress={submit}
+          disabled={submitting}
         >
-          {loading ? (
-            <Text style={styles.btnDangerText}>Enviando...</Text>
-          ) : (
-            <>
-              <Ionicons name="shield-checkmark" size={20} color="white" />
-              <Text style={styles.btnDangerText}>Enviar denúncia anônima</Text>
-            </>
-          )}
+          <Ionicons name="shield-checkmark" size={20} color="white" />
+          <Text style={styles.btnDangerText}>
+            {submitting ? "Enviando..." : "Enviar denúncia anônima"}
+          </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.btnEmergency} onPress={callEmergency} disabled={loading}>
+        <TouchableOpacity style={styles.btnEmergency} onPress={callEmergency}>
           <Ionicons name="call" size={20} color={C.danger} />
           <Text style={styles.btnEmergencyText}>Emergência? Ligue 190</Text>
         </TouchableOpacity>
@@ -171,59 +367,124 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
 
   header: {
-    backgroundColor: C.surface, borderBottomWidth: 1, borderBottomColor: C.border,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, height: 60, ...S.shadow.sm,
+    backgroundColor: C.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: C.border,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    height: 60,
+    ...S.shadow.sm,
   },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: C.text },
+  headerTitle: { fontSize: 17, fontWeight: "700", color: C.text },
 
   scroll: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 100 },
 
   anonCard: {
-    backgroundColor: C.ecoLight, borderWidth: 1.5, borderColor: C.eco,
-    borderRadius: 14, padding: 14, marginBottom: 20,
-    flexDirection: 'row', gap: 10, alignItems: 'flex-start',
+    backgroundColor: C.ecoLight,
+    borderWidth: 1.5,
+    borderColor: C.eco,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 20,
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "flex-start",
   },
-  anonTitle: { fontSize: 14, fontWeight: '700', color: C.eco, marginBottom: 3 },
-  anonText:  { fontSize: 12, color: C.text2, lineHeight: 18 },
+  anonTitle: { fontSize: 14, fontWeight: "700", color: C.eco, marginBottom: 3 },
+  anonText: { fontSize: 12, color: C.text2, lineHeight: 18 },
 
   label: {
-    fontSize: 12, fontWeight: '600', color: C.text3,
-    letterSpacing: 0.5, marginBottom: 10, textTransform: 'uppercase',
+    fontSize: 12,
+    fontWeight: "600",
+    color: C.text3,
+    letterSpacing: 0.5,
+    marginBottom: 10,
+    textTransform: "uppercase",
   },
 
-  catGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  catGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   catBtn: {
-    width: '47%', flexGrow: 1,
-    backgroundColor: C.surface2, borderWidth: 1.5, borderColor: C.border,
-    borderRadius: 14, padding: 14, alignItems: 'center', gap: 6,
+    width: "47%",
+    flexGrow: 1,
+    backgroundColor: C.surface2,
+    borderWidth: 1.5,
+    borderColor: C.border,
+    borderRadius: 14,
+    padding: 14,
+    alignItems: "center",
+    gap: 6,
   },
   catBtnSelected: { backgroundColor: C.primaryLight, borderColor: C.primary },
-  catLabel: { fontSize: 11, fontWeight: '600', textAlign: 'center', color: C.text2 },
+  catLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    textAlign: "center",
+    color: C.text2,
+  },
 
-  miniMapWrap: { borderRadius: 12, overflow: 'hidden' },
-  miniMap:     { height: 180 },
+  miniMapWrap: { borderRadius: 12, overflow: "hidden" },
+  miniMap: { height: 180 },
 
   textarea: {
-    backgroundColor: C.surface2, color: C.text,
-    borderWidth: 1.5, borderColor: C.border, borderRadius: 12,
-    paddingHorizontal: 16, paddingTop: 13, paddingBottom: 13,
-    fontSize: 15, minHeight: 120,
+    backgroundColor: C.surface2,
+    color: C.text,
+    borderWidth: 1.5,
+    borderColor: C.border,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingTop: 13,
+    paddingBottom: 13,
+    fontSize: 15,
+    minHeight: 120,
   },
 
+  photoUpload: {
+    backgroundColor: C.surface2,
+    borderWidth: 2,
+    borderColor: C.border2,
+    borderStyle: "dashed",
+    borderRadius: 14,
+    padding: 28,
+    alignItems: "center",
+    gap: 8,
+  },
+  photoTitle: { fontSize: 14, fontWeight: "600", color: C.text2 },
+  photoSub: { fontSize: 12, color: C.text3 },
+  photoSelectedRow: {
+    backgroundColor: C.ecoLight,
+    borderRadius: 10,
+    padding: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  photoSelectedText: { fontSize: 13, color: C.eco, fontWeight: "600" },
 
   btnDanger: {
-    backgroundColor: C.danger, borderRadius: 12,
-    paddingVertical: 14, flexDirection: 'row',
-    alignItems: 'center', justifyContent: 'center', gap: 8, ...S.shadow.danger,
+    backgroundColor: C.danger,
+    borderRadius: 12,
+    paddingVertical: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    ...S.shadow.danger,
   },
-  btnDangerText: { color: 'white', fontSize: 15, fontWeight: '700' },
+  btnDangerText: { color: "white", fontSize: 15, fontWeight: "700" },
 
   btnEmergency: {
-    borderWidth: 1.5, borderColor: C.danger, borderRadius: 12,
-    paddingVertical: 13, flexDirection: 'row',
-    alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12,
+    borderWidth: 1.5,
+    borderColor: C.danger,
+    borderRadius: 12,
+    paddingVertical: 13,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 12,
   },
-  btnEmergencyText: { color: C.danger, fontSize: 15, fontWeight: '600' },
+  btnEmergencyText: { color: C.danger, fontSize: 15, fontWeight: "600" },
 });

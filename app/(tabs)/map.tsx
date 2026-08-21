@@ -1,669 +1,756 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
-import * as Location from 'expo-location';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Image, Modal, PanResponder, ScrollView, StyleSheet, Switch, TouchableOpacity, View } from 'react-native';
-import MapComponent from '../../components/map';
-import MiniMap from '../../components/minimap';
-import { ThemedText } from '../../components/themed-text';
-import { ThemedView } from '../../components/themed-view';
-import { getAllReports, getDangerZones } from '../../services/reports';
-
-/* TODO: REQUIREMENTS GAPS
- - RF-03 Zona Perigosa alert on enter: implement geofence detection against danger zones and banner UI.
- - RF-05 POIs and 'View Schedule' not implemented: add POI layer and station schedule integration.
- - RF-06 Add FAB for quick reporting on map (mobile thumb-zone friendly).
- - RNF-01 Real-time updates: implement polling or WebSocket to refresh markers ≤30s.
-*/
+import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
+import React, { useCallback, useRef, useState, useEffect } from "react";
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+  Platform,
+} from "react-native";
+import MapComponent from "../../components/map";
+import { ThemedText } from "../../components/themed-text";
+import { ThemedView } from "../../components/themed-view";
+import { C } from "../../constants/theme";
+import { resolveUserLocationWithFallback } from "../../services/auth";
+import { getDangerZones, getPublicReports } from "../../services/reports";
 
 const categories = [
-  { id: 'buraco', label: 'Buraco na rua' },
-  { id: 'poste', label: 'Poste/Iluminação' },
-  { id: 'vazamento', label: 'Vazamento' },
-  { id: 'bueiro', label: 'Bueiro' },
-  { id: 'mato', label: 'Mato alto' },
-  { id: 'calcada', label: 'Calçada' },
-  { id: 'lixo', label: 'Lixo irregular' },
-  { id: 'sinalizacao', label: 'Sinalização' },
-  { id: 'outro', label: 'Outro' },
+  "Todas",
+  "buraco",
+  "poste",
+  "vazamento",
+  "bueiro",
+  "mato",
+  "calçada",
+  "lixo",
+  "sinalizacao",
+  "outro",
 ];
 
-const getCategoryLabel = (categoryId: string) => {
-  const found = categories.find((item) => item.id === categoryId);
-  return found ? found.label : categoryId || 'Sem categoria';
-};
-
-const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-  const toRad = (value: number) => (value * Math.PI) / 180;
-  const earthRadius = 6371e3; // meters
-  const φ1 = toRad(lat1);
-  const φ2 = toRad(lat2);
-  const Δφ = toRad(lat2 - lat1);
-  const Δλ = toRad(lon2 - lon1);
-
+function calculateDistanceKm(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
   const a =
-    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
-  return earthRadius * c;
-};
-
-const formatDistanceLabel = (meters: number) => {
-  if (meters < 1000) return `${Math.round(meters)} m`;
-  return `${(meters / 1000).toFixed(1).replace(/\.0$/, '')} km`;
-};
+function formatDistance(distKm: number | null) {
+  if (distKm === null) return "";
+  if (distKm < 1) {
+    return `${Math.round(distKm * 1000)}m`;
+  }
+  return `${distKm.toFixed(1)} km`;
+}
 
 export default function MapScreen() {
-  const [activeFilters, setActiveFilters] = useState<string[]>(() => categories.map((category) => category.id));
+  const [selectedCategory, setSelectedCategory] = useState("Todas");
   const [reports, setReports] = useState<any[]>([]);
   const [zones, setZones] = useState<any[]>([]);
-  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [locating, setLocating] = useState(false);
-  const [locationError, setLocationError] = useState('');
-  const [selectedReport, setSelectedReport] = useState<any | null>(null);
-  const [showFiltersModal, setShowFiltersModal] = useState(false);
-  const [nearbyIndex, setNearbyIndex] = useState(0);
-  const locationWatcherRef = useRef<Location.LocationSubscription | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [locationSource, setLocationSource] = useState<"gps" | "city" | "none">(
+    "none",
+  );
+  const [locationReason, setLocationReason] = useState<
+    "gps" | "gps_unavailable" | "permission_denied" | "city_fallback"
+  >("gps_unavailable");
+  const [selectedReportIndex, setSelectedReportIndex] = useState<number>(0);
+  const scrollViewRef = useRef<ScrollView>(null);
 
-  useEffect(() => {
-    let active = true;
-    const startLocationWatcher = async () => {
-      setLocating(true);
-      setLocationError('');
-
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          if (!active) return;
-          setLocationError('Permissão de localização negada. Ative o GPS para localizar.');
-          return;
-        }
-
-        const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
-        if (active) {
-          setUserLocation({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          });
-        }
-
-        const watcher = await Location.watchPositionAsync(
-          {
-            accuracy: Location.Accuracy.Highest,
-            timeInterval: 5000,
-            distanceInterval: 10,
-          },
-          (updatedPosition) => {
-            if (!active) return;
-            setUserLocation({
-              latitude: updatedPosition.coords.latitude,
-              longitude: updatedPosition.coords.longitude,
-            });
-          }
-        );
-
-        locationWatcherRef.current = watcher;
-      } catch (error) {
-        console.error('Erro ao obter localização:', error);
-        if (active) {
-          setLocationError('Não foi possível obter sua localização.');
-        }
-      } finally {
-        if (active) {
-          setLocating(false);
-        }
-      }
-    };
-
-    startLocationWatcher();
-
-    return () => {
-      active = false;
-      locationWatcherRef.current?.remove();
-    };
-  }, []);
-
-  const loadReports = async () => {
+  const loadData = useCallback(async () => {
     try {
-      const data = await getAllReports();
-      setReports(data);
-    } catch (error) {
-      console.error('Erro ao carregar denúncias:', error);
-    }
-  };
+      setLoading(true);
 
-  const loadZones = async () => {
-    try {
-      const data = await getDangerZones();
-      setZones(data);
-    } catch (error) {
-      console.error('Erro ao carregar zonas de perigo:', error);
-    }
-  };
+      const fetchUserLocation = async (): Promise<{
+        location: { latitude: number; longitude: number } | null;
+        source: "gps" | "city" | "none";
+        reason: "gps" | "gps_unavailable" | "permission_denied" | "city_fallback";
+      }> => {
+        return resolveUserLocationWithFallback();
+      };
 
-  useEffect(() => {
-    locateUser();
+      const [fetchedReports, fetchedZones, resolvedLocation] =
+        await Promise.all([
+          getPublicReports().catch(() => []),
+          getDangerZones().catch(() => []),
+          fetchUserLocation().catch(() => ({
+            location: null,
+            source: "none" as const,
+          })),
+        ]);
+
+      setUserLocation(resolvedLocation.location);
+      setLocationSource(resolvedLocation.source);
+      setLocationReason(resolvedLocation.reason);
+      setReports(fetchedReports || []);
+      setZones(fetchedZones || []);
+    } catch (error) {
+      console.error("Erro ao carregar dados do mapa:", error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      loadReports();
-      loadZones();
-    }, [loadReports, loadZones])
+      loadData();
+    }, [loadData]),
   );
 
-  const locateUser = async () => {
-    setLocating(true);
-    setLocationError('');
+  // Watcher ref: number for web, subscription object for native
+  const watchRef = useRef<any>(null);
 
+  const stopLocationWatch = useCallback(() => {
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setLocationError('Permissão de localização negada. Ative o GPS para localizar.');
-        setLocating(false);
-        return;
+      if (!watchRef.current) return;
+      if (Platform.OS === "web" && typeof navigator !== "undefined") {
+        navigator.geolocation.clearWatch(watchRef.current as number);
+      } else if (watchRef.current && typeof watchRef.current.remove === "function") {
+        watchRef.current.remove();
       }
-
-      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
-      setUserLocation({
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      });
-    } catch (error) {
-      console.error('Erro ao obter localização:', error);
-      setLocationError('Não foi possível obter sua localização.');
+    } catch (e) {
+      // ignore
     } finally {
-      setLocating(false);
+      watchRef.current = null;
     }
-  };
+  }, []);
 
-  const filteredReports = reports.filter((report) => activeFilters.includes(report.category));
+  const startLocationWatch = useCallback(() => {
+    stopLocationWatch();
+    if (locationReason === "permission_denied") return;
 
-  const sortedNearbyReports = useMemo(() => {
-    if (!userLocation) return [];
-    return filteredReports
-      .filter((report) => report.location?.latitude != null && report.location?.longitude != null)
-      .map((report) => ({
-        report,
-        distance: getDistanceInMeters(
-          userLocation.latitude,
-          userLocation.longitude,
-          report.location.latitude,
-          report.location.longitude
-        ),
-      }))
-      .sort((a, b) => a.distance - b.distance);
-  }, [filteredReports, userLocation]);
+    if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.geolocation) {
+      try {
+        const id = navigator.geolocation.watchPosition(
+          (position) => {
+            setUserLocation({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            });
+            setLocationSource("gps");
+            setLocationReason("gps");
+            stopLocationWatch();
+          },
+          (err) => {
+            console.debug("watchPosition error", err);
+          },
+          { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 },
+        );
+        watchRef.current = id;
 
-  const currentNearby = sortedNearbyReports[nearbyIndex] ?? null;
+        // Stop watching after 8s if no result
+        setTimeout(() => {
+          if (watchRef.current) {
+            stopLocationWatch();
+          }
+        }, 8000);
+      } catch (e) {
+        // ignore
+      }
+    } else {
+      // Native (Expo) fallback
+      (async () => {
+        try {
+          const m = await import("expo-location");
+          const sub = await m.default.watchPositionAsync(
+            { accuracy: m.default.Accuracy.Balanced, timeInterval: 2000, distanceInterval: 1 },
+            (loc) => {
+              if (!loc) return;
+              setUserLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+              setLocationSource("gps");
+              setLocationReason("gps");
+              stopLocationWatch();
+            },
+          );
+          watchRef.current = sub;
 
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: (_, gestureState) => Math.abs(gestureState.dx) > Math.abs(gestureState.dy) && Math.abs(gestureState.dx) > 10,
-        onPanResponderRelease: (_, gestureState) => {
-          if (Math.abs(gestureState.dx) < 18) return;
-          const nextIndex = gestureState.dx < 0 ? nearbyIndex + 1 : nearbyIndex - 1;
-          if (sortedNearbyReports.length === 0) return;
-          const wrappedIndex = (nextIndex + sortedNearbyReports.length) % sortedNearbyReports.length;
-          setNearbyIndex(wrappedIndex);
-          setSelectedReport(sortedNearbyReports[wrappedIndex].report);
-        },
-      }),
-    [nearbyIndex, sortedNearbyReports]
-  );
+          setTimeout(() => {
+            if (watchRef.current) stopLocationWatch();
+          }, 8000);
+        } catch (e) {
+          // ignore
+        }
+      })();
+    }
+  }, [locationReason, stopLocationWatch]);
 
+  // If initial resolution says GPS unavailable (but permission not denied), try a short watch
   useEffect(() => {
-    if (nearbyIndex >= sortedNearbyReports.length) {
-      setNearbyIndex(0);
+    if (locationReason === "gps_unavailable") {
+      startLocationWatch();
+    } else {
+      // stop any running watch when we have a definitive reason
+      stopLocationWatch();
     }
-  }, [sortedNearbyReports.length, nearbyIndex]);
+    return () => stopLocationWatch();
+  }, [locationReason, startLocationWatch, stopLocationWatch]);
 
-  const toggleFilter = (categoryId: string) => {
-    setActiveFilters((current) =>
-      current.includes(categoryId)
-        ? current.filter((item) => item !== categoryId)
-        : [...current, categoryId]
-    );
+  const filteredReports = reports.filter((item) => {
+    const category = String(item.category || "").toLowerCase();
+    if (category === "seguranca") return false;
+    if (selectedCategory === "Todas") return true;
+    return category === selectedCategory.toLowerCase();
+  });
+
+  // Calcular distância e ordenar por proximidade
+  const sortedReports = filteredReports
+    .map((r) => {
+      const lat = Number(r.latitude) || 0;
+      const lon = Number(r.longitude) || 0;
+      const dist = userLocation
+        ? calculateDistanceKm(
+            userLocation.latitude,
+            userLocation.longitude,
+            lat,
+            lon,
+          )
+        : null;
+      return {
+        ...r,
+        dist,
+        id: String(r.id),
+        category: r.category || r.title || "Denúncia",
+        description: r.description || "",
+        location: { latitude: lat, longitude: lon },
+      };
+    })
+    .sort((a, b) => {
+      if (a.dist === null || b.dist === null) return 0;
+      return a.dist - b.dist;
+    });
+
+  const formattedZones = zones.map((z) => ({
+    id: String(z.id),
+    name: z.name || "Área de risco",
+    latitude: Number(z.latitude) || 0,
+    longitude: Number(z.longitude) || 0,
+    radius: Number(z.radius) || 300,
+    severity: z.severity || "media",
+  }));
+
+  const handlePrev = () => {
+    if (selectedReportIndex > 0) {
+      const nextIdx = selectedReportIndex - 1;
+      setSelectedReportIndex(nextIdx);
+      scrollViewRef.current?.scrollTo({ x: nextIdx * 240, animated: true });
+    }
   };
 
-  const handleSelectReport = (report: any) => {
-    setSelectedReport(report);
+  const handleNext = () => {
+    if (selectedReportIndex < sortedReports.length - 1) {
+      const nextIdx = selectedReportIndex + 1;
+      setSelectedReportIndex(nextIdx);
+      scrollViewRef.current?.scrollTo({ x: nextIdx * 240, animated: true });
+    }
   };
 
-  const formatReportDate = (report: any) => {
-    const value = report?.createdAt;
-    if (!value) return 'Sem data';
-    const date = typeof value?.toDate === 'function' ? value.toDate() : new Date(value);
-    return date.toLocaleString();
+  const locationAlertConfig = {
+    gps: null,
+    gps_unavailable: {
+      icon: "locate-outline" as keyof typeof Ionicons.glyphMap,
+      title: "GPS desligado",
+      text: "Ative o GPS para usar o mapa e ver denúncias próximas de você.",
+      tone: "warning" as const,
+    },
+    permission_denied: {
+      icon: "warning-outline" as keyof typeof Ionicons.glyphMap,
+      title: "Permissão de localização negada",
+      text: "Para localizar denúncias próximas, permita o uso da sua localização no aparelho.",
+      tone: "warning" as const,
+    },
+    city_fallback: {
+      icon: "location-outline" as keyof typeof Ionicons.glyphMap,
+      title: "Usando a localização da cidade",
+      text: "O mapa está em modo de fallback com o centro da cidade porque o GPS não está disponível no momento.",
+      tone: "info" as const,
+    },
   };
+
+  const categoryIcons: Record<string, keyof typeof Ionicons.glyphMap> = {
+    Todas: "apps",
+    buraco: "construct",
+    poste: "flash",
+    vazamento: "water",
+    bueiro: "albums",
+    mato: "leaf",
+    calçada: "walk",
+    lixo: "trash",
+    sinalizacao: "alert-circle",
+    outro: "ellipsis-horizontal",
+  };
+
+  const categoriesDisplay = [
+    "Todas",
+    "buraco",
+    "poste",
+    "vazamento",
+    "bueiro",
+    "mato",
+    "calçada",
+    "lixo",
+    "sinalizacao",
+    "outro",
+  ];
 
   return (
     <ThemedView style={styles.container}>
-      <View style={styles.mapToolbar}>
-        <TouchableOpacity
-          style={[styles.locateBtn, locating && { opacity: 0.7 }]}
-          onPress={locateUser}
-          disabled={locating}
+      <ThemedView style={styles.filterContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterScrollContent}
+          style={styles.filterScroll}
         >
-          <ThemedText style={styles.locateText}>{locating ? 'Localizando...' : 'Minha localização'}</ThemedText>
-        </TouchableOpacity>
+          {categoriesDisplay.map((category) => {
+            const isActive = selectedCategory === category;
+            const iconName = categoryIcons[category] || "funnel";
 
-        {currentNearby ? (
-          <View {...panResponder.panHandlers} style={styles.nearbyGestureWrapper}>
-            <TouchableOpacity
-              style={styles.nearbyChip}
-              activeOpacity={0.85}
-              onPress={() => handleSelectReport(currentNearby.report)}
-            >
-              <Ionicons name="location-outline" size={16} color="#ffffff" style={styles.nearbyIcon} />
-              <View style={styles.nearbyTextGroup}>
-                <ThemedText style={styles.nearbyLabel}>Denúncias próximas</ThemedText>
-                <View style={styles.nearbyMetaRow}>
-                  <ThemedText style={styles.nearbyDistance}>
-                    {formatDistanceLabel(currentNearby.distance)}
-                  </ThemedText>
-                  <ThemedText style={styles.nearbyCount}>
-                    {`${nearbyIndex + 1}/${sortedNearbyReports.length}`}
-                  </ThemedText>
-                </View>
+            return (
+              <TouchableOpacity
+                key={category}
+                activeOpacity={0.9}
+                style={[
+                  styles.filterButtonSegmented,
+                  isActive && styles.selectedFilterSegmented,
+                ]}
+                onPress={() => {
+                  setSelectedCategory(category);
+                  setSelectedReportIndex(0);
+                }}
+              >
+                <Ionicons
+                  name={iconName}
+                  size={14}
+                  color={isActive ? "#fff" : C.primary}
+                  style={styles.filterIcon}
+                />
+                <ThemedText
+                  style={[
+                    styles.filterTextSegmented,
+                    isActive && styles.selectedFilterTextSegmented,
+                  ]}
+                >
+                  {category}
+                </ThemedText>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </ThemedView>
+
+      {locationReason !== "gps" && (
+        <View
+          style={[
+            styles.locationAlertBanner,
+            locationAlertConfig[locationReason].tone === "warning"
+              ? styles.locationAlertBannerWarning
+              : styles.locationAlertBannerInfo,
+          ]}
+        >
+          <Ionicons
+            name={locationAlertConfig[locationReason].icon}
+            size={16}
+            color={
+              locationAlertConfig[locationReason].tone === "warning"
+                ? C.warning
+                : C.primary
+            }
+          />
+          <ThemedText
+            style={[
+              styles.locationAlertText,
+              locationAlertConfig[locationReason].tone === "warning"
+                ? styles.locationAlertTextWarning
+                : styles.locationAlertTextInfo,
+            ]}
+          >
+            {locationAlertConfig[locationReason].title}
+          </ThemedText>
+        </View>
+      )}
+
+      {loading && reports.length === 0 ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={C.primary} />
+          <ThemedText style={{ marginTop: 8 }}>
+            Carregando mapa e denúncias...
+          </ThemedText>
+        </View>
+      ) : (
+        <View style={styles.mapStage}>
+          <MapComponent
+            style={[
+              styles.map,
+              locationSource === "none" && styles.mapDisabled,
+            ]}
+            reports={sortedReports}
+            zones={formattedZones}
+            userLocation={userLocation}
+          />
+
+          {locationReason !== "gps" && (
+            <View style={styles.gpsDisabledOverlay} pointerEvents="auto">
+              <View
+                style={[
+                  styles.gpsDisabledCard,
+                  locationAlertConfig[locationReason].tone === "warning"
+                    ? styles.gpsDisabledCardWarning
+                    : styles.gpsDisabledCardInfo,
+                ]}
+              >
+                <Ionicons
+                  name={locationAlertConfig[locationReason].icon}
+                  size={28}
+                  color={
+                    locationAlertConfig[locationReason].tone === "warning"
+                      ? C.warning
+                      : C.primary
+                  }
+                />
+                <ThemedText style={styles.gpsDisabledTitle}>
+                  {locationAlertConfig[locationReason].title}
+                </ThemedText>
+                <ThemedText style={styles.gpsDisabledText}>
+                  {locationAlertConfig[locationReason].text}
+                </ThemedText>
               </View>
-            </TouchableOpacity>
-          </View>
-        ) : null}
+            </View>
+          )}
+        </View>
+      )}
 
-        {locationError ? <ThemedText style={styles.locationError}>{locationError}</ThemedText> : null}
-      </View>
+      {/* CARROSSEL DE DENÚNCIAS PRÓXIMAS COM SETAS */}
+      <ThemedView style={styles.nearbyContainer}>
+        <View style={styles.nearbyHeaderRow}>
+          <ThemedText type="subtitle" style={styles.nearbyTitle}>
+            Denúncias por Proximidade ({sortedReports.length})
+          </ThemedText>
 
-      <MapComponent
-        style={styles.map}
-        reports={filteredReports}
-        zones={zones}
-        userLocation={userLocation}
-        onSelectReport={handleSelectReport}
-      />
-
-      <MiniMap reports={filteredReports} userLocation={userLocation} />
-
-      {/* Botão de Filtros Flutuante */}
-      <TouchableOpacity 
-        style={styles.filterButton}
-        onPress={() => setShowFiltersModal(true)}
-      >
-        <Ionicons name="funnel" size={20} color="#ffffff" />
-        <ThemedText style={styles.filterButtonText}>Filtros</ThemedText>
-      </TouchableOpacity>
-
-      {/* Modal de Filtros */}
-      <Modal
-        visible={showFiltersModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowFiltersModal(false)}
-      >
-        <View style={styles.filterModalOverlay}>
-          <View style={styles.filterModalContent}>
-            <View style={styles.filterModalHeader}>
-              <ThemedText style={styles.filterModalTitle}>Filtros</ThemedText>
-              <TouchableOpacity onPress={() => setShowFiltersModal(false)}>
-                <Ionicons name="close" size={24} color="#0d1b36" />
+          {sortedReports.length > 1 && (
+            <View style={styles.arrowGroup}>
+              <TouchableOpacity
+                style={[
+                  styles.arrowBtn,
+                  selectedReportIndex === 0 && styles.arrowBtnDisabled,
+                ]}
+                onPress={handlePrev}
+                disabled={selectedReportIndex === 0}
+              >
+                <Ionicons
+                  name="chevron-back"
+                  size={18}
+                  color={selectedReportIndex === 0 ? C.text3 : C.primary}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.arrowBtn,
+                  selectedReportIndex === sortedReports.length - 1 &&
+                    styles.arrowBtnDisabled,
+                ]}
+                onPress={handleNext}
+                disabled={selectedReportIndex === sortedReports.length - 1}
+              >
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={
+                    selectedReportIndex === sortedReports.length - 1
+                      ? C.text3
+                      : C.primary
+                  }
+                />
               </TouchableOpacity>
             </View>
-
-            <ScrollView style={styles.filterModalList} showsVerticalScrollIndicator={false}>
-              {categories.map((category) => {
-                const enabled = activeFilters.includes(category.id);
-                return (
-                  <View key={category.id} style={styles.filterModalItem}>
-                    <ThemedText style={styles.filterModalItemLabel}>{category.label}</ThemedText>
-                    <Switch
-                      value={enabled}
-                      onValueChange={() => toggleFilter(category.id)}
-                      trackColor={{ false: '#d1d5db', true: '#1fa660' }}
-                      thumbColor={enabled ? '#ffffff' : '#f3f4f6'}
-                    />
-                  </View>
-                );
-              })}
-            </ScrollView>
-
-            <TouchableOpacity 
-              style={styles.filterModalClose}
-              onPress={() => setShowFiltersModal(false)}
-            >
-              <ThemedText style={styles.filterModalCloseText}>Aplicar Filtros</ThemedText>
-            </TouchableOpacity>
-          </View>
+          )}
         </View>
-      </Modal>
 
-      {selectedReport ? (
-        <View style={styles.reportPanel}>
-          <View style={styles.reportPanelHeader}>
-            <View style={styles.reportPanelTitleWrap}>
-              <ThemedText type="title" style={styles.reportTitle}>{getCategoryLabel(selectedReport.category)}</ThemedText>
-              <ThemedText style={styles.reportSubtitle}>{selectedReport.location?.address || 'Localização não disponível'}</ThemedText>
+        <ScrollView
+          ref={scrollViewRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingRight: 20 }}
+        >
+          {sortedReports.length === 0 ? (
+            <View style={styles.nearbyItemEmpty}>
+              <ThemedText style={{ color: C.text3 }}>
+                Nenhuma denúncia encontrada nesta categoria
+              </ThemedText>
             </View>
-            <TouchableOpacity onPress={() => setSelectedReport(null)}>
-              <ThemedText style={styles.reportClose}>Fechar</ThemedText>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.reportImageWrapper}>
-            {selectedReport.photoURL ? (
-              <Image source={{ uri: selectedReport.photoURL }} style={styles.reportImage} resizeMode="cover" />
-            ) : (
-              <View style={styles.reportImagePlaceholder}>
-                <ThemedText style={styles.reportImagePlaceholderText}>Nenhuma imagem</ThemedText>
-              </View>
-            )}
-          </View>
-
-          <ScrollView style={styles.reportBody} showsVerticalScrollIndicator={false}>
-            <View style={styles.reportInfoRow}>
-              <View style={styles.reportTag}>
-                <ThemedText style={styles.reportTagText}>{getCategoryLabel(selectedReport.category)}</ThemedText>
-              </View>
-              <ThemedText style={styles.reportTime}>{formatReportDate(selectedReport)}</ThemedText>
-            </View>
-
-            <ThemedText style={styles.reportLabel}>Descrição</ThemedText>
-            <ThemedText style={styles.reportText}>{selectedReport.description || 'Sem descrição'}</ThemedText>
-          </ScrollView>
-        </View>
-      ) : null}
+          ) : (
+            sortedReports.map((rep, index) => (
+              <TouchableOpacity
+                key={rep.id}
+                style={[
+                  styles.nearbyCard,
+                  selectedReportIndex === index && styles.nearbyCardActive,
+                ]}
+                onPress={() => setSelectedReportIndex(index)}
+              >
+                <View style={styles.nearbyCardHeader}>
+                  <ThemedText style={styles.nearbyCategory}>
+                    {rep.category}
+                  </ThemedText>
+                  {rep.dist !== null && (
+                    <View style={styles.distBadge}>
+                      <Ionicons name="location" size={12} color={C.primary} />
+                      <ThemedText style={styles.distText}>
+                        {formatDistance(rep.dist)}
+                      </ThemedText>
+                    </View>
+                  )}
+                </View>
+                <ThemedText style={styles.nearbyDesc} numberOfLines={2}>
+                  {rep.description || "Sem descrição cadastrada"}
+                </ThemedText>
+                <View style={styles.statusRow}>
+                  <View
+                    style={[
+                      styles.statusDot,
+                      {
+                        backgroundColor:
+                          rep.status === "pending" ? C.warning : C.eco,
+                      },
+                    ]}
+                  />
+                  <ThemedText style={styles.statusText}>
+                    {rep.status === "pending"
+                      ? "Aguardando"
+                      : rep.status === "investigating"
+                        ? "Em processo"
+                        : "Concluída"}
+                  </ThemedText>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
+        </ScrollView>
+      </ThemedView>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  filterButton: {
-    position: 'absolute',
-    bottom: 24,
-    right: 180,
-    backgroundColor: '#1a5fd4',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 999,
-    shadowColor: '#1a5fd4',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-    zIndex: 20,
-  },
-  filterButtonText: {
-    color: '#ffffff',
-    fontWeight: '700',
-    fontSize: 14,
-    marginLeft: 8,
-  },
-  filterModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(13, 27, 54, 0.4)',
-    justifyContent: 'flex-end',
-    alignItems: 'flex-end',
-  },
-  filterModalContent: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 16,
-    maxHeight: '65%',
-    maxWidth: 320,
-    marginRight: 16,
-    marginBottom: 100,
-    shadowColor: '#1a5fd4',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 16,
-  },
-  filterModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#dce8ff',
-  },
-  filterModalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0d1b36',
-  },
-  filterModalList: {
-    maxHeight: 280,
-    marginBottom: 12,
-  },
-  filterModalItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    backgroundColor: '#f5f8ff',
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#e5eeff',
-  },
-  filterModalItemLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#0d1b36',
-    flex: 1,
-  },
-  filterModalClose: {
-    backgroundColor: '#1a5fd4',
-    paddingVertical: 11,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  filterModalCloseText: {
-    color: '#ffffff',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  mapToolbar: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#ffffffee',
-    zIndex: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-  },
-  locateBtn: {
-    backgroundColor: '#1a5fd4',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 999,
-  },
-  locateText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  nearbyChip: {
-    backgroundColor: '#1a5fd4',
-    paddingVertical: 10,
+  container: { flex: 1 },
+  filterContainer: {
+    paddingTop: 12,
+    paddingBottom: 10,
     paddingHorizontal: 12,
-    borderRadius: 999,
-    flexDirection: 'row',
-    alignItems: 'center',
-    minWidth: 170,
-    maxWidth: '65%',
+    backgroundColor: C.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: C.border,
   },
-  nearbyIcon: {
+  filterScroll: {
+    flexGrow: 0,
+  },
+  filterScrollContent: {
+    paddingRight: 8,
+    alignItems: "center",
+  },
+  filterButtonSegmented: {
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 12,
     marginRight: 8,
+    backgroundColor: "#f3f6fb",
+    borderWidth: 1,
+    borderColor: "#dfe7f5",
+    justifyContent: "center",
+    alignItems: "center",
+    minHeight: 38,
+    flexDirection: "row",
   },
-  nearbyGestureWrapper: {
-    borderRadius: 999,
-    overflow: 'hidden',
+  selectedFilterSegmented: {
+    backgroundColor: C.primary,
+    borderColor: C.primary,
+    shadowColor: "#1a5fd4",
+    shadowOpacity: 0.18,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 3,
   },
-  nearbyTextGroup: {
-    flexShrink: 1,
+  filterTextSegmented: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: C.text2,
+    textTransform: "capitalize",
   },
-  nearbyMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
+  selectedFilterTextSegmented: {
+    color: "#fff",
+  },
+  filterIcon: {
+    marginRight: 6,
+  },
+  mapStage: {
+    flex: 1,
+    position: "relative",
+  },
+  map: { flex: 1 },
+  mapDisabled: {
+    opacity: 0.42,
+    backgroundColor: "rgba(15, 23, 42, 0.08)",
+  },
+  gpsDisabledOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(15, 23, 42, 0.15)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    zIndex: 10,
+  },
+  gpsDisabledCard: {
+    width: "100%",
+    maxWidth: 280,
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    borderRadius: 20,
+    borderWidth: 1,
+    paddingVertical: 22,
+    paddingHorizontal: 18,
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+  },
+  gpsDisabledCardWarning: {
+    borderColor: "rgba(217, 119, 6, 0.25)",
+    shadowColor: "#d97706",
+  },
+  gpsDisabledCardInfo: {
+    borderColor: "rgba(26, 95, 212, 0.18)",
+    shadowColor: "#1a5fd4",
+  },
+  gpsDisabledTitle: {
+    marginTop: 12,
+    fontSize: 18,
+    fontWeight: "800",
+    color: C.text,
+  },
+  gpsDisabledText: {
+    marginTop: 8,
+    fontSize: 13,
+    lineHeight: 18,
+    color: C.text2,
+    textAlign: "center",
+  },
+  locationAlertBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginHorizontal: 12,
+    marginTop: 10,
+    borderRadius: 12,
+    borderWidth: 1,
     gap: 8,
   },
-  nearbyLabel: {
-    color: '#ffffff',
-    fontWeight: '700',
+  locationAlertBannerWarning: {
+    backgroundColor: "rgba(217, 119, 6, 0.08)",
+    borderColor: "rgba(217, 119, 6, 0.2)",
+  },
+  locationAlertBannerInfo: {
+    backgroundColor: "rgba(26, 95, 212, 0.08)",
+    borderColor: "rgba(26, 95, 212, 0.18)",
+  },
+  locationAlertText: {
+    flex: 1,
     fontSize: 12,
+    fontWeight: "700",
   },
-  nearbyDistance: {
-    color: '#dbe9ff',
-    fontSize: 11,
+  locationAlertTextWarning: {
+    color: C.warning,
   },
-  nearbyCount: {
-    color: '#cfe4ff',
-    fontSize: 11,
-    fontWeight: '700',
+  locationAlertTextInfo: {
+    color: C.primary,
   },
-  locationError: {
-    marginTop: 10,
-    color: '#d32f2f',
-    fontSize: 13,
-    width: '100%',
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+
+  nearbyContainer: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#e5e7eb",
+    backgroundColor: C.surface,
   },
-  map: {
-    flex: 1,
+  nearbyHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
   },
-  reportPanel: {
-    position: 'absolute',
-    top: 90,
-    left: 14,
-    right: 14,
-    width: 'auto',
-    maxWidth: 380,
-    maxHeight: '75%',
-    backgroundColor: 'rgba(255,255,255,0.98)',
-    borderRadius: 22,
-    padding: 18,
+  nearbyTitle: { fontSize: 15, fontWeight: "700" },
+  arrowGroup: { flexDirection: "row", gap: 6 },
+  arrowBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: C.surface2,
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 16,
-    zIndex: 999,
+    borderColor: C.border,
   },
-  reportPanelHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 14,
+  arrowBtnDisabled: { opacity: 0.4 },
+
+  nearbyItemEmpty: {
+    backgroundColor: C.surface2,
+    padding: 12,
+    borderRadius: 10,
+    width: 260,
   },
-  reportPanelTitleWrap: {
-    flex: 1,
+  nearbyCard: {
+    backgroundColor: C.surface2,
+    borderRadius: 12,
+    padding: 12,
     marginRight: 12,
+    width: 220,
+    borderWidth: 1.5,
+    borderColor: C.border,
   },
-  reportTitle: {
-    fontSize: 18,
-    fontWeight: '800',
+  nearbyCardActive: {
+    borderColor: C.primary,
+    backgroundColor: C.primaryLight,
+  },
+  nearbyCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 4,
   },
-  reportSubtitle: {
-    fontSize: 12,
-    color: '#707070',
-    lineHeight: 18,
-  },
-  noResultsItem: {
-    backgroundColor: '#eef3fb',
-    borderRadius: 14,
-    padding: 16,
-    minWidth: 260,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  noResultsText: {
-    color: '#4b5563',
-    fontSize: 13,
-    textAlign: 'center',
-  },
-  reportClose: {
-    color: '#1a5fd4',
-    fontWeight: '700',
+  nearbyCategory: {
+    fontWeight: "700",
     fontSize: 14,
+    textTransform: "capitalize",
   },
-  reportImageWrapper: {
-    borderRadius: 18,
-    overflow: 'hidden',
-    backgroundColor: '#f4f7fb',
-    marginBottom: 14,
-    minHeight: 180,
-    justifyContent: 'center',
-    alignItems: 'center',
+  distBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    backgroundColor: "rgba(0,122,255,0.1)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
   },
-  reportImage: {
-    width: '100%',
-    height: 180,
-  },
-  reportImagePlaceholder: {
-    width: '100%',
-    minHeight: 180,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#eef3fb',
-  },
-  reportImagePlaceholderText: {
-    color: '#7a7a7a',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  reportBody: {
-    maxHeight: 280,
-  },
-  reportInfoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  reportTag: {
-    backgroundColor: '#e8f0ff',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-  },
-  reportTagText: {
-    color: '#1a5fd4',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  reportTime: {
-    color: '#8c8c8c',
-    fontSize: 12,
-  },
-  reportLabel: {
-    fontSize: 12,
-    color: '#777',
-    fontWeight: '700',
-    marginBottom: 6,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  reportText: {
-    fontSize: 15,
-    color: '#333',
-    lineHeight: 22,
-    marginBottom: 16,
-  },
+  distText: { fontSize: 11, fontWeight: "700", color: C.primary },
+  nearbyDesc: { fontSize: 12, color: C.text2, marginBottom: 8, height: 32 },
+  statusRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  statusText: { fontSize: 11, fontWeight: "600", color: C.text2 },
 });

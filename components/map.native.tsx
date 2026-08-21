@@ -1,6 +1,6 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet, Text, View, ViewStyle } from 'react-native';
-import MapView, { Callout, Circle, Marker, UrlTile } from 'react-native-maps';
+﻿import React, { useEffect, useRef, useState } from "react";
+import { Animated, StyleSheet, Text, View, ViewStyle } from "react-native";
+import MapView, { Callout, Circle, Marker, UrlTile } from "react-native-maps";
 
 interface Report {
   id: string;
@@ -20,7 +20,7 @@ interface Zone {
   radius: number;
   name?: string;
   description?: string;
-  severity?: 'baixa' | 'media' | 'alta';
+  severity?: "baixa" | "media" | "alta";
 }
 
 interface MapComponentProps {
@@ -30,7 +30,10 @@ interface MapComponentProps {
   userLocation?: { latitude: number; longitude: number } | null;
   selectedLocation?: { latitude: number; longitude: number } | null;
   selectLocation?: boolean;
-  onSelectLocation?: (location: { latitude: number; longitude: number }) => void;
+  onSelectLocation?: (location: {
+    latitude: number;
+    longitude: number;
+  }) => void;
   onSelectReport?: (report: Report) => void;
   onZoneClick?: (zone: Zone) => void;
 }
@@ -50,11 +53,15 @@ export default function MapComponent({
   const [mapReady, setMapReady] = useState(false);
   const pulseAnim = useRef(new Animated.Value(0)).current;
   const validReports = reports.filter(
-    (report) => report.location?.latitude != null && report.location?.longitude != null
+    (report) =>
+      report.location?.latitude != null && report.location?.longitude != null,
   );
   const markerRefs = useRef<Record<string, any>>({});
   const hasCenteredRef = useRef(false);
-  const previousSelectedLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
+  const previousCenteredLocationRef = useRef<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
 
   const selectedLocationCoords = selectedLocation || userLocation;
 
@@ -82,27 +89,29 @@ export default function MapComponent({
   useEffect(() => {
     if (!selectedLocationCoords || !mapRef.current || !mapReady) return;
 
-    const selectedLocationChanged =
-      selectedLocation &&
-      (!previousSelectedLocationRef.current ||
-        selectedLocation.latitude !== previousSelectedLocationRef.current.latitude ||
-        selectedLocation.longitude !== previousSelectedLocationRef.current.longitude);
+    const locationChanged =
+      !previousCenteredLocationRef.current ||
+      selectedLocationCoords.latitude !==
+        previousCenteredLocationRef.current.latitude ||
+      selectedLocationCoords.longitude !==
+        previousCenteredLocationRef.current.longitude;
 
-    if (!hasCenteredRef.current || selectedLocationChanged) {
-      mapRef.current.animateToRegion({
-        latitude: selectedLocationCoords.latitude,
-        longitude: selectedLocationCoords.longitude,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      }, 700);
+    if (!hasCenteredRef.current || locationChanged) {
+      mapRef.current.animateToRegion(
+        {
+          latitude: selectedLocationCoords.latitude,
+          longitude: selectedLocationCoords.longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        },
+        700,
+      );
 
       hasCenteredRef.current = true;
     }
 
-    if (selectedLocationChanged) {
-      previousSelectedLocationRef.current = selectedLocation;
-    }
-  }, [selectedLocationCoords, selectedLocation, mapReady]);
+    previousCenteredLocationRef.current = selectedLocationCoords;
+  }, [selectedLocationCoords, mapReady]);
 
   useEffect(() => {
     Animated.loop(
@@ -117,7 +126,7 @@ export default function MapComponent({
           duration: 1200,
           useNativeDriver: true,
         }),
-      ])
+      ]),
     ).start();
   }, [pulseAnim]);
 
@@ -189,8 +198,13 @@ export default function MapComponent({
       ) : null}
 
       {zones?.map((zone) => {
-        const severity = zone.severity || 'baixa';
-        const color = severity === 'alta' ? '#d92020' : severity === 'media' ? '#d97706' : '#1fa660';
+        const severity = zone.severity || "baixa";
+        const color =
+          severity === "alta"
+            ? "#d92020"
+            : severity === "media"
+              ? "#d97706"
+              : "#1fa660";
         return (
           <React.Fragment key={zone.id}>
             <Circle
@@ -201,10 +215,13 @@ export default function MapComponent({
               strokeWidth={2}
             />
             <Marker
-              coordinate={{ latitude: zone.latitude, longitude: zone.longitude }}
+              coordinate={{
+                latitude: zone.latitude,
+                longitude: zone.longitude,
+              }}
               pinColor={color}
-              title={zone.name || 'Zona de perigo'}
-              description={zone.description || 'Área de risco'}
+              title={zone.name || "Zona de perigo"}
+              description={zone.description || "Área de risco"}
               onPress={() => onZoneClick?.(zone)}
             />
           </React.Fragment>
@@ -223,8 +240,8 @@ export default function MapComponent({
             latitude: report.location!.latitude!,
             longitude: report.location!.longitude!,
           }}
-          title={report.category || 'Denúncia'}
-          description={report.description || 'Sem detalhes'}
+          title={report.category || "Denúncia"}
+          description={report.description || "Sem detalhes"}
           onPress={() => {
             markerRefs.current[report.id]?.showCallout?.();
             onSelectReport?.(report);
@@ -232,8 +249,12 @@ export default function MapComponent({
         >
           <Callout>
             <View style={styles.callout}>
-              <Text style={styles.calloutTitle}>{report.category || 'Denúncia'}</Text>
-              <Text style={styles.calloutText}>{report.description || 'Sem descrição'}</Text>
+              <Text style={styles.calloutTitle}>
+                {report.category || "Denúncia"}
+              </Text>
+              <Text style={styles.calloutText}>
+                {report.description || "Sem descrição"}
+              </Text>
               {report.location?.address ? (
                 <Text style={styles.calloutSub}>{report.location.address}</Text>
               ) : null}
@@ -248,68 +269,68 @@ export default function MapComponent({
 const styles = StyleSheet.create({
   map: {
     flex: 1,
-    backgroundColor: '#f0f4ff',
+    backgroundColor: "#f0f4ff",
   },
   callout: {
     maxWidth: 240,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderRadius: 12,
     padding: 12,
-    shadowColor: '#1a5fd4',
+    shadowColor: "#1a5fd4",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
   },
   calloutTitle: {
-    fontWeight: '700',
+    fontWeight: "700",
     marginBottom: 4,
-    color: '#0d1b36',
+    color: "#0d1b36",
     fontSize: 14,
   },
   calloutText: {
     marginBottom: 4,
-    color: '#4a5568',
+    color: "#4a5568",
     fontSize: 12,
   },
   calloutSub: {
-    color: '#8897b0',
+    color: "#8897b0",
     fontSize: 11,
   },
   selectedMarker: {
     width: 28,
     height: 36,
     borderRadius: 14,
-    backgroundColor: '#1fa660',
+    backgroundColor: "#1fa660",
     borderWidth: 3,
-    borderColor: '#ffffff',
-    shadowColor: '#1fa660',
+    borderColor: "#ffffff",
+    shadowColor: "#1fa660",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.35,
     shadowRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   pulseMarkerContainer: {
     width: 48,
     height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   pulseRing: {
-    position: 'absolute',
+    position: "absolute",
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#1a5fd4',
+    backgroundColor: "#1a5fd4",
   },
   pulseCore: {
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: '#1a5fd4',
+    backgroundColor: "#1a5fd4",
     borderWidth: 2.5,
-    borderColor: '#ffffff',
-    shadowColor: '#1a5fd4',
+    borderColor: "#ffffff",
+    shadowColor: "#1a5fd4",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.4,
     shadowRadius: 10,

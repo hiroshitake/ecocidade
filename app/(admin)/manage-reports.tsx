@@ -14,7 +14,7 @@ import {
 import { ThemedText } from '../../components/themed-text';
 import { ThemedView } from '../../components/themed-view';
 import { C } from '../../constants/theme';
-import { deleteReport, getAllReports, updateReportStatus } from '../../services/reports';
+import { deleteReport, getAdminReports, updateReportStatus } from '../../services/reports';
 
 /* TODO: REQUIREMENTS GAPS
  - RF-05 Status changes currently simulated locally; implement and call `updateReportStatus(reportId, newStatus)` in `services/reports.js` to persist.
@@ -47,7 +47,7 @@ export default function ManageReportsScreen() {
   const loadReports = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await getAllReports();
+      const data = await getAdminReports();
       setReports(data || []);
     } catch (error) {
       console.error('Erro ao carregar denúncias:', error);
@@ -65,6 +65,11 @@ export default function ManageReportsScreen() {
 
   const handleStatusChange = async (newStatus: string) => {
     if (!selectedReport) return;
+
+    if (selectedReport.status === newStatus) {
+      Alert.alert('Aten\u00e7\u00e3o', 'Esta den\u00fancia j\u00e1 est\u00e1 com o status selecionado.');
+      return;
+    }
 
     try {
       await updateReportStatus(selectedReport.id, newStatus);

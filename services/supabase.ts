@@ -209,6 +209,10 @@ export async function createSupabaseReport(payload: Record<string, unknown>) {
   } = await supabase.auth.getSession();
   const userId = session?.user?.id || (payload.user_id as string) || null;
 
+  if (!userId) {
+    throw new Error("Usuário não autenticado. Não é possível validar a cidade.");
+  }
+
   let city =
     typeof payload.city === "string" && payload.city ? payload.city : undefined;
   let cityId =
@@ -216,13 +220,18 @@ export async function createSupabaseReport(payload: Record<string, unknown>) {
       ? payload.city_id
       : undefined;
 
-  if (!city && userId) {
-    const { data: profile } = await supabase
+  if (!cityId) {
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("city, city_id")
       .eq("id", userId)
       .maybeSingle();
-    city = typeof profile?.city === "string" ? profile.city : undefined;
+
+    if (profileError) {
+      throw new Error(`Não foi possível validar a cidade do usuário: ${profileError.message}`);
+    }
+
+    city = typeof profile?.city === "string" ? profile.city : city;
     cityId = typeof profile?.city_id === "string" ? profile.city_id : undefined;
   }
 
@@ -230,44 +239,55 @@ export async function createSupabaseReport(payload: Record<string, unknown>) {
     cityId = (await getCityIdByName(city)) ?? undefined;
   }
 
-  // Validate report location against city center/radius in `cities` table
-  try {
-    if (cityId) {
-      const { data: cityRec, error: cityErr } = await supabase
-        .from("cities")
-        .select("id, name, latitude, longitude, radius_m")
-        .eq("id", cityId)
-        .maybeSingle();
+  if (!cityId) {
+    throw new Error("Usuário sem cidade cadastrada. Não é possível validar a localização.");
+  }
 
-      if (cityErr) {
-        console.warn("Erro ao buscar cidade para validação:", cityErr.message);
-      } else if (cityRec) {
-        const toRad = (v: number) => (v * Math.PI) / 180;
-        const haversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-          const R = 6371000;
-          const dLat = toRad(lat2 - lat1);
-          const dLon = toRad(lon2 - lon1);
-          const a =
-            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-            Math.sin(dLon / 2) * Math.sin(dLon / 2);
-          return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        };
+  const { data: cityRec, error: cityErr } = await supabase
+    .from("cities")
+    .select("id, name, latitude, longitude, radius_m")
+    .eq("id", cityId)
+    .maybeSingle();
 
-        const distance = haversine(Number(cityRec.latitude), Number(cityRec.longitude), latitude, longitude);
-        const radius = Number(cityRec.radius_m ?? (cityRec as any).radius ?? 0);
-        if (isFinite(distance) && radius && distance > radius) {
-          throw new Error("Denúncia fora da área permitida da cidade.");
-        }
-      }
-    }
-  } catch (err) {
-    // Rethrow validation error so callers (client) can map message to UX
-    if (err instanceof Error && err.message && err.message.includes("fora da área")) {
-      throw err;
-    }
-    // otherwise continue and let insertion proceed if validation cannot be performed
-    console.warn("Validação de localização não pôde ser concluída:", err);
+  if (cityErr) {
+    throw new Error(`Não foi possível validar a área da cidade: ${cityErr.message}`);
+  }
+
+  if (!cityRec) {
+    throw new Error("Cidade do usuário não encontrada. Não é possível validar a localização.");
+  }
+
+  const cityLatitude = Number(cityRec.latitude);
+  const cityLongitude = Number(cityRec.longitude);
+  const radius = Number(cityRec.radius_m);
+
+  if (
+    !Number.isFinite(cityLatitude) ||
+    !Number.isFinite(cityLongitude) ||
+    !Number.isFinite(radius) ||
+    radius <= 0
+  ) {
+    throw new Error("A cidade não possui uma área de cobertura válida configurada.");
+  }
+
+  const toRad = (v: number) => (v * Math.PI) / 180;
+  const dLat = toRad(latitude - cityLatitude);
+  const dLon = toRad(longitude - cityLongitude);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(cityLatitude)) *
+      Math.cos(toRad(latitude)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const distance =
+    2 * 6371000 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  if (!Number.isFinite(distance)) {
+    throw new Error("Não foi possível calcular a distância da denúncia.");
+  }
+
+  if (distance > radius) {
+    throw new Error("Denúncia fora da área permitida da cidade.");
   }
 
   const { data, error } = await supabase
@@ -281,8 +301,8 @@ export async function createSupabaseReport(payload: Record<string, unknown>) {
       category: payload.category,
       severity: payload.severity || "medium",
       status: payload.status || "pending",
-      city: city || null,
-      city_id: cityId || null,
+      city: cityRec.name,
+      city_id: cityId,
     })
     .select()
     .single();

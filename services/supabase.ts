@@ -193,6 +193,13 @@ export async function createSupabaseReport(payload: Record<string, unknown>) {
 
   const latitude = Number(payload.latitude);
   const longitude = Number(payload.longitude);
+  console.log("[REPORT DEBUG] localização recebida:", {
+    latitude,
+    longitude,
+    payloadLatitude: payload.latitude,
+    payloadLongitude: payload.longitude,
+  });
+
   if (
     !Number.isFinite(latitude) ||
     !Number.isFinite(longitude) ||
@@ -261,6 +268,14 @@ export async function createSupabaseReport(payload: Record<string, unknown>) {
   const cityLongitude = Number(cityRec.longitude);
   const radius = Number(cityRec.radius_m);
 
+  console.log("[REPORT DEBUG] cidade usada na validação:", {
+    name: cityRec.name,
+    latitude: cityLatitude,
+    longitude: cityLongitude,
+    radius_m: radius,
+    cityId,
+  });
+
   if (
     !Number.isFinite(cityLatitude) ||
     !Number.isFinite(cityLongitude) ||
@@ -282,6 +297,12 @@ export async function createSupabaseReport(payload: Record<string, unknown>) {
   const distance =
     2 * 6371000 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
+  console.log("[REPORT DEBUG] validação geográfica:", {
+    distance_m: distance,
+    radius_m: radius,
+    inside: distance <= radius,
+  });
+
   if (!Number.isFinite(distance)) {
     throw new Error("Não foi possível calcular a distância da denúncia.");
   }
@@ -289,6 +310,8 @@ export async function createSupabaseReport(payload: Record<string, unknown>) {
   if (distance > radius) {
     throw new Error("Denúncia fora da área permitida da cidade.");
   }
+
+  console.log("[REPORT DEBUG] passou pela validação; executando INSERT em reports");
 
   const { data, error } = await supabase
     .from("reports")
@@ -307,7 +330,12 @@ export async function createSupabaseReport(payload: Record<string, unknown>) {
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error("[REPORT DEBUG] erro no INSERT de reports:", error);
+    throw error;
+  }
+
+  console.log("[REPORT DEBUG] INSERT realizado com sucesso:", data);
   return data;
 }
 

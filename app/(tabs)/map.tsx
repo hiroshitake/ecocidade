@@ -1,13 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
-import React, { useCallback, useRef, useState, useEffect } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
   View,
-  Platform,
 } from "react-native";
 import MapComponent from "../../components/map";
 import { ThemedText } from "../../components/themed-text";
@@ -78,21 +77,14 @@ export default function MapScreen() {
     try {
       setLoading(true);
 
-      const fetchUserLocation = async (): Promise<{
-        location: { latitude: number; longitude: number } | null;
-        source: "gps" | "city" | "none";
-        reason: "gps" | "gps_unavailable" | "permission_denied" | "city_fallback";
-      }> => {
-        return resolveUserLocationWithFallback();
-      };
-
       const [fetchedReports, fetchedZones, resolvedLocation] =
         await Promise.all([
           getPublicReports().catch(() => []),
           getDangerZones().catch(() => []),
-          fetchUserLocation().catch(() => ({
+          resolveUserLocationWithFallback().catch(() => ({
             location: null,
             source: "none" as const,
+            reason: "gps_unavailable" as const,
           })),
         ]);
 
@@ -108,25 +100,23 @@ export default function MapScreen() {
     }
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [loadData]),
-  );
-
-  // Watcher ref: number for web, subscription object for native
+  // Mantém uma assinatura de GPS ativa enquanto a tela do mapa estiver em foco.
+  // A posição inicial pode vir do fallback, mas o watcher substitui essa posição
+  // assim que o navegador/aparelho entregar uma posição GPS real e continua
+  // atualizando enquanto o usuário se movimenta.
   const watchRef = useRef<any>(null);
 
   const stopLocationWatch = useCallback(() => {
     try {
       if (!watchRef.current) return;
-      if (Platform.OS === "web" && typeof navigator !== "undefined") {
+
+      if (typeof navigator !== "undefined" && navigator.geolocation && typeof watchRef.current === "number") {
         navigator.geolocation.clearWatch(watchRef.current as number);
       } else if (watchRef.current && typeof watchRef.current.remove === "function") {
         watchRef.current.remove();
       }
-    } catch (e) {
-      // ignore
+    } catch (error) {
+      console.debug("Erro ao encerrar monitoramento de localização:", error);
     } finally {
       watchRef.current = null;
     }
@@ -134,11 +124,10 @@ export default function MapScreen() {
 
   const startLocationWatch = useCallback(() => {
     stopLocationWatch();
-    if (locationReason === "permission_denied") return;
 
-    if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.geolocation) {
+    if (typeof navigator !== "undefined" && navigator.geolocation) {
       try {
-        const id = navigator.geolocation.watchPosition(
+        const watchId = navigator.geolocation.watchPosition(
           (position) => {
             setUserLocation({
               latitude: position.coords.latitude,
@@ -146,61 +135,74 @@ export default function MapScreen() {
             });
             setLocationSource("gps");
             setLocationReason("gps");
-            stopLocationWatch();
           },
-          (err) => {
-            console.debug("watchPosition error", err);
+          (error) => {
+            console.debug("watchPosition error:", error);
+            if (error.code === 1) {
+              setLocationSource("none");
+              setLocationReason("permission_denied");
+            }
           },
-          { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 },
+          {
+            enableHighAccuracy: true,
+            maximumAge: 0,
+            timeout: 15000,
+          },
         );
-        watchRef.current = id;
 
-        // Stop watching after 8s if no result
-        setTimeout(() => {
-          if (watchRef.current) {
-            stopLocationWatch();
-          }
-        }, 8000);
-      } catch (e) {
-        // ignore
+        watchRef.current = watchId;
+      } catch (error) {
+        console.debug("Não foi possível iniciar watchPosition:", error);
       }
-    } else {
-      // Native (Expo) fallback
-      (async () => {
-        try {
-          const m = await import("expo-location");
-          const sub = await m.default.watchPositionAsync(
-            { accuracy: m.default.Accuracy.Balanced, timeInterval: 2000, distanceInterval: 1 },
-            (loc) => {
-              if (!loc) return;
-              setUserLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
-              setLocationSource("gps");
-              setLocationReason("gps");
-              stopLocationWatch();
-            },
-          );
-          watchRef.current = sub;
+      return;
+    }
 
-          setTimeout(() => {
-            if (watchRef.current) stopLocationWatch();
-          }, 8000);
-        } catch (e) {
-          // ignore
+    // Expo / dispositivo nativo.
+    (async () => {
+      try {
+        const location = await import("expo-location");
+        const { status } = await location.default.getForegroundPermissionsAsync();
+
+        if (status !== "granted") {
+          setLocationSource("none");
+          setLocationReason("permission_denied");
+          return;
         }
-      })();
-    }
-  }, [locationReason, stopLocationWatch]);
 
-  // If initial resolution says GPS unavailable (but permission not denied), try a short watch
-  useEffect(() => {
-    if (locationReason === "gps_unavailable") {
+        const subscription = await location.default.watchPositionAsync(
+          {
+            accuracy: location.default.Accuracy.High,
+            timeInterval: 2000,
+            distanceInterval: 5,
+          },
+          (position) => {
+            if (!position) return;
+            setUserLocation({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            });
+            setLocationSource("gps");
+            setLocationReason("gps");
+          },
+        );
+
+        watchRef.current = subscription;
+      } catch (error) {
+        console.debug("Não foi possível iniciar monitoramento Expo:", error);
+      }
+    })();
+  }, [stopLocationWatch]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
       startLocationWatch();
-    } else {
-      // stop any running watch when we have a definitive reason
-      stopLocationWatch();
-    }
-    return () => stopLocationWatch();
-  }, [locationReason, startLocationWatch, stopLocationWatch]);
+
+      return () => {
+        stopLocationWatch();
+      };
+    }, [loadData, startLocationWatch, stopLocationWatch]),
+  );
 
   const filteredReports = reports.filter((item) => {
     const category = String(item.category || "").toLowerCase();
@@ -209,7 +211,6 @@ export default function MapScreen() {
     return category === selectedCategory.toLowerCase();
   });
 
-  // Calcular distância e ordenar por proximidade
   const sortedReports = filteredReports
     .map((r) => {
       const lat = Number(r.latitude) || 0;
@@ -436,7 +437,6 @@ export default function MapScreen() {
         </View>
       )}
 
-      {/* CARROSSEL DE DENÚNCIAS PRÓXIMAS COM SETAS */}
       <ThemedView style={styles.nearbyContainer}>
         <View style={styles.nearbyHeaderRow}>
           <ThemedText type="subtitle" style={styles.nearbyTitle}>

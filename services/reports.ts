@@ -8,6 +8,7 @@ import {
   isSupabaseConfigured,
   listSupabaseDangerZones,
   listSupabaseReports,
+  supabase,
   updateSupabaseReportStatus,
 } from "./supabase";
 
@@ -129,7 +130,37 @@ export async function getAllReports() {
 
 export async function getAdminReports() {
   if (isSupabaseConfigured()) {
-    return listSupabaseReports();
+    const reports = await listSupabaseReports();
+    const userIds = Array.from(
+      new Set(
+        (reports || [])
+          .map((report: any) => report?.user_id)
+          .filter((id: unknown): id is string => typeof id === "string" && id.length > 0),
+      ),
+    );
+
+    if (!supabase || userIds.length === 0) {
+      return reports;
+    }
+
+    const { data: profiles, error } = await supabase
+      .from("profiles")
+      .select("id, name, email")
+      .in("id", userIds);
+
+    if (error) {
+      console.warn("Não foi possível carregar os dados dos denunciantes:", error.message);
+      return reports;
+    }
+
+    const profilesById = new Map(
+      (profiles || []).map((profile: any) => [profile.id, profile]),
+    );
+
+    return (reports || []).map((report: any) => ({
+      ...report,
+      reporter: report.user_id ? profilesById.get(report.user_id) || null : null,
+    }));
   }
 
   throw new Error(

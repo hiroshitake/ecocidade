@@ -478,22 +478,24 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.55)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    padding: 20,
   },
   modalContent: {
     width: '100%',
+    height: '88%',
     maxWidth: 920,
-    maxHeight: '90%',
     backgroundColor: C.surface,
     borderRadius: 18,
     padding: 22,
     borderWidth: 1,
     borderColor: C.border,
+    overflow: 'hidden',
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexShrink: 0,
   },
   modalTitleContainer: {
     flex: 1,
@@ -525,25 +527,28 @@ const styles = StyleSheet.create({
     backgroundColor: C.border,
     marginTop: 16,
     marginBottom: 18,
+    flexShrink: 0,
   },
   modalBody: {
+    flex: 1,
     flexDirection: 'row',
     gap: 24,
-    minHeight: 430,
+    minHeight: 0,
   },
   photoColumn: {
-    width: 340,
+    width: 320,
+    flexShrink: 0,
   },
   reportImage: {
     width: '100%',
-    height: 255,
+    height: 240,
     borderRadius: 14,
     marginTop: 8,
     backgroundColor: C.background,
   },
   noPhotoBox: {
     width: '100%',
-    height: 255,
+    height: 240,
     marginTop: 8,
     borderRadius: 14,
     borderWidth: 1,
@@ -560,9 +565,10 @@ const styles = StyleSheet.create({
   },
   infoColumn: {
     flex: 1,
+    minWidth: 0,
   },
   infoColumnContent: {
-    paddingBottom: 2,
+    paddingBottom: 4,
     gap: 12,
   },
   infoGrid: {
@@ -614,6 +620,7 @@ const styles = StyleSheet.create({
   },
   statusOptions: {
     gap: 7,
+    paddingBottom: 2,
   },
   statusOptionRow: {
     flexDirection: 'row',
@@ -637,11 +644,12 @@ const styles = StyleSheet.create({
     color: C.text,
   },
   modalFooter: {
-    marginTop: 18,
-    paddingTop: 16,
+    marginTop: 14,
+    paddingTop: 14,
     borderTopWidth: 1,
     borderTopColor: C.border,
     alignItems: 'flex-end',
+    flexShrink: 0,
   },
   closeButton: {
     minWidth: 120,

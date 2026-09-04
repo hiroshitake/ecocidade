@@ -26,6 +26,16 @@ interface ReportStats {
 
 const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
+const normalizeStatus = (status?: string) => {
+  const value = String(status || '').trim().toLowerCase();
+
+  if (['pending', 'aguardando'].includes(value)) return 'pending';
+  if (['in_progress', 'processo', 'em processo'].includes(value)) return 'in_progress';
+  if (['resolved', 'concluida', 'concluída', 'completed', 'done'].includes(value)) return 'resolved';
+
+  return 'pending';
+};
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState<ReportStats>({
     total: 0,
@@ -43,7 +53,6 @@ export default function AdminDashboard() {
       setLoading(true);
       const reports = (await getAdminReports()) as any[];
 
-      // Processar estatísticas
       const newStats: ReportStats = {
         total: reports.length,
         pending: 0,
@@ -53,29 +62,27 @@ export default function AdminDashboard() {
         byMonth: {},
       };
 
-      // Inicializar meses
       MONTHS.forEach(month => {
         newStats.byMonth[month] = 0;
       });
 
       reports.forEach((report) => {
-        // Contar por status
-        const status = report.status || 'aguardando';
-        if (status === 'aguardando') newStats.pending++;
-        else if (status === 'processo') newStats.inProgress++;
-        else if (status === 'concluida') newStats.completed++;
+        // O banco usa os valores canônicos pending/in_progress/resolved.
+        const status = normalizeStatus(report.status);
+        if (status === 'pending') newStats.pending++;
+        else if (status === 'in_progress') newStats.inProgress++;
+        else if (status === 'resolved') newStats.completed++;
 
-        // Contar por categoria
         const cat = report.category || 'outro';
         newStats.byCategory[cat] = (newStats.byCategory[cat] || 0) + 1;
 
-        // Contar por mês
-        if (report.createdAt) {
-          const date = typeof report.createdAt.toDate === 'function' 
-            ? report.createdAt.toDate() 
-            : new Date(report.createdAt);
+        // Supabase retorna created_at (snake_case), não createdAt.
+        if (report.created_at) {
+          const date = typeof report.created_at.toDate === 'function'
+            ? report.created_at.toDate()
+            : new Date(report.created_at);
           const month = MONTHS[date.getMonth()];
-          newStats.byMonth[month]++;
+          if (month) newStats.byMonth[month]++;
         }
       });
 
@@ -105,7 +112,6 @@ export default function AdminDashboard() {
 
   return (
     <ThemedView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <View>
           <ThemedText style={styles.headerTitle}>Dashboard Admin</ThemedText>
@@ -117,30 +123,25 @@ export default function AdminDashboard() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} style={styles.content}>
-        {/* Stats Cards */}
         <View style={styles.statsGrid}>
-          {/* Total */}
           <View style={[styles.statCard, styles.statCardTotal]}>
             <MaterialCommunityIcons name="chart-box" size={32} color={C.primary} />
             <ThemedText style={styles.statValue}>{stats.total}</ThemedText>
             <ThemedText style={styles.statLabel}>Total de Denúncias</ThemedText>
           </View>
 
-          {/* Pendentes */}
           <View style={[styles.statCard, styles.statCardPending]}>
             <MaterialCommunityIcons name="clock-alert-outline" size={32} color={C.warning} />
             <ThemedText style={styles.statValue}>{stats.pending}</ThemedText>
             <ThemedText style={styles.statLabel}>Aguardando</ThemedText>
           </View>
 
-          {/* Em Processo */}
           <View style={[styles.statCard, styles.statCardInProgress]}>
             <MaterialCommunityIcons name="progress-clock" size={32} color={C.primary} />
             <ThemedText style={styles.statValue}>{stats.inProgress}</ThemedText>
             <ThemedText style={styles.statLabel}>Em Processo</ThemedText>
           </View>
 
-          {/* Concluídas */}
           <View style={[styles.statCard, styles.statCardCompleted]}>
             <MaterialCommunityIcons name="check-circle-outline" size={32} color={C.eco} />
             <ThemedText style={styles.statValue}>{stats.completed}</ThemedText>
@@ -148,12 +149,11 @@ export default function AdminDashboard() {
           </View>
         </View>
 
-        {/* Taxa de Resolução */}
         <View style={styles.resolutionRate}>
           <ThemedText style={styles.sectionTitle}>Taxa de Resolução</ThemedText>
           <View style={styles.rateContainer}>
             <View style={styles.rateBar}>
-              <View 
+              <View
                 style={[
                   styles.rateProgress,
                   { width: `${stats.total > 0 ? (stats.completed / stats.total) * 100 : 0}%` }
@@ -166,7 +166,6 @@ export default function AdminDashboard() {
           </View>
         </View>
 
-        {/* Categorias */}
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Denúncias por Categoria</ThemedText>
           <View style={styles.categoryList}>
@@ -184,10 +183,9 @@ export default function AdminDashboard() {
           </View>
         </View>
 
-        {/* Menu de Ações */}
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Ações Administrativas</ThemedText>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={() => router.push('/(admin)/manage-reports')}
           >
@@ -199,7 +197,7 @@ export default function AdminDashboard() {
             <MaterialCommunityIcons name="chevron-right" size={24} color={C.text3} />
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={() => router.push('/(admin)/danger-zones')}
           >
@@ -211,7 +209,7 @@ export default function AdminDashboard() {
             <MaterialCommunityIcons name="chevron-right" size={24} color={C.text3} />
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={() => router.push('/(admin)/security-analysis')}
           >

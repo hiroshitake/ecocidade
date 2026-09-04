@@ -16,6 +16,7 @@ import { ThemedText } from '../../components/themed-text';
 import { ThemedView } from '../../components/themed-view';
 import { C } from '../../constants/theme';
 import { deleteReport, getAdminReports, updateReportStatus } from '../../services/reports';
+import { createReportImageUrl } from '../../services/supabase';
 
 interface Report {
   id: string;
@@ -55,7 +56,23 @@ export default function ManageReportsScreen() {
     try {
       setLoading(true);
       const data = await getAdminReports();
-      setReports(data || []);
+      const reportsWithImageUrls = await Promise.all(
+        (data || []).map(async (report: Report) => {
+          if (!report.image_url) return report;
+
+          try {
+            return {
+              ...report,
+              image_url: await createReportImageUrl(report.image_url),
+            };
+          } catch (error) {
+            console.warn('Não foi possível gerar a URL da foto da denúncia:', error);
+            return { ...report, image_url: null };
+          }
+        }),
+      );
+
+      setReports(reportsWithImageUrls);
     } catch (error) {
       console.error('Erro ao carregar denúncias:', error);
       Alert.alert('Erro', 'Falha ao carregar denúncias');
@@ -267,34 +284,35 @@ export default function ManageReportsScreen() {
                     </ThemedText>
                   </View>
 
-                  <ThemedText style={styles.statusLabel}>Alterar status:</ThemedText>
                   <View style={styles.statusOptions}>
-                    {STATUS_OPTIONS.map(option => (
-                      <TouchableOpacity
-                        key={option.id}
-                        style={[
-                          styles.statusOption,
-                          normalizeStatus(selectedReport.status) === option.id && styles.statusOptionSelected,
-                          { borderColor: option.color },
-                        ]}
-                        onPress={() => handleStatusChange(option.id)}
-                      >
-                        <MaterialCommunityIcons
-                          name={option.icon as any}
-                          size={28}
-                          color={option.color}
-                        />
-                        <ThemedText style={styles.statusOptionLabel}>{option.label}</ThemedText>
-                      </TouchableOpacity>
-                    ))}
+                    <ThemedText style={styles.detailLabel}>Alterar status</ThemedText>
+                    {STATUS_OPTIONS.map(option => {
+                      const active = normalizeStatus(selectedReport.status) === option.id;
+                      return (
+                        <TouchableOpacity
+                          key={option.id}
+                          style={[
+                            styles.statusOption,
+                            active && { borderColor: option.color, backgroundColor: option.color + '12' },
+                          ]}
+                          onPress={() => handleStatusChange(option.id)}
+                        >
+                          <MaterialCommunityIcons name={option.icon as any} size={20} color={option.color} />
+                          <ThemedText style={[styles.statusOptionText, active && { color: option.color }]}>
+                            {option.label}
+                          </ThemedText>
+                          {active ? <MaterialCommunityIcons name="check" size={20} color={option.color} /> : null}
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
                 </ScrollView>
 
                 <TouchableOpacity
-                  style={styles.cancelBtn}
+                  style={styles.closeButton}
                   onPress={() => setShowStatusModal(false)}
                 >
-                  <ThemedText style={styles.cancelBtnText}>Fechar</ThemedText>
+                  <ThemedText style={styles.closeButtonText}>Fechar</ThemedText>
                 </TouchableOpacity>
               </>
             )}
@@ -310,14 +328,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    height: 60,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: C.border,
-    backgroundColor: C.surface,
   },
   headerTitle: {
     fontSize: 18,
@@ -328,188 +345,176 @@ const styles = StyleSheet.create({
     width: 24,
   },
   listContent: {
-    paddingHorizontal: 12,
-    paddingVertical: 16,
+    padding: 16,
+    gap: 12,
   },
   reportCard: {
     backgroundColor: C.surface,
     borderRadius: 12,
-    padding: 14,
-    marginBottom: 12,
+    padding: 16,
     borderWidth: 1,
     borderColor: C.border,
   },
   reportHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 10,
+    gap: 12,
   },
   reportInfo: {
     flex: 1,
-    marginRight: 10,
   },
   reportCategory: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '800',
     color: C.primary,
-    marginBottom: 4,
+    letterSpacing: 0.5,
   },
   reportAddress: {
-    fontSize: 12,
+    fontSize: 13,
     color: C.text2,
+    marginTop: 4,
+  },
+  reportActions: {
+    alignItems: 'flex-end',
+    gap: 8,
   },
   statusBadge: {
-    paddingVertical: 4,
     paddingHorizontal: 10,
-    borderRadius: 6,
+    paddingVertical: 5,
+    borderRadius: 999,
   },
   statusText: {
     fontSize: 11,
-    fontWeight: '600',
-  },
-  reportActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+    fontWeight: '800',
   },
   deleteButton: {
-    padding: 6,
+    padding: 2,
   },
   reportDescription: {
-    fontSize: 12,
-    color: C.text2,
-    marginBottom: 10,
-    lineHeight: 18,
+    fontSize: 14,
+    color: C.text,
+    marginTop: 14,
+    lineHeight: 20,
   },
   reportFooter: {
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: C.border,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   reportDate: {
-    fontSize: 11,
+    fontSize: 12,
     color: C.text3,
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 80,
+    gap: 12,
   },
   emptyText: {
-    marginTop: 12,
     color: C.text3,
+    fontSize: 14,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(13, 27, 54, 0.6)',
-    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'center',
+    padding: 20,
   },
   modalContent: {
-    backgroundColor: C.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
     maxHeight: '88%',
-    paddingTop: 16,
+    backgroundColor: C.surface,
+    borderRadius: 18,
+    padding: 18,
   },
   modalHeader: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: C.border,
+    marginBottom: 12,
   },
   modalTitleContainer: {
     flex: 1,
-    marginRight: 12,
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
     color: C.text,
   },
   modalId: {
-    fontSize: 11,
-    color: C.text3,
+    fontSize: 12,
+    color: C.primary,
+    fontWeight: '800',
     marginTop: 3,
-    fontFamily: 'monospace',
   },
   modalBody: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+    marginBottom: 12,
   },
   photoSection: {
-    marginBottom: 20,
+    marginBottom: 18,
   },
   reportImage: {
     width: '100%',
-    height: 190,
+    height: 210,
     borderRadius: 12,
     marginTop: 8,
+    backgroundColor: C.background,
   },
   detailSection: {
-    marginBottom: 18,
+    marginBottom: 16,
   },
   detailLabel: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '800',
     color: C.text3,
-    marginBottom: 5,
     textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 5,
   },
   detailValue: {
     fontSize: 14,
-    color: C.text,
     lineHeight: 21,
+    color: C.text,
   },
   detailSecondary: {
-    fontSize: 11,
+    fontSize: 12,
     color: C.text3,
     marginTop: 4,
-    fontFamily: 'monospace',
   },
-  statusLabel: {
+  statusOptions: {
+    marginTop: 4,
+    gap: 8,
+  },
+  statusOption: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: C.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  statusOptionText: {
+    flex: 1,
     fontSize: 14,
     fontWeight: '700',
     color: C.text,
-    marginBottom: 12,
   },
-  statusOptions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-    gap: 10,
-  },
-  statusOption: {
-    flex: 1,
-    borderWidth: 2,
-    borderRadius: 12,
-    paddingVertical: 16,
+  closeButton: {
+    minHeight: 46,
+    borderRadius: 10,
     alignItems: 'center',
-    backgroundColor: C.surface2,
+    justifyContent: 'center',
+    backgroundColor: C.primary,
   },
-  statusOptionSelected: {
-    backgroundColor: C.primaryLight,
-  },
-  statusOptionLabel: {
-    marginTop: 8,
-    fontSize: 11,
-    fontWeight: '600',
-    color: C.text,
-    textAlign: 'center',
-  },
-  cancelBtn: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-    backgroundColor: C.border,
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  cancelBtnText: {
-    fontWeight: '700',
-    color: C.text,
+  closeButtonText: {
+    color: 'white',
+    fontWeight: '800',
+    fontSize: 14,
   },
 });

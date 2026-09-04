@@ -68,6 +68,7 @@ export async function createReport(_userId: string | undefined, payload: any) {
       severity: "medium",
       status: "pending",
       city,
+      imageUri: payload?.imageUri,
     });
   }
 

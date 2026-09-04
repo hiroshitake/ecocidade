@@ -3,13 +3,14 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  Image,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { ThemedText } from '../../components/themed-text';
 import { ThemedView } from '../../components/themed-view';
@@ -21,6 +22,7 @@ interface Report {
   category?: string;
   description?: string;
   status?: string;
+  image_url?: string | null;
   location?: { latitude?: number; longitude?: number; address?: string };
   created_at?: string;
 }
@@ -210,23 +212,62 @@ export default function ManageReportsScreen() {
             {selectedReport && (
               <>
                 <View style={styles.modalHeader}>
-                  <ThemedText style={styles.modalTitle}>Alterar Status</ThemedText>
+                  <View style={styles.modalTitleContainer}>
+                    <ThemedText style={styles.modalTitle}>Detalhes da denúncia</ThemedText>
+                    <ThemedText style={styles.modalId}>#{selectedReport.id.slice(0, 8).toUpperCase()}</ThemedText>
+                  </View>
                   <TouchableOpacity onPress={() => setShowStatusModal(false)}>
                     <MaterialCommunityIcons name="close" size={24} color={C.text} />
                   </TouchableOpacity>
                 </View>
 
                 <ScrollView showsVerticalScrollIndicator={false} style={styles.modalBody}>
-                  <View style={styles.reportPreview}>
-                    <ThemedText style={styles.previewCategory}>
-                      {selectedReport.category?.toUpperCase() || 'SEM CATEGORIA'}
-                    </ThemedText>
-                    <ThemedText style={styles.previewAddress} numberOfLines={2}>
-                      {selectedReport.location?.address || 'Localização desconhecida'}
+                  {selectedReport.image_url ? (
+                    <View style={styles.photoSection}>
+                      <ThemedText style={styles.detailLabel}>Foto da ocorrência</ThemedText>
+                      <Image source={{ uri: selectedReport.image_url }} style={styles.reportImage} resizeMode="cover" />
+                    </View>
+                  ) : null}
+
+                  <View style={styles.detailSection}>
+                    <ThemedText style={styles.detailLabel}>Categoria</ThemedText>
+                    <ThemedText style={styles.detailValue}>
+                      {selectedReport.category || 'Sem categoria'}
                     </ThemedText>
                   </View>
 
-                  <ThemedText style={styles.statusLabel}>Novo Status:</ThemedText>
+                  <View style={styles.detailSection}>
+                    <ThemedText style={styles.detailLabel}>Descrição</ThemedText>
+                    <ThemedText style={styles.detailValue}>
+                      {selectedReport.description || 'Sem descrição'}
+                    </ThemedText>
+                  </View>
+
+                  <View style={styles.detailSection}>
+                    <ThemedText style={styles.detailLabel}>Localização</ThemedText>
+                    <ThemedText style={styles.detailValue}>
+                      {selectedReport.location?.address || 'Localização desconhecida'}
+                    </ThemedText>
+                    {selectedReport.location?.latitude != null && selectedReport.location?.longitude != null ? (
+                      <ThemedText style={styles.detailSecondary}>
+                        {selectedReport.location.latitude.toFixed(6)}, {selectedReport.location.longitude.toFixed(6)}
+                      </ThemedText>
+                    ) : null}
+                  </View>
+
+                  <View style={styles.detailSection}>
+                    <ThemedText style={styles.detailLabel}>Data</ThemedText>
+                    <ThemedText style={styles.detailValue}>{formatDate(selectedReport.created_at)}</ThemedText>
+                  </View>
+
+                  <View style={styles.detailSection}>
+                    <ThemedText style={styles.detailLabel}>Status atual</ThemedText>
+                    <ThemedText style={[styles.detailValue, { color: getStatusColor(selectedReport.status) }]}>
+                      {getStatusLabel(selectedReport.status)}
+                    </ThemedText>
+                  </View>
+
+                  <ThemedText style={styles.statusLabel}>Alterar status:</ThemedText>
                   <View style={styles.statusOptions}>
                     {STATUS_OPTIONS.map(option => (
                       <TouchableOpacity
@@ -253,7 +294,7 @@ export default function ManageReportsScreen() {
                   style={styles.cancelBtn}
                   onPress={() => setShowStatusModal(false)}
                 >
-                  <ThemedText style={styles.cancelBtnText}>Cancelar</ThemedText>
+                  <ThemedText style={styles.cancelBtnText}>Fechar</ThemedText>
                 </TouchableOpacity>
               </>
             )}
@@ -368,7 +409,7 @@ const styles = StyleSheet.create({
     backgroundColor: C.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '80%',
+    maxHeight: '88%',
     paddingTop: 16,
   },
   modalHeader: {
@@ -380,31 +421,54 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: C.border,
   },
+  modalTitleContainer: {
+    flex: 1,
+    marginRight: 12,
+  },
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: C.text,
   },
+  modalId: {
+    fontSize: 11,
+    color: C.text3,
+    marginTop: 3,
+    fontFamily: 'monospace',
+  },
   modalBody: {
     paddingHorizontal: 20,
     paddingVertical: 20,
   },
-  reportPreview: {
-    backgroundColor: C.primaryLight,
-    borderRadius: 12,
-    padding: 14,
+  photoSection: {
     marginBottom: 20,
   },
-  previewCategory: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: C.primary,
-    marginBottom: 6,
+  reportImage: {
+    width: '100%',
+    height: 190,
+    borderRadius: 12,
+    marginTop: 8,
   },
-  previewAddress: {
+  detailSection: {
+    marginBottom: 18,
+  },
+  detailLabel: {
     fontSize: 12,
-    color: C.text2,
-    lineHeight: 18,
+    fontWeight: '700',
+    color: C.text3,
+    marginBottom: 5,
+    textTransform: 'uppercase',
+  },
+  detailValue: {
+    fontSize: 14,
+    color: C.text,
+    lineHeight: 21,
+  },
+  detailSecondary: {
+    fontSize: 11,
+    color: C.text3,
+    marginTop: 4,
+    fontFamily: 'monospace',
   },
   statusLabel: {
     fontSize: 14,

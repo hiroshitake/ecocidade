@@ -230,90 +230,127 @@ export default function ManageReportsScreen() {
               <>
                 <View style={styles.modalHeader}>
                   <View style={styles.modalTitleContainer}>
-                    <ThemedText style={styles.modalTitle}>Detalhes da denúncia</ThemedText>
-                    <ThemedText style={styles.modalId}>#{selectedReport.id.slice(0, 8).toUpperCase()}</ThemedText>
+                    <ThemedText style={styles.modalEyebrow}>DENÚNCIA</ThemedText>
+                    <ThemedText style={styles.modalTitle}>
+                      #{selectedReport.id.slice(0, 8).toUpperCase()}
+                    </ThemedText>
                   </View>
-                  <TouchableOpacity onPress={() => setShowStatusModal(false)}>
-                    <MaterialCommunityIcons name="close" size={24} color={C.text} />
+                  <TouchableOpacity onPress={() => setShowStatusModal(false)} style={styles.modalCloseButton}>
+                    <MaterialCommunityIcons name="close" size={22} color={C.text2} />
                   </TouchableOpacity>
                 </View>
 
-                <ScrollView showsVerticalScrollIndicator={false} style={styles.modalBody}>
-                  {selectedReport.image_url ? (
-                    <View style={styles.photoSection}>
-                      <ThemedText style={styles.detailLabel}>Foto da ocorrência</ThemedText>
-                      <Image source={{ uri: selectedReport.image_url }} style={styles.reportImage} resizeMode="cover" />
+                <View style={styles.modalDivider} />
+
+                <View style={styles.modalBody}>
+                  <View style={styles.photoColumn}>
+                    <ThemedText style={styles.detailLabel}>Foto da ocorrência</ThemedText>
+                    {selectedReport.image_url ? (
+                      <Image
+                        source={{ uri: selectedReport.image_url }}
+                        style={styles.reportImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={styles.noPhotoBox}>
+                        <MaterialCommunityIcons name="image-off-outline" size={34} color={C.text3} />
+                        <ThemedText style={styles.noPhotoText}>Sem foto</ThemedText>
+                      </View>
+                    )}
+                  </View>
+
+                  <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    style={styles.infoColumn}
+                    contentContainerStyle={styles.infoColumnContent}
+                  >
+                    <View style={styles.infoGrid}>
+                      <View style={styles.detailCard}>
+                        <ThemedText style={styles.detailLabel}>Categoria</ThemedText>
+                        <ThemedText style={styles.detailValue} numberOfLines={2}>
+                          {selectedReport.category || 'Sem categoria'}
+                        </ThemedText>
+                      </View>
+
+                      <View style={styles.detailCard}>
+                        <ThemedText style={styles.detailLabel}>Data</ThemedText>
+                        <ThemedText style={styles.detailValue}>
+                          {formatDate(selectedReport.created_at)}
+                        </ThemedText>
+                      </View>
                     </View>
-                  ) : null}
 
-                  <View style={styles.detailSection}>
-                    <ThemedText style={styles.detailLabel}>Categoria</ThemedText>
-                    <ThemedText style={styles.detailValue}>
-                      {selectedReport.category || 'Sem categoria'}
-                    </ThemedText>
-                  </View>
-
-                  <View style={styles.detailSection}>
-                    <ThemedText style={styles.detailLabel}>Descrição</ThemedText>
-                    <ThemedText style={styles.detailValue}>
-                      {selectedReport.description || 'Sem descrição'}
-                    </ThemedText>
-                  </View>
-
-                  <View style={styles.detailSection}>
-                    <ThemedText style={styles.detailLabel}>Localização</ThemedText>
-                    <ThemedText style={styles.detailValue}>
-                      {selectedReport.location?.address || 'Localização desconhecida'}
-                    </ThemedText>
-                    {selectedReport.location?.latitude != null && selectedReport.location?.longitude != null ? (
-                      <ThemedText style={styles.detailSecondary}>
-                        {selectedReport.location.latitude.toFixed(6)}, {selectedReport.location.longitude.toFixed(6)}
+                    <View style={styles.detailCard}>
+                      <ThemedText style={styles.detailLabel}>Descrição</ThemedText>
+                      <ThemedText style={styles.detailValue}>
+                        {selectedReport.description || 'Sem descrição'}
                       </ThemedText>
-                    ) : null}
-                  </View>
+                    </View>
 
-                  <View style={styles.detailSection}>
-                    <ThemedText style={styles.detailLabel}>Data</ThemedText>
-                    <ThemedText style={styles.detailValue}>{formatDate(selectedReport.created_at)}</ThemedText>
-                  </View>
+                    <View style={styles.detailCard}>
+                      <ThemedText style={styles.detailLabel}>Localização</ThemedText>
+                      <ThemedText style={styles.detailValue}>
+                        {selectedReport.location?.address || 'Localização desconhecida'}
+                      </ThemedText>
+                      {selectedReport.location?.latitude != null && selectedReport.location?.longitude != null ? (
+                        <ThemedText style={styles.detailSecondary}>
+                          {selectedReport.location.latitude.toFixed(6)}, {selectedReport.location.longitude.toFixed(6)}
+                        </ThemedText>
+                      ) : null}
+                    </View>
 
-                  <View style={styles.detailSection}>
-                    <ThemedText style={styles.detailLabel}>Status atual</ThemedText>
-                    <ThemedText style={[styles.detailValue, { color: getStatusColor(selectedReport.status) }]}>
-                      {getStatusLabel(selectedReport.status)}
-                    </ThemedText>
-                  </View>
+                    <View style={styles.currentStatusCard}>
+                      <View style={styles.currentStatusText}>
+                        <ThemedText style={styles.detailLabel}>Status atual</ThemedText>
+                        <ThemedText style={[styles.statusValue, { color: getStatusColor(selectedReport.status) }]}>
+                          {getStatusLabel(selectedReport.status)}
+                        </ThemedText>
+                      </View>
+                      <MaterialCommunityIcons
+                        name={STATUS_OPTIONS.find(s => s.id === normalizeStatus(selectedReport.status))?.icon as any}
+                        size={26}
+                        color={getStatusColor(selectedReport.status)}
+                      />
+                    </View>
 
-                  <View style={styles.statusOptions}>
-                    <ThemedText style={styles.detailLabel}>Alterar status</ThemedText>
-                    {STATUS_OPTIONS.map(option => {
-                      const active = normalizeStatus(selectedReport.status) === option.id;
-                      return (
-                        <TouchableOpacity
-                          key={option.id}
-                          style={[
-                            styles.statusOption,
-                            active && { borderColor: option.color, backgroundColor: option.color + '12' },
-                          ]}
-                          onPress={() => handleStatusChange(option.id)}
-                        >
-                          <MaterialCommunityIcons name={option.icon as any} size={20} color={option.color} />
-                          <ThemedText style={[styles.statusOptionText, active && { color: option.color }]}>
-                            {option.label}
-                          </ThemedText>
-                          {active ? <MaterialCommunityIcons name="check" size={20} color={option.color} /> : null}
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </ScrollView>
+                    <View style={styles.statusOptions}>
+                      <ThemedText style={styles.detailLabel}>Alterar status</ThemedText>
+                      <View style={styles.statusOptionRow}>
+                        {STATUS_OPTIONS.map(option => {
+                          const active = normalizeStatus(selectedReport.status) === option.id;
+                          return (
+                            <TouchableOpacity
+                              key={option.id}
+                              style={[
+                                styles.statusOption,
+                                active && {
+                                  borderColor: option.color,
+                                  backgroundColor: option.color + '12',
+                                },
+                              ]}
+                              onPress={() => handleStatusChange(option.id)}
+                            >
+                              <MaterialCommunityIcons name={option.icon as any} size={18} color={option.color} />
+                              <ThemedText style={[styles.statusOptionText, active && { color: option.color }]}>
+                                {option.label}
+                              </ThemedText>
+                              {active ? <MaterialCommunityIcons name="check" size={18} color={option.color} /> : null}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  </ScrollView>
+                </View>
 
-                <TouchableOpacity
-                  style={styles.closeButton}
-                  onPress={() => setShowStatusModal(false)}
-                >
-                  <ThemedText style={styles.closeButtonText}>Fechar</ThemedText>
-                </TouchableOpacity>
+                <View style={styles.modalFooter}>
+                  <TouchableOpacity
+                    style={styles.closeButton}
+                    onPress={() => setShowStatusModal(false)}
+                  >
+                    <ThemedText style={styles.closeButtonText}>Fechar</ThemedText>
+                  </TouchableOpacity>
+                </View>
               </>
             )}
           </View>
@@ -423,90 +460,176 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.55)',
     justifyContent: 'center',
-    padding: 20,
+    alignItems: 'center',
+    padding: 24,
   },
   modalContent: {
-    maxHeight: '88%',
+    width: '100%',
+    maxWidth: 920,
+    maxHeight: '90%',
     backgroundColor: C.surface,
     borderRadius: 18,
-    padding: 18,
+    padding: 22,
+    borderWidth: 1,
+    borderColor: C.border,
   },
   modalHeader: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
   },
   modalTitleContainer: {
     flex: 1,
   },
+  modalEyebrow: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: C.text3,
+    letterSpacing: 1,
+    marginBottom: 3,
+  },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 21,
     fontWeight: '800',
     color: C.text,
   },
-  modalId: {
-    fontSize: 12,
-    color: C.primary,
-    fontWeight: '800',
-    marginTop: 3,
+  modalCloseButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: C.background,
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+  modalDivider: {
+    height: 1,
+    backgroundColor: C.border,
+    marginTop: 16,
+    marginBottom: 18,
   },
   modalBody: {
-    marginBottom: 12,
+    flexDirection: 'row',
+    gap: 24,
+    minHeight: 430,
   },
-  photoSection: {
-    marginBottom: 18,
+  photoColumn: {
+    width: 340,
   },
   reportImage: {
     width: '100%',
-    height: 210,
-    borderRadius: 12,
+    height: 255,
+    borderRadius: 14,
     marginTop: 8,
     backgroundColor: C.background,
   },
-  detailSection: {
-    marginBottom: 16,
+  noPhotoBox: {
+    width: '100%',
+    height: 255,
+    marginTop: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: C.border,
+    backgroundColor: C.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  noPhotoText: {
+    fontSize: 13,
+    color: C.text3,
+    fontWeight: '600',
+  },
+  infoColumn: {
+    flex: 1,
+  },
+  infoColumnContent: {
+    paddingBottom: 2,
+    gap: 12,
+  },
+  infoGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  detailCard: {
+    flex: 1,
+    padding: 13,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: C.border,
+    backgroundColor: C.background,
   },
   detailLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
     color: C.text3,
     textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    letterSpacing: 0.7,
     marginBottom: 5,
   },
   detailValue: {
     fontSize: 14,
-    lineHeight: 21,
+    lineHeight: 20,
     color: C.text,
   },
   detailSecondary: {
-    fontSize: 12,
+    fontSize: 11,
     color: C.text3,
-    marginTop: 4,
+    marginTop: 5,
+  },
+  currentStatusCard: {
+    padding: 13,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: C.border,
+    backgroundColor: C.background,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  currentStatusText: {
+    flex: 1,
+  },
+  statusValue: {
+    fontSize: 15,
+    fontWeight: '800',
   },
   statusOptions: {
-    marginTop: 4,
+    gap: 7,
+  },
+  statusOptionRow: {
+    flexDirection: 'row',
     gap: 8,
   },
   statusOption: {
-    minHeight: 48,
+    flex: 1,
+    minHeight: 44,
     borderWidth: 1,
     borderColor: C.border,
     borderRadius: 10,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'center',
+    gap: 7,
   },
   statusOptionText: {
-    flex: 1,
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
     color: C.text,
   },
+  modalFooter: {
+    marginTop: 18,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: C.border,
+    alignItems: 'flex-end',
+  },
   closeButton: {
-    minHeight: 46,
+    minWidth: 120,
+    minHeight: 42,
+    paddingHorizontal: 18,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',

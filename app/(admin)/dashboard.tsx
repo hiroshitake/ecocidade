@@ -9,56 +9,265 @@ import { C, S } from '../../constants/theme';
 import { logout } from '../../services/auth';
 import { getAdminReports } from '../../services/reports';
 
-interface ReportStats { total: number; pending: number; inProgress: number; completed: number; byCategory: { [key: string]: number }; byMonth: { [key: string]: number }; }
+/* TODO: REQUIREMENTS GAPS
+ - RNF-01 RBAC: ensure only users with admin role (CNPJ-based) can access this route; integrate role checks on auth state.
+ - RF-01 Export KPIs CSV/PDF and add refresh/polling for live stats.
+ - RNF-02 Add caching/fast-path to keep dashboard load ≤3s.
+*/
+
+interface ReportStats {
+  total: number;
+  pending: number;
+  inProgress: number;
+  completed: number;
+  byCategory: { [key: string]: number };
+  byMonth: { [key: string]: number };
+}
+
 const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-const normalizeStatus = (status?: string) => { const value = String(status || '').trim().toLowerCase(); if (['pending', 'aguardando'].includes(value)) return 'pending'; if (['in_progress', 'processo', 'em processo'].includes(value)) return 'in_progress'; if (['resolved', 'concluida', 'concluída', 'completed', 'done'].includes(value)) return 'resolved'; return 'pending'; };
+
+const normalizeStatus = (status?: string) => {
+  const value = String(status || '').trim().toLowerCase();
+
+  if (['pending', 'aguardando'].includes(value)) return 'pending';
+  if (['in_progress', 'processo', 'em processo'].includes(value)) return 'in_progress';
+  if (['resolved', 'concluida', 'concluída', 'completed', 'done'].includes(value)) return 'resolved';
+
+  return 'pending';
+};
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<ReportStats>({ total: 0, pending: 0, inProgress: 0, completed: 0, byCategory: {}, byMonth: {} });
-  const [loading, setLoading] = useState(true); const router = useRouter();
+  const [stats, setStats] = useState<ReportStats>({
+    total: 0,
+    pending: 0,
+    inProgress: 0,
+    completed: 0,
+    byCategory: {},
+    byMonth: {},
+  });
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
   const loadStats = useCallback(async () => {
     try {
-      setLoading(true); const reports = (await getAdminReports()) as any[];
-      const next: ReportStats = { total: reports.length, pending: 0, inProgress: 0, completed: 0, byCategory: {}, byMonth: {} };
-      MONTHS.forEach(month => { next.byMonth[month] = 0; });
-      reports.forEach(report => {
-        const status = normalizeStatus(report.status); if (status === 'pending') next.pending++; else if (status === 'in_progress') next.inProgress++; else if (status === 'resolved') next.completed++;
-        const cat = report.category || 'outro'; next.byCategory[cat] = (next.byCategory[cat] || 0) + 1;
-        if (report.created_at) { const date = typeof report.created_at.toDate === 'function' ? report.created_at.toDate() : new Date(report.created_at); const month = MONTHS[date.getMonth()]; if (month) next.byMonth[month]++; }
-      }); setStats(next);
-    } catch (error) { console.error('Erro ao carregar estatísticas:', error); } finally { setLoading(false); }
-  }, []);
-  useFocusEffect(useCallback(() => { loadStats(); }, [loadStats]));
-  const handleLogout = async () => { try { await logout(); } catch (error) { console.error('Erro ao deslogar admin:', error); } finally { router.replace('/admin-login'); } };
+      setLoading(true);
+      const reports = (await getAdminReports()) as any[];
 
-  const action = (route: string, icon: any, title: string, desc: string, color: string) => (
-    <TouchableOpacity style={styles.actionButton} onPress={() => router.push(route as any)}>
-      <MaterialCommunityIcons name={icon} size={24} color={color} /><View style={styles.actionContent}><ThemedText style={styles.actionTitle}>{title}</ThemedText><ThemedText style={styles.actionDesc}>{desc}</ThemedText></View><MaterialCommunityIcons name="chevron-right" size={24} color={C.text3} />
-    </TouchableOpacity>
+      const newStats: ReportStats = {
+        total: reports.length,
+        pending: 0,
+        inProgress: 0,
+        completed: 0,
+        byCategory: {},
+        byMonth: {},
+      };
+
+      MONTHS.forEach(month => {
+        newStats.byMonth[month] = 0;
+      });
+
+      reports.forEach((report) => {
+        // O banco usa os valores canônicos pending/in_progress/resolved.
+        const status = normalizeStatus(report.status);
+        if (status === 'pending') newStats.pending++;
+        else if (status === 'in_progress') newStats.inProgress++;
+        else if (status === 'resolved') newStats.completed++;
+
+        const cat = report.category || 'outro';
+        newStats.byCategory[cat] = (newStats.byCategory[cat] || 0) + 1;
+
+        // Supabase retorna created_at (snake_case), não createdAt.
+        if (report.created_at) {
+          const date = typeof report.created_at.toDate === 'function'
+            ? report.created_at.toDate()
+            : new Date(report.created_at);
+          const month = MONTHS[date.getMonth()];
+          if (month) newStats.byMonth[month]++;
+        }
+      });
+
+      setStats(newStats);
+    } catch (error) {
+      console.error('Erro ao carregar estatísticas:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadStats();
+    }, [loadStats])
   );
 
-  return <ThemedView style={styles.container}>
-    <View style={styles.header}><View><ThemedText style={styles.headerTitle}>Dashboard Admin</ThemedText><ThemedText style={styles.headerSubtitle}>Prefeitura - Ecocidade</ThemedText></View><TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}><MaterialCommunityIcons name="logout" size={20} color={C.danger} /></TouchableOpacity></View>
-    <ScrollView showsVerticalScrollIndicator={false} style={styles.content}>
-      <View style={styles.statsGrid}>
-        <View style={[styles.statCard, styles.statCardTotal]}><MaterialCommunityIcons name="chart-box" size={32} color={C.primary} /><ThemedText style={styles.statValue}>{stats.total}</ThemedText><ThemedText style={styles.statLabel}>Total de Denúncias</ThemedText></View>
-        <View style={[styles.statCard, styles.statCardPending]}><MaterialCommunityIcons name="clock-alert-outline" size={32} color={C.warning} /><ThemedText style={styles.statValue}>{stats.pending}</ThemedText><ThemedText style={styles.statLabel}>Aguardando</ThemedText></View>
-        <View style={[styles.statCard, styles.statCardInProgress]}><MaterialCommunityIcons name="progress-clock" size={32} color={C.primary} /><ThemedText style={styles.statValue}>{stats.inProgress}</ThemedText><ThemedText style={styles.statLabel}>Em Processo</ThemedText></View>
-        <View style={[styles.statCard, styles.statCardCompleted]}><MaterialCommunityIcons name="check-circle-outline" size={32} color={C.eco} /><ThemedText style={styles.statValue}>{stats.completed}</ThemedText><ThemedText style={styles.statLabel}>Concluídas</ThemedText></View>
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Erro ao deslogar admin:', error);
+    } finally {
+      router.replace('/admin-login');
+    }
+  };
+
+  return (
+    <ThemedView style={styles.container}>
+      <View style={styles.header}>
+        <View>
+          <ThemedText style={styles.headerTitle}>Dashboard Admin</ThemedText>
+          <ThemedText style={styles.headerSubtitle}>Prefeitura - Ecocidade</ThemedText>
+        </View>
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+          <MaterialCommunityIcons name="logout" size={20} color={C.danger} />
+        </TouchableOpacity>
       </View>
-      <View style={styles.resolutionRate}><ThemedText style={styles.sectionTitle}>Taxa de Resolução</ThemedText><View style={styles.rateContainer}><View style={styles.rateBar}><View style={[styles.rateProgress, { width: `${stats.total > 0 ? (stats.completed / stats.total) * 100 : 0}%` }]} /></View><ThemedText style={styles.rateText}>{stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0}%</ThemedText></View></View>
-      <View style={styles.section}><ThemedText style={styles.sectionTitle}>Denúncias por Categoria</ThemedText><View style={styles.categoryList}>{Object.entries(stats.byCategory).sort(([, a], [, b]) => b - a).slice(0, 5).map(([category, count]) => <View key={category} style={styles.categoryItem}><ThemedText style={styles.categoryName}>{category.charAt(0).toUpperCase() + category.slice(1)}</ThemedText><ThemedText style={styles.categoryCount}>{count}</ThemedText></View>)}</View></View>
-      <View style={styles.section}><ThemedText style={styles.sectionTitle}>Ações Administrativas</ThemedText>
-        {action('/(admin)/manage-zeladoria', 'city-variant-outline', 'Gerenciar Zeladoria', 'Alterar status e visualizar denúncias de zeladoria', C.primary)}
-        {action('/(admin)/manage-seguranca', 'shield-alert', 'Gerenciar Segurança', 'Alterar status e visualizar denúncias de segurança', C.danger)}
-        {action('/(admin)/security-analysis', 'security', 'Análise de Segurança', 'Mapa das ocorrências e análise semanal', C.eco)}
-        {action('/(admin)/danger-zones', 'alert-octagon', 'Áreas de Perigo', 'Criar e gerenciar zonas perigosas', C.danger)}
-      </View>
-      <View style={{ height: 20 }} />
-    </ScrollView>
-  </ThemedView>;
+
+      <ScrollView showsVerticalScrollIndicator={false} style={styles.content}>
+        <View style={styles.statsGrid}>
+          <View style={[styles.statCard, styles.statCardTotal]}>
+            <MaterialCommunityIcons name="chart-box" size={32} color={C.primary} />
+            <ThemedText style={styles.statValue}>{stats.total}</ThemedText>
+            <ThemedText style={styles.statLabel}>Total de Denúncias</ThemedText>
+          </View>
+
+          <View style={[styles.statCard, styles.statCardPending]}>
+            <MaterialCommunityIcons name="clock-alert-outline" size={32} color={C.warning} />
+            <ThemedText style={styles.statValue}>{stats.pending}</ThemedText>
+            <ThemedText style={styles.statLabel}>Aguardando</ThemedText>
+          </View>
+
+          <View style={[styles.statCard, styles.statCardInProgress]}>
+            <MaterialCommunityIcons name="progress-clock" size={32} color={C.primary} />
+            <ThemedText style={styles.statValue}>{stats.inProgress}</ThemedText>
+            <ThemedText style={styles.statLabel}>Em Processo</ThemedText>
+          </View>
+
+          <View style={[styles.statCard, styles.statCardCompleted]}>
+            <MaterialCommunityIcons name="check-circle-outline" size={32} color={C.eco} />
+            <ThemedText style={styles.statValue}>{stats.completed}</ThemedText>
+            <ThemedText style={styles.statLabel}>Concluídas</ThemedText>
+          </View>
+        </View>
+
+        <View style={styles.resolutionRate}>
+          <ThemedText style={styles.sectionTitle}>Taxa de Resolução</ThemedText>
+          <View style={styles.rateContainer}>
+            <View style={styles.rateBar}>
+              <View
+                style={[
+                  styles.rateProgress,
+                  { width: `${stats.total > 0 ? (stats.completed / stats.total) * 100 : 0}%` }
+                ]}
+              />
+            </View>
+            <ThemedText style={styles.rateText}>
+              {stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0}%
+            </ThemedText>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Denúncias por Categoria</ThemedText>
+          <View style={styles.categoryList}>
+            {Object.entries(stats.byCategory)
+              .sort(([, a], [, b]) => b - a)
+              .slice(0, 5)
+              .map(([category, count]) => (
+                <View key={category} style={styles.categoryItem}>
+                  <ThemedText style={styles.categoryName}>
+                    {category.charAt(0).toUpperCase() + category.slice(1)}
+                  </ThemedText>
+                  <ThemedText style={styles.categoryCount}>{count}</ThemedText>
+                </View>
+              ))}
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Ações Administrativas</ThemedText>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push('/(admin)/manage-zeladoria')}
+          >
+            <MaterialCommunityIcons name="city-variant-outline" size={24} color={C.primary} />
+            <View style={styles.actionContent}>
+              <ThemedText style={styles.actionTitle}>Gerenciar Zeladoria</ThemedText>
+              <ThemedText style={styles.actionDesc}>Alterar status e visualizar denúncias de zeladoria</ThemedText>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={24} color={C.text3} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push('/(admin)/manage-seguranca')}
+          >
+            <MaterialCommunityIcons name="shield-alert" size={24} color={C.danger} />
+            <View style={styles.actionContent}>
+              <ThemedText style={styles.actionTitle}>Gerenciar Segurança</ThemedText>
+              <ThemedText style={styles.actionDesc}>Alterar status e visualizar denúncias de segurança</ThemedText>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={24} color={C.text3} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push('/(admin)/security-analysis')}
+          >
+            <MaterialCommunityIcons name="security" size={24} color={C.eco} />
+            <View style={styles.actionContent}>
+              <ThemedText style={styles.actionTitle}>Análise de Segurança</ThemedText>
+              <ThemedText style={styles.actionDesc}>Visualizar mapa das ocorrências e histórico semanal</ThemedText>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={24} color={C.text3} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push('/(admin)/danger-zones')}
+          >
+            <MaterialCommunityIcons name="alert-octagon" size={24} color={C.danger} />
+            <View style={styles.actionContent}>
+              <ThemedText style={styles.actionTitle}>Áreas de Perigo</ThemedText>
+              <ThemedText style={styles.actionDesc}>Criar e gerenciar zonas perigosas</ThemedText>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={24} color={C.text3} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={{ height: 20 }} />
+      </ScrollView>
+    </ThemedView>
+  );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 }, header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface }, headerTitle: { fontSize: 24, fontWeight: '800', color: C.text, marginBottom: 2 }, headerSubtitle: { fontSize: 12, color: C.text3 }, logoutBtn: { padding: 8 }, content: { flex: 1, paddingHorizontal: 16, paddingTop: 16 }, statsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 24, gap: 12 }, statCard: { width: '48%', borderRadius: 16, padding: 16, alignItems: 'center', ...S.shadow.sm }, statCardTotal: { backgroundColor: C.primaryLight }, statCardPending: { backgroundColor: C.warningLight }, statCardInProgress: { backgroundColor: C.primaryLight }, statCardCompleted: { backgroundColor: C.ecoLight }, statValue: { fontSize: 32, fontWeight: '800', color: C.text, marginTop: 8 }, statLabel: { fontSize: 12, color: C.text2, marginTop: 6, textAlign: 'center' }, section: { marginBottom: 24 }, sectionTitle: { fontSize: 16, fontWeight: '700', color: C.text, marginBottom: 12 }, resolutionRate: { backgroundColor: C.surface, borderRadius: 12, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: C.border }, rateContainer: { flexDirection: 'row', alignItems: 'center', gap: 12 }, rateBar: { flex: 1, height: 8, backgroundColor: C.border, borderRadius: 4, overflow: 'hidden' }, rateProgress: { height: '100%', backgroundColor: C.eco, borderRadius: 4 }, rateText: { fontSize: 16, fontWeight: '700', color: C.eco, minWidth: 40 }, categoryList: { backgroundColor: C.surface, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: C.border }, categoryItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: C.border }, categoryName: { fontSize: 13, fontWeight: '600', color: C.text }, categoryCount: { fontSize: 16, fontWeight: '700', color: C.primary, backgroundColor: C.primaryLight, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }, actionButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: C.border }, actionContent: { flex: 1, marginLeft: 12 }, actionTitle: { fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 2 }, actionDesc: { fontSize: 12, color: C.text3 }
+  container: { flex: 1 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: C.text, marginBottom: 2 },
+  headerSubtitle: { fontSize: 12, color: C.text3 },
+  logoutBtn: { padding: 8 },
+  content: { flex: 1, paddingHorizontal: 16, paddingTop: 16 },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 24, gap: 12 },
+  statCard: { width: '48%', borderRadius: 16, padding: 16, alignItems: 'center', ...S.shadow.sm },
+  statCardTotal: { backgroundColor: C.primaryLight },
+  statCardPending: { backgroundColor: C.warningLight },
+  statCardInProgress: { backgroundColor: C.primaryLight },
+  statCardCompleted: { backgroundColor: C.ecoLight },
+  statValue: { fontSize: 32, fontWeight: '800', color: C.text, marginTop: 8 },
+  statLabel: { fontSize: 12, color: C.text2, marginTop: 6, textAlign: 'center' },
+  section: { marginBottom: 24 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: C.text, marginBottom: 12 },
+  resolutionRate: { backgroundColor: C.surface, borderRadius: 12, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: C.border },
+  rateContainer: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  rateBar: { flex: 1, height: 8, backgroundColor: C.border, borderRadius: 4, overflow: 'hidden' },
+  rateProgress: { height: '100%', backgroundColor: C.eco, borderRadius: 4 },
+  rateText: { fontSize: 16, fontWeight: '700', color: C.eco, minWidth: 40 },
+  categoryList: { backgroundColor: C.surface, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: C.border },
+  categoryItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: C.border },
+  categoryName: { fontSize: 13, fontWeight: '600', color: C.text },
+  categoryCount: { fontSize: 16, fontWeight: '700', color: C.primary, backgroundColor: C.primaryLight, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  actionButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: C.border },
+  actionContent: { flex: 1, marginLeft: 12 },
+  actionTitle: { fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 2 },
+  actionDesc: { fontSize: 12, color: C.text3 },
 });

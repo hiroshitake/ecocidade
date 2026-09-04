@@ -24,6 +24,11 @@ interface Report {
   description?: string;
   status?: string;
   image_url?: string | null;
+  user_id?: string | null;
+  reporter?: {
+    name?: string | null;
+    email?: string | null;
+  } | null;
   location?: { latitude?: number; longitude?: number; address?: string };
   created_at?: string;
 }
@@ -104,7 +109,7 @@ export default function ManageReportsScreen() {
         )
       );
 
-      Alert.alert('Sucesso', `Denúncia atualizada para "${STATUS_OPTIONS.find(s => s.id === newStatus)?.label}"`);
+      Alert.alert('Sucesso', `Denúncia atualizada para \"${STATUS_OPTIONS.find(s => s.id === newStatus)?.label}\"`);
       setShowStatusModal(false);
       setSelectedReport(null);
     } catch (error) {
@@ -264,6 +269,18 @@ export default function ManageReportsScreen() {
                     style={styles.infoColumn}
                     contentContainerStyle={styles.infoColumnContent}
                   >
+                    <View style={styles.detailCard}>
+                      <ThemedText style={styles.detailLabel}>Denunciante</ThemedText>
+                      <ThemedText style={styles.detailValue} numberOfLines={2}>
+                        {selectedReport.reporter?.name || selectedReport.reporter?.email || 'Usuário não identificado'}
+                      </ThemedText>
+                      {selectedReport.reporter?.name && selectedReport.reporter?.email ? (
+                        <ThemedText style={styles.detailSecondary} numberOfLines={1}>
+                          {selectedReport.reporter.email}
+                        </ThemedText>
+                      ) : null}
+                    </View>
+
                     <View style={styles.infoGrid}>
                       <View style={styles.detailCard}>
                         <ThemedText style={styles.detailLabel}>Categoria</ThemedText>

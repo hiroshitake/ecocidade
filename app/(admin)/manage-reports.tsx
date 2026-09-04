@@ -16,26 +16,31 @@ import { ThemedView } from '../../components/themed-view';
 import { C } from '../../constants/theme';
 import { deleteReport, getAdminReports, updateReportStatus } from '../../services/reports';
 
-/* TODO: REQUIREMENTS GAPS
- - RF-05 Status changes currently simulated locally; implement and call `updateReportStatus(reportId, newStatus)` in `services/reports.js` to persist.
- - RNF-01 Add audit trail entry when admin changes status (write to `report_timeline`).
- - RNF-02 Add filters and search for admin list (date range, category, status).
-*/
-
 interface Report {
   id: string;
   category?: string;
   description?: string;
   status?: string;
   location?: { latitude?: number; longitude?: number; address?: string };
-  createdAt?: any;
+  created_at?: string;
 }
 
+// Valores canônicos usados no banco; os rótulos continuam em português na interface.
 const STATUS_OPTIONS = [
-  { id: 'aguardando', label: 'Aguardando', icon: 'clock-alert-outline', color: C.warning },
-  { id: 'processo', label: 'Em Processo', icon: 'progress-clock', color: C.primary },
-  { id: 'concluida', label: 'Concluída', icon: 'check-circle-outline', color: C.eco },
+  { id: 'pending', label: 'Aguardando', icon: 'clock-alert-outline', color: C.warning },
+  { id: 'in_progress', label: 'Em Processo', icon: 'progress-clock', color: C.primary },
+  { id: 'resolved', label: 'Concluída', icon: 'check-circle-outline', color: C.eco },
 ];
+
+const normalizeStatus = (status?: string) => {
+  const value = String(status || '').trim().toLowerCase();
+
+  if (['pending', 'aguardando'].includes(value)) return 'pending';
+  if (['in_progress', 'processo', 'em processo'].includes(value)) return 'in_progress';
+  if (['resolved', 'concluida', 'concluída', 'completed', 'done'].includes(value)) return 'resolved';
+
+  return 'pending';
+};
 
 export default function ManageReportsScreen() {
   const [reports, setReports] = useState<Report[]>([]);
@@ -66,8 +71,9 @@ export default function ManageReportsScreen() {
   const handleStatusChange = async (newStatus: string) => {
     if (!selectedReport) return;
 
-    if (selectedReport.status === newStatus) {
-      Alert.alert('Aten\u00e7\u00e3o', 'Esta den\u00fancia j\u00e1 est\u00e1 com o status selecionado.');
+    const currentStatus = normalizeStatus(selectedReport.status);
+    if (currentStatus === newStatus) {
+      Alert.alert('Atenção', 'Esta denúncia já está com o status selecionado.');
       return;
     }
 
@@ -113,11 +119,13 @@ export default function ManageReportsScreen() {
   };
 
   const getStatusColor = (status?: string) => {
-    return STATUS_OPTIONS.find(s => s.id === status)?.color || C.text3;
+    const normalized = normalizeStatus(status);
+    return STATUS_OPTIONS.find(s => s.id === normalized)?.color || C.text3;
   };
 
   const getStatusLabel = (status?: string) => {
-    return STATUS_OPTIONS.find(s => s.id === status)?.label || 'Desconhecido';
+    const normalized = normalizeStatus(status);
+    return STATUS_OPTIONS.find(s => s.id === normalized)?.label || 'Aguardando';
   };
 
   const formatDate = (date: any) => {
@@ -165,7 +173,7 @@ export default function ManageReportsScreen() {
       </ThemedText>
 
       <View style={styles.reportFooter}>
-        <ThemedText style={styles.reportDate}>{formatDate(item.createdAt)}</ThemedText>
+        <ThemedText style={styles.reportDate}>{formatDate(item.created_at)}</ThemedText>
         <MaterialCommunityIcons name="chevron-right" size={20} color={C.text3} />
       </View>
     </TouchableOpacity>
@@ -173,7 +181,6 @@ export default function ManageReportsScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
           <MaterialCommunityIcons name="chevron-left" size={24} color={C.primary} />
@@ -182,7 +189,6 @@ export default function ManageReportsScreen() {
         <View style={styles.headerPlaceholder} />
       </View>
 
-      {/* Lista de Denúncias */}
       <FlatList
         data={reports}
         renderItem={renderReport}
@@ -198,7 +204,6 @@ export default function ManageReportsScreen() {
         }
       />
 
-      {/* Modal de Mudança de Status */}
       <Modal visible={showStatusModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -228,7 +233,7 @@ export default function ManageReportsScreen() {
                         key={option.id}
                         style={[
                           styles.statusOption,
-                          selectedReport.status === option.id && styles.statusOptionSelected,
+                          normalizeStatus(selectedReport.status) === option.id && styles.statusOptionSelected,
                           { borderColor: option.color },
                         ]}
                         onPress={() => handleStatusChange(option.id)}

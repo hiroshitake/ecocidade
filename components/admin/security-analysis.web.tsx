@@ -8,7 +8,7 @@ import MapComponent from '../map.web';
 import { ThemedText } from '../themed-text';
 import { ThemedView } from '../themed-view';
 
-const SECURITY_CATEGORIES = ['vazamento', 'poste', 'lixo', 'sinalizacao', 'calcada'];
+const SECURITY_CATEGORIES = ['seguranca'];
 const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
 export default function SecurityAnalysisWeb() {

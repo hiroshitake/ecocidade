@@ -3,7 +3,8 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { C } from '../../constants/theme';
-import { getAllReports } from '../../services/reports';
+import { resolveUserLocationWithFallback } from '../../services/auth';
+import { getAdminReports } from '../../services/reports';
 import MapComponent from '../map.native';
 import { ThemedText } from '../themed-text';
 import { ThemedView } from '../themed-view';
@@ -13,8 +14,11 @@ const WEEKDAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 const startOfWeek = (date: Date) => { const d = new Date(date); d.setHours(0, 0, 0, 0); const day = d.getDay(); d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day)); return d; };
 
 export default function SecurityAnalysisNative() {
-  const router = useRouter(); const [reports, setReports] = useState<any[]>([]);
-  useEffect(() => { getAllReports().then(all => setReports((all || []).filter((r: any) => String(r.category || '').toLowerCase() === SECURITY_CATEGORY))).catch(console.error); }, []);
+  const router = useRouter(); const [reports, setReports] = useState<any[]>([]); const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  useEffect(() => {
+    getAdminReports().then(all => setReports((all || []).filter((r: any) => String(r.category || '').toLowerCase() === SECURITY_CATEGORY))).catch(console.error);
+    resolveUserLocationWithFallback().then(resolved => setUserLocation(resolved.location)).catch(console.error);
+  }, []);
 
   const weekly = useMemo(() => {
     const start = startOfWeek(new Date()); const counts = WEEKDAYS.map(day => ({ day, count: 0 }));
@@ -28,7 +32,7 @@ export default function SecurityAnalysisNative() {
     <View style={styles.header}><TouchableOpacity onPress={() => router.back()}><MaterialCommunityIcons name="chevron-left" size={24} color={C.primary} /></TouchableOpacity><ThemedText style={styles.title}>Análise de Segurança</ThemedText><View style={{ width: 24 }} /></View>
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.metric}><MaterialCommunityIcons name="shield-alert" size={34} color={C.danger} /><View><ThemedText style={styles.metricValue}>{reports.length}</ThemedText><ThemedText style={styles.metricLabel}>denúncias de segurança</ThemedText></View></View>
-      <View style={styles.card}><View style={styles.sectionHead}><ThemedText style={styles.sectionTitle}>Mapa de ocorrências</ThemedText><ThemedText style={styles.sectionHint}>Somente segurança</ThemedText></View><View style={styles.map}><MapComponent reports={reports} /></View></View>
+      <View style={styles.card}><View style={styles.sectionHead}><ThemedText style={styles.sectionTitle}>Mapa de ocorrências</ThemedText><ThemedText style={styles.sectionHint}>Somente segurança</ThemedText></View><View style={styles.map}><MapComponent reports={reports} userLocation={userLocation} /></View></View>
       <View style={styles.card}><ThemedText style={styles.sectionTitle}>Denúncias nesta semana</ThemedText><ThemedText style={styles.sectionHint}>{weekTotal} ocorrência(s) de segunda a domingo</ThemedText><View style={styles.chart}>{weekly.map(item => <View key={item.day} style={styles.barColumn}><ThemedText style={styles.barValue}>{item.count}</ThemedText><View style={[styles.bar, { height: Math.max(8, item.count / max * 110) }]} /><ThemedText style={styles.day}>{item.day}</ThemedText></View>)}</View></View>
       <View style={styles.card}><ThemedText style={styles.sectionTitle}>Áreas com mais denúncias</ThemedText>{areas.length === 0 ? <ThemedText style={styles.empty}>Nenhuma ocorrência registrada.</ThemedText> : areas.map((area, index) => <View key={area.name} style={styles.area}><View style={styles.rank}><ThemedText style={styles.rankText}>{index + 1}</ThemedText></View><View style={{ flex: 1 }}><ThemedText style={styles.areaName}>{area.name}</ThemedText><ThemedText style={styles.areaCount}>{area.count} denúncia(s)</ThemedText></View></View>)}</View>
     </ScrollView>

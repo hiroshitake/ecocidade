@@ -8,13 +8,16 @@ import {
   signUpWithSupabase,
   supabase,
   updateSupabaseProfile,
+  uploadSupabaseAvatar,
+  createSupabaseAvatarUrl,
+  deleteSupabaseAccount,
 } from "./supabase";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
 const AUTH_TOKEN_KEY = "ecocidade.token";
 const AUTH_USER_KEY = "ecocidade.user";
 
-interface AuthUser { id:string; email:string; name:string; role:string; city?:string; birthdate?:string; }
+interface AuthUser { id:string; email:string; name:string; role:string; city?:string; birthdate?:string; avatar_path?:string | null; }
 interface AuthResponse { id:string; email:string; name:string; role:string; token:string; }
 function getBaseUrl(){ return API_URL; }
 async function request<T>(path:string, init:RequestInit={}, auth=true):Promise<T>{
@@ -39,7 +42,36 @@ export async function getCurrentUserData():Promise<AuthUser|null>{
  const storedUser=await AsyncStorage.getItem(AUTH_USER_KEY);if(!storedUser)return null;try{return JSON.parse(storedUser) as AuthUser;}catch{return null;}
 }
 export async function updateUserProfile(userId:string,updates:Partial<AuthUser>){
- if(isSupabaseConfigured()){const data=await updateSupabaseProfile(userId,updates);const currentUser=await getCurrentUserData();if(currentUser?.id===userId)await AsyncStorage.setItem(AUTH_USER_KEY,JSON.stringify({...currentUser,...data,...updates}));return data;} throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
+ if(isSupabaseConfigured()){const allowedUpdates:Record<string, unknown>={};if(typeof updates.name==="string")allowedUpdates.name=updates.name;if("avatar_path" in updates)allowedUpdates.avatar_path=updates.avatar_path ?? null;const data=await updateSupabaseProfile(userId,allowedUpdates);const currentUser=await getCurrentUserData();if(currentUser?.id===userId)await AsyncStorage.setItem(AUTH_USER_KEY,JSON.stringify({...currentUser,...data}));return data;} throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
+}
+export async function uploadUserAvatar(imageUri:string,userId:string){
+ if(!isSupabaseConfigured())throw new Error("Supabase não configurado.");
+ return uploadSupabaseAvatar(imageUri,userId);
+}
+export async function getCurrentUserAvatarUrl(path?:string|null){
+ if(!isSupabaseConfigured())return null;
+ const user=await getCurrentUserData();
+ const avatarPath=path ?? user?.avatar_path;
+ if(!avatarPath)return null;
+ try{return await createSupabaseAvatarUrl(avatarPath);}catch{return null;}
+}
+export async function changeUserPassword(currentPassword:string,newPassword:string){
+ if(!supabase)throw new Error("Supabase não configurado.");
+ const {data:{user}}=await supabase.auth.getUser();
+ if(!user?.email)throw new Error("Sessão inválida. Faça login novamente.");
+ const {error:reauthError}=await supabase.auth.signInWithPassword({email:user.email,password:currentPassword});
+ if(reauthError)throw new Error("A senha atual está incorreta.");
+ const {error}=await supabase.auth.updateUser({password:newPassword});
+ if(error)throw error;
+}
+export async function deleteUserAccount(){
+ if(!supabase)throw new Error("Supabase não configurado.");
+ const {data:{session}}=await supabase.auth.getSession();
+ if(!session?.access_token)throw new Error("Sessão inválida. Faça login novamente.");
+ const {data,error}=await deleteSupabaseAccount();
+ if(error)throw error;
+ await AsyncStorage.removeItem(AUTH_TOKEN_KEY);await AsyncStorage.removeItem(AUTH_USER_KEY);await supabase.auth.signOut();
+ return data;
 }
 export async function getUserCityCenterFallback():Promise<{latitude:number;longitude:number}|null>{
  const user=await getCurrentUserData();const cityName=user?.city?.trim();if(!cityName||!supabase)return null;

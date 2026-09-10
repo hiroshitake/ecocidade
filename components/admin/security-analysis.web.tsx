@@ -3,7 +3,8 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { C } from '../../constants/theme';
-import { getAllReports } from '../../services/reports';
+import { resolveUserLocationWithFallback } from '../../services/auth';
+import { getAdminReports } from '../../services/reports';
 import MapComponent from '../map.web';
 import { ThemedText } from '../themed-text';
 import { ThemedView } from '../themed-view';
@@ -23,9 +24,16 @@ const startOfWeek = (date: Date) => {
 export default function SecurityAnalysisWeb() {
   const router = useRouter();
   const [reports, setReports] = useState<any[]>([]);
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
   useEffect(() => {
-    getAllReports().then(all => setReports((all || []).filter((r: any) => String(r.category || '').toLowerCase() === SECURITY_CATEGORY))).catch(console.error);
+    getAdminReports()
+      .then(all => setReports((all || []).filter((r: any) => String(r.category || '').toLowerCase() === SECURITY_CATEGORY)))
+      .catch(console.error);
+
+    resolveUserLocationWithFallback()
+      .then(resolved => setUserLocation(resolved.location))
+      .catch(console.error);
   }, []);
 
   const weekly = useMemo(() => {
@@ -34,7 +42,8 @@ export default function SecurityAnalysisWeb() {
     reports.forEach(report => {
       if (!report.created_at) return;
       const date = new Date(report.created_at);
-      const diff = Math.floor((new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() - start.getTime()) / 86400000);
+      const current = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+      const diff = Math.floor((current - start.getTime()) / 86400000);
       if (diff >= 0 && diff < 7) counts[diff].count++;
     });
     return counts;
@@ -64,7 +73,7 @@ export default function SecurityAnalysisWeb() {
 
         <View style={styles.card}>
           <View style={styles.sectionHead}><ThemedText style={styles.sectionTitle}>Mapa de ocorrências</ThemedText><ThemedText style={styles.sectionHint}>Somente segurança</ThemedText></View>
-          <View style={styles.map}><MapComponent reports={reports} /></View>
+          <View style={styles.map}><MapComponent reports={reports} userLocation={userLocation} /></View>
         </View>
 
         <View style={styles.card}>

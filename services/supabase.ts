@@ -159,6 +159,8 @@ export async function getSupabaseSessionUser() {
     role: profile?.role || "user",
     city: typeof profile?.city === "string" ? profile.city : undefined,
     city_id: typeof profile?.city_id === "string" ? profile.city_id : undefined,
+    avatar_path:
+      typeof profile?.avatar_path === "string" ? profile.avatar_path : null,
   };
 }
 
@@ -170,20 +172,89 @@ export async function updateSupabaseProfile(
     throw new Error("Supabase não configurado.");
   }
 
-  const nextUpdates: Record<string, unknown> = { ...updates };
-  if (typeof nextUpdates.city === "string" && nextUpdates.city.trim()) {
-    const cityId = await getCityIdByName(nextUpdates.city);
-    nextUpdates.city_id = cityId ?? null;
-  }
-
   const { data, error } = await supabase
     .from("profiles")
-    .upsert({ id: userId, ...nextUpdates })
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq("id", userId)
     .select()
     .single();
   if (error) throw error;
 
   return data;
+}
+
+async function uploadReportPhoto(imageUri: string, userId: string) {
+  if (!supabase) {
+    throw new Error("Supabase não configurado.");
+  }
+
+  const response = await fetch(imageUri);
+  if (!response.ok) {
+    throw new Error("Não foi possível ler a foto selecionada.");
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+  const mimeType = response.headers.get("content-type") || "image/jpeg";
+  const extension = mimeType.split("/")[1]?.split(";")[0] || "jpeg";
+  const safeExtension = extension === "jpg" ? "jpg" : extension;
+  const filePath = `${userId}/${crypto.randomUUID()}.${safeExtension}`;
+
+  const { data, error } = await supabase.storage
+    .from("reports")
+    .upload(filePath, arrayBuffer, {
+      contentType: mimeType,
+      cacheControl: "3600",
+      upsert: false,
+    });
+
+  if (error) throw error;
+  return data.path;
+}
+
+export async function uploadSupabaseAvatar(imageUri: string, userId: string) {
+  if (!supabase) throw new Error("Supabase não configurado.");
+
+  const response = await fetch(imageUri);
+  if (!response.ok) throw new Error("Não foi possível ler a foto selecionada.");
+
+  const arrayBuffer = await response.arrayBuffer();
+  const mimeType = response.headers.get("content-type") || "image/jpeg";
+  const extension = mimeType.split("/")[1]?.split(";")[0] || "jpeg";
+  const safeExtension = extension === "jpg" ? "jpg" : extension;
+  const filePath = `${userId}/${crypto.randomUUID()}.${safeExtension}`;
+
+  const { data, error } = await supabase.storage.from("avatars").upload(
+    filePath,
+    arrayBuffer,
+    { contentType: mimeType, cacheControl: "3600", upsert: false },
+  );
+  if (error) throw error;
+  return data.path;
+}
+
+export async function createSupabaseAvatarUrl(path: string) {
+  if (!supabase) throw new Error("Supabase não configurado.");
+  const { data, error } = await supabase.storage
+    .from("avatars")
+    .createSignedUrl(path, 60 * 60);
+  if (error) throw error;
+  return data.signedUrl;
+}
+
+export async function deleteSupabaseAvatar(path: string) {
+  if (!supabase) throw new Error("Supabase não configurado.");
+  const { error } = await supabase.storage.from("avatars").remove([path]);
+  if (error) throw error;
+  return { path };
+}
+
+export async function deleteSupabaseAccount() {
+  if (!supabase) throw new Error("Supabase não configurado.");
+  const { data, error } = await supabase.functions.invoke("delete-account", {
+    body: {},
+  });
+  if (error) throw error;
+  return { data, error: null };
 }
 
 export async function createSupabaseReport(payload: Record<string, unknown>) {
@@ -235,7 +306,9 @@ export async function createSupabaseReport(payload: Record<string, unknown>) {
       .maybeSingle();
 
     if (profileError) {
-      throw new Error(`Não foi possível validar a cidade do usuário: ${profileError.message}`);
+      throw new Error(
+        `Não foi possível validar a cidade do usuário: ${profileError.message}`,
+      );
     }
 
     city = typeof profile?.city === "string" ? profile.city : city;
@@ -247,7 +320,9 @@ export async function createSupabaseReport(payload: Record<string, unknown>) {
   }
 
   if (!cityId) {
-    throw new Error("Usuário sem cidade cadastrada. Não é possível validar a localização.");
+    throw new Error(
+      "Usuário sem cidade cadastrada. Não é possível validar a localização.",
+    );
   }
 
   const { data: cityRec, error: cityErr } = await supabase
@@ -257,11 +332,15 @@ export async function createSupabaseReport(payload: Record<string, unknown>) {
     .maybeSingle();
 
   if (cityErr) {
-    throw new Error(`Não foi possível validar a área da cidade: ${cityErr.message}`);
+    throw new Error(
+      `Não foi possível validar a área da cidade: ${cityErr.message}`,
+    );
   }
 
   if (!cityRec) {
-    throw new Error("Cidade do usuário não encontrada. Não é possível validar a localização.");
+    throw new Error(
+      "Cidade do usuário não encontrada. Não é possível validar a localização.",
+    );
   }
 
   const cityLatitude = Number(cityRec.latitude);
@@ -311,32 +390,51 @@ export async function createSupabaseReport(payload: Record<string, unknown>) {
     throw new Error("Denúncia fora da área permitida da cidade.");
   }
 
-  console.log("[REPORT DEBUG] passou pela validação; executando INSERT em reports");
+  let uploadedPhotoPath: string | null = null;
 
-  const { data, error } = await supabase
-    .from("reports")
-    .insert({
-      user_id: userId,
-      title: payload.title,
-      description: payload.description,
-      latitude,
-      longitude,
-      category: payload.category,
-      severity: payload.severity || "medium",
-      status: payload.status || "pending",
-      city: cityRec.name,
-      city_id: cityId,
-    })
-    .select()
-    .single();
+  try {
+    if (typeof payload.imageUri === "string" && payload.imageUri.trim()) {
+      uploadedPhotoPath = await uploadReportPhoto(payload.imageUri, userId);
+    }
 
-  if (error) {
-    console.error("[REPORT DEBUG] erro no INSERT de reports:", error);
+    console.log(
+      "[REPORT DEBUG] passou pela validação; executando INSERT em reports",
+    );
+
+    const { data, error } = await supabase
+      .from("reports")
+      .insert({
+        user_id: userId,
+        title: payload.title,
+        description: payload.description,
+        latitude,
+        longitude,
+        category: payload.category,
+        severity: payload.severity || "medium",
+        status: payload.status || "pending",
+        city: cityRec.name,
+        city_id: cityId,
+        image_url: uploadedPhotoPath,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      if (uploadedPhotoPath) {
+        await supabase.storage.from("reports").remove([uploadedPhotoPath]);
+      }
+      console.error("[REPORT DEBUG] erro no INSERT de reports:", error);
+      throw error;
+    }
+
+    console.log("[REPORT DEBUG] INSERT realizado com sucesso:", data);
+    return data;
+  } catch (error) {
+    if (uploadedPhotoPath) {
+      await supabase.storage.from("reports").remove([uploadedPhotoPath]);
+    }
     throw error;
   }
-
-  console.log("[REPORT DEBUG] INSERT realizado com sucesso:", data);
-  return data;
 }
 
 export async function listSupabaseReports() {
@@ -350,6 +448,19 @@ export async function listSupabaseReports() {
     .order("created_at", { ascending: false });
   if (error) throw error;
   return data || [];
+}
+
+export async function createReportImageUrl(path: string) {
+  if (!supabase) {
+    throw new Error("Supabase não configurado.");
+  }
+
+  const { data, error } = await supabase.storage
+    .from("reports")
+    .createSignedUrl(path, 60 * 60);
+
+  if (error) throw error;
+  return data.signedUrl;
 }
 
 export async function updateSupabaseReportStatus(

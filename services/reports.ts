@@ -106,11 +106,41 @@ export async function getMyReports() {
 
 export async function getPublicReports() {
   if (isSupabaseConfigured()) {
-    const reports = await listSupabaseReports();
-    return (reports || []).filter((report: any) => {
+    const reports = (await listSupabaseReports()).filter((report: any) => {
       const category = String(report?.category || "").toLowerCase();
       return category !== "seguranca";
     });
+
+    const userIds = Array.from(
+      new Set(
+        reports
+          .map((report: any) => report?.user_id)
+          .filter((id: unknown): id is string => typeof id === "string" && id.length > 0),
+      ),
+    );
+
+    if (!supabase || userIds.length === 0) {
+      return reports;
+    }
+
+    const { data: profiles, error } = await supabase
+      .from("profiles")
+      .select("id, name, avatar_path")
+      .in("id", userIds);
+
+    if (error) {
+      console.warn("Não foi possível carregar os perfis dos denunciantes:", error.message);
+      return reports;
+    }
+
+    const profilesById = new Map(
+      (profiles || []).map((profile: any) => [profile.id, profile]),
+    );
+
+    return reports.map((report: any) => ({
+      ...report,
+      reporter: report.user_id ? profilesById.get(report.user_id) || null : null,
+    }));
   }
 
   throw new Error(
@@ -145,7 +175,7 @@ export async function getAdminReports() {
 
     const { data: profiles, error } = await supabase
       .from("profiles")
-      .select("id, name, email")
+      .select("id, name, email, avatar_path")
       .in("id", userIds);
 
     if (error) {

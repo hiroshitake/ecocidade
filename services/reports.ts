@@ -4,12 +4,12 @@ import {
   createSupabaseDangerZone,
   createSupabaseReport,
   deleteSupabaseDangerZone,
-  deleteSupabaseReport,
   isSupabaseConfigured,
   listSupabaseDangerZones,
   listSupabaseReports,
-  updateSupabaseReportStatus,
+  supabase,
 } from "./supabase";
+import { setSupabaseReportPublicVisibility } from "./report-visibility";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
 const AUTH_TOKEN_KEY = "ecocidade.token";
@@ -18,11 +18,7 @@ function getBaseUrl() {
   return API_URL;
 }
 
-async function request<T>(
-  path: string,
-  init: RequestInit = {},
-  auth = true,
-): Promise<T> {
+async function request<T>(path: string, init: RequestInit = {}, auth = true): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(init.headers as Record<string, string> | undefined),
@@ -30,25 +26,15 @@ async function request<T>(
 
   if (auth) {
     const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
+    if (token) headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${getBaseUrl()}${path}`, {
-    ...init,
-    headers,
-  });
-
+  const response = await fetch(`${getBaseUrl()}${path}`, { ...init, headers });
   const contentType = response.headers.get("content-type") || "";
-  const body = contentType.includes("application/json")
-    ? await response.json()
-    : await response.text();
+  const body = contentType.includes("application/json") ? await response.json() : await response.text();
 
   if (!response.ok) {
-    throw new Error(
-      typeof body === "string" ? body : body?.error || "Falha na requisição",
-    );
+    throw new Error(typeof body === "string" ? body : body?.error || "Falha na requisição");
   }
 
   return body as T;
@@ -68,120 +54,145 @@ export async function createReport(_userId: string | undefined, payload: any) {
       severity: "medium",
       status: "pending",
       city,
+      imageUri: payload?.imageUri,
     });
   }
 
-  throw new Error(
-    "Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.",
-  );
+  throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
 }
 
 export async function getMyReports() {
   if (isSupabaseConfigured()) {
     const user = await getCurrentUserData();
     const reports = await listSupabaseReports();
-
-    if (!user?.id) {
-      return [];
-    }
+    if (!user?.id) return [];
 
     return (reports || [])
-      .filter((report: any) => {
-        const userId = String(report?.user_id || "");
-        return userId === String(user.id);
-      })
-      .sort((a: any, b: any) => {
-        const aTime = new Date(a?.created_at || 0).getTime();
-        const bTime = new Date(b?.created_at || 0).getTime();
-        return bTime - aTime;
-      });
+      .filter((report: any) => String(report?.user_id || "") === String(user.id))
+      .sort((a: any, b: any) => new Date(b?.created_at || 0).getTime() - new Date(a?.created_at || 0).getTime());
   }
 
-  throw new Error(
-    "Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.",
-  );
+  throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
 }
 
 export async function getPublicReports() {
   if (isSupabaseConfigured()) {
-    const reports = await listSupabaseReports();
-    return (reports || []).filter((report: any) => {
+    const reports = (await listSupabaseReports()).filter((report: any) => {
       const category = String(report?.category || "").toLowerCase();
       return category !== "seguranca";
     });
+
+    const userIds = Array.from(
+      new Set(
+        reports
+          .map((report: any) => report?.user_id)
+          .filter((id: unknown): id is string => typeof id === "string" && id.length > 0),
+      ),
+    );
+
+    if (!supabase || userIds.length === 0) return reports;
+
+    const { data: profiles, error } = await supabase.rpc("get_public_reporters", {
+      user_ids: userIds,
+    });
+
+    if (error) {
+      console.warn("Não foi possível carregar os perfis públicos dos denunciantes:", error.message);
+      return reports;
+    }
+
+    const profilesById = new Map((profiles || []).map((profile: any) => [profile.id, profile]));
+    return reports.map((report: any) => ({
+      ...report,
+      reporter: report.user_id ? profilesById.get(report.user_id) || null : null,
+    }));
   }
 
-  throw new Error(
-    "Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.",
-  );
+  throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
 }
 
 export async function getAllReports() {
-  if (isSupabaseConfigured()) {
-    return listSupabaseReports();
-  }
-
-  throw new Error(
-    "Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.",
-  );
+  if (isSupabaseConfigured()) return listSupabaseReports();
+  throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
 }
 
 export async function getAdminReports() {
   if (isSupabaseConfigured()) {
-    return listSupabaseReports();
+    const reports = await listSupabaseReports();
+    const userIds = Array.from(
+      new Set(
+        (reports || [])
+          .map((report: any) => report?.user_id)
+          .filter((id: unknown): id is string => typeof id === "string" && id.length > 0),
+      ),
+    );
+
+    if (!supabase || userIds.length === 0) return reports;
+
+    const { data: profiles, error } = await supabase
+      .from("profiles")
+      .select("id, name, email, avatar_path")
+      .in("id", userIds);
+
+    if (error) {
+      console.warn("Não foi possível carregar os dados dos denunciantes:", error.message);
+      return reports;
+    }
+
+    const profilesById = new Map((profiles || []).map((profile: any) => [profile.id, profile]));
+    return (reports || []).map((report: any) => ({
+      ...report,
+      reporter: report.user_id ? profilesById.get(report.user_id) || null : null,
+    }));
   }
 
-  throw new Error(
-    "Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.",
-  );
+  throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
 }
 
 export async function updateReportStatus(reportId: string, status: string) {
-  if (isSupabaseConfigured()) {
-    return updateSupabaseReportStatus(reportId, status);
+  if (!isSupabaseConfigured() || !supabase) {
+    throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
   }
 
-  throw new Error(
-    "Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.",
-  );
+  const { data, error } = await supabase.rpc("admin_update_report_status", {
+    p_report_id: reportId,
+    p_status: status,
+  });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function setReportPublicVisibility(reportId: string, hidden: boolean) {
+  if (isSupabaseConfigured()) return setSupabaseReportPublicVisibility(reportId, hidden);
+  throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
 }
 
 export async function deleteReport(reportId: string) {
-  if (isSupabaseConfigured()) {
-    return deleteSupabaseReport(reportId);
+  if (!isSupabaseConfigured() || !supabase) {
+    throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
   }
 
-  throw new Error(
-    "Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.",
-  );
+  const { data, error } = await supabase.rpc("admin_delete_report", {
+    p_report_id: reportId,
+  });
+
+  if (error) throw error;
+  if (!data) throw new Error("A denúncia não foi excluída.");
+  return { id: data };
 }
 
 export async function createDangerZone(payload: any) {
-  if (isSupabaseConfigured()) {
-    return createSupabaseDangerZone(payload);
-  }
-
-  throw new Error(
-    "Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.",
-  );
+  if (isSupabaseConfigured()) return createSupabaseDangerZone(payload);
+  throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
 }
 
 export async function getDangerZones() {
-  if (isSupabaseConfigured()) {
-    return listSupabaseDangerZones();
-  }
-
-  throw new Error(
-    "Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.",
-  );
+  if (isSupabaseConfigured()) return listSupabaseDangerZones();
+  throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
 }
 
 export async function deleteDangerZone(id: string) {
-  if (isSupabaseConfigured()) {
-    return deleteSupabaseDangerZone(id);
-  }
-
-  throw new Error(
-    "Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.",
-  );
+  if (isSupabaseConfigured()) return deleteSupabaseDangerZone(id);
+  throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
 }

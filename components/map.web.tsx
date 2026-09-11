@@ -2,17 +2,9 @@
 
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { StyleSheet as RNStyleSheet } from "react-native";
+import ReportMapModal, { MapReport } from "./report-map-modal";
 
-interface Report {
-  id: string;
-  category?: string;
-  description?: string;
-  location?: {
-    latitude?: number;
-    longitude?: number;
-    address?: string;
-  };
-}
+interface Report extends MapReport {}
 
 interface Zone {
   id: string;
@@ -30,10 +22,7 @@ interface MapComponentProps {
   userLocation?: { latitude: number; longitude: number } | null;
   selectedLocation?: { latitude: number; longitude: number } | null;
   selectLocation?: boolean;
-  onSelectLocation?: (location: {
-    latitude: number;
-    longitude: number;
-  }) => void;
+  onSelectLocation?: (location: { latitude: number; longitude: number }) => void;
   onSelectReport?: (report: Report) => void;
   onZoneClick?: (zone: Zone) => void;
 }
@@ -54,19 +43,12 @@ export default function MapComponent({
   const markerLayerRef = useRef<any>(null);
   const zoneLayerRef = useRef<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const userMarkerRef = useRef<any>(null);
   const selectedMarkerRef = useRef<any>(null);
   const hasSetInitialViewRef = useRef(false);
-  const previousCenteredLocationRef = useRef<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
+  const previousCenteredLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
   const onSelectLocationRef = useRef(onSelectLocation);
-  const onSelectReportRef = useRef(onSelectReport);
-
-  useEffect(() => {
-    onSelectReportRef.current = onSelectReport;
-  }, [onSelectReport]);
 
   useEffect(() => {
     onSelectLocationRef.current = onSelectLocation;
@@ -81,10 +63,8 @@ export default function MapComponent({
         require("leaflet/dist/leaflet.css");
 
         const DefaultIcon = L.icon({
-          iconUrl:
-            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-          shadowUrl:
-            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+          iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+          shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
           iconSize: [25, 41],
           iconAnchor: [12, 41],
         });
@@ -132,16 +112,9 @@ export default function MapComponent({
               z-index: 10;
             }
             @keyframes ecocidade-pulse {
-              0% {
-                transform: translate(-50%, -50%) scale(1);
-                opacity: 1;
-              }
-              100% {
-                transform: translate(-50%, -50%) scale(2.2);
-                opacity: 0;
-              }
+              0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+              100% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; }
             }
-            
             .ecocidade-selected-marker {
               width: 32px;
               height: 40px;
@@ -162,20 +135,6 @@ export default function MapComponent({
               background: white;
               border-radius: 50%;
               transform: rotate(45deg);
-            }
-
-            .leaflet-popup-content-wrapper {
-              background: #ffffff !important;
-              border-radius: 12px !important;
-              border: none !important;
-              box-shadow: 0 8px 24px rgba(13, 27, 54, 0.15) !important;
-            }
-            .leaflet-popup-content {
-              margin: 0 !important;
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
-            }
-            .leaflet-popup-tip {
-              background: #ffffff !important;
             }
           `;
           document.head.appendChild(style);
@@ -200,10 +159,7 @@ export default function MapComponent({
 
           map.on("click", (e: any) => {
             if (selectLocation && onSelectLocationRef.current) {
-              onSelectLocationRef.current({
-                latitude: e.latlng.lat,
-                longitude: e.latlng.lng,
-              });
+              onSelectLocationRef.current({ latitude: e.latlng.lat, longitude: e.latlng.lng });
             }
           });
 
@@ -235,93 +191,46 @@ export default function MapComponent({
     if (!L) return;
 
     markerLayerRef.current.clearLayers();
-    if (zoneLayerRef.current) {
-      zoneLayerRef.current.clearLayers();
-    }
+    if (zoneLayerRef.current) zoneLayerRef.current.clearLayers();
 
     const validReports = reports.filter(
-      (report) =>
-        report.location?.latitude != null && report.location?.longitude != null,
+      (report) => report.location?.latitude != null && report.location?.longitude != null,
     );
 
     validReports.forEach((report) => {
-      const popupContent = `
-        <div style="max-width:280px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 4px;">
-          <strong style="display:block; margin-bottom:8px; color: #0d1b36; font-size: 14px;">${report.category || "Denúncia"}</strong>
-          <div style="margin-bottom:8px; color: #4a5568; font-size: 13px; line-height: 1.4;">${report.description || "Sem descrição"}</div>
-          ${report.location?.address ? `<small style="color:#8897b0; font-size: 12px;">${report.location.address}</small>` : ""}
-        </div>
-      `;
-
       const marker = L.marker(
         [report.location!.latitude!, report.location!.longitude!],
-        {
-          interactive: true,
-        },
-      )
-        .bindPopup(popupContent, {
-          maxWidth: 300,
-          closeButton: true,
-          closeOnClick: false,
-          autoClose: false,
-        })
-        .addTo(markerLayerRef.current);
+        { interactive: true },
+      ).addTo(markerLayerRef.current);
 
       marker.on("click", () => {
-        marker.openPopup();
-        onSelectReportRef.current?.(report);
+        setSelectedReport(report);
+        onSelectReport?.(report);
       });
     });
 
     if (userLocation) {
-      if (userMarkerRef.current) {
-        userMarkerRef.current.remove();
-      }
-      const pulseIcon = L.divIcon({
-        className: "ecocidade-pulse",
-        iconSize: [18, 18],
-        iconAnchor: [9, 9],
-      });
+      if (userMarkerRef.current) userMarkerRef.current.remove();
+      const pulseIcon = L.divIcon({ className: "ecocidade-pulse", iconSize: [18, 18], iconAnchor: [9, 9] });
       userMarkerRef.current = L.marker(
         [userLocation.latitude, userLocation.longitude],
-        {
-          icon: pulseIcon,
-          interactive: false,
-        },
-      )
-        .bindPopup("<strong>Você está aqui</strong>")
-        .addTo(markerLayerRef.current);
+        { icon: pulseIcon, interactive: false },
+      ).bindPopup("<strong>Você está aqui</strong>").addTo(markerLayerRef.current);
     }
 
     if (selectedLocation) {
-      if (selectedMarkerRef.current) {
-        selectedMarkerRef.current.remove();
-      }
-      const selectedIcon = L.divIcon({
-        className: "ecocidade-selected-marker",
-        iconSize: [32, 40],
-        iconAnchor: [16, 40],
-      });
+      if (selectedMarkerRef.current) selectedMarkerRef.current.remove();
+      const selectedIcon = L.divIcon({ className: "ecocidade-selected-marker", iconSize: [32, 40], iconAnchor: [16, 40] });
       selectedMarkerRef.current = L.marker(
         [selectedLocation.latitude, selectedLocation.longitude],
-        {
-          icon: selectedIcon,
-          interactive: false,
-        },
-      )
-        .bindPopup('<strong style="color: #0d1b36;">Local selecionado</strong>')
-        .addTo(markerLayerRef.current);
+        { icon: selectedIcon, interactive: false },
+      ).bindPopup('<strong style="color: #0d1b36;">Local selecionado</strong>').addTo(markerLayerRef.current);
     }
 
     if (zones && zoneLayerRef.current) {
       zones.forEach((zone) => {
         const severity = zone.severity || "baixa";
-        const color =
-          severity === "alta"
-            ? "#d92020"
-            : severity === "media"
-              ? "#d97706"
-              : "#1fa660";
+        const color = severity === "alta" ? "#d92020" : severity === "media" ? "#d97706" : "#1fa660";
         const circle = L.circle([zone.latitude, zone.longitude], {
           radius: zone.radius,
           color,
@@ -329,7 +238,6 @@ export default function MapComponent({
           fillOpacity: 0.16,
           weight: 2,
         }).addTo(zoneLayerRef.current);
-
         circle.bindPopup(`<strong>${zone.name || "Zona de perigo"}</strong>`);
         circle.on("click", () => onZoneClick?.(zone));
       });
@@ -339,13 +247,10 @@ export default function MapComponent({
     if (!map) return;
 
     const centerTarget = selectedLocation || userLocation;
-    const locationChanged =
-      centerTarget &&
+    const locationChanged = centerTarget &&
       (!previousCenteredLocationRef.current ||
-        centerTarget.latitude !==
-          previousCenteredLocationRef.current.latitude ||
-        centerTarget.longitude !==
-          previousCenteredLocationRef.current.longitude);
+        centerTarget.latitude !== previousCenteredLocationRef.current.latitude ||
+        centerTarget.longitude !== previousCenteredLocationRef.current.longitude);
 
     if (!hasSetInitialViewRef.current) {
       if (centerTarget) {
@@ -355,38 +260,35 @@ export default function MapComponent({
         map.setView([first.latitude, first.longitude], 13);
       } else if (validReports.length > 0) {
         const first = validReports[0];
-        map.setView(
-          [first.location!.latitude!, first.location!.longitude!],
-          13,
-        );
+        map.setView([first.location!.latitude!, first.location!.longitude!], 13);
       }
       hasSetInitialViewRef.current = true;
     } else if (locationChanged && centerTarget) {
-      map.setView(
-        [centerTarget.latitude, centerTarget.longitude],
-        map.getZoom ? map.getZoom() : 13,
-      );
+      map.setView([centerTarget.latitude, centerTarget.longitude], map.getZoom ? map.getZoom() : 13);
     }
 
     previousCenteredLocationRef.current = centerTarget || null;
-  }, [reports, userLocation, selectedLocation, zones, onZoneClick]);
+  }, [reports, userLocation, selectedLocation, zones, onSelectReport, onZoneClick]);
 
   return (
-    <div
-      ref={mapRef}
-      style={{
-        width: "100%",
-        height: "100%",
-        minHeight: "400px",
-        background: isLoading ? "#e0e0e0" : "transparent",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        touchAction: "auto",
-        ...((style as any) ? RNStyleSheet.flatten(style as any) : {}),
-      }}
-    >
-      {isLoading && <div>Carregando mapa...</div>}
-    </div>
+    <>
+      <div
+        ref={mapRef}
+        style={{
+          width: "100%",
+          height: "100%",
+          minHeight: "400px",
+          background: isLoading ? "#e0e0e0" : "transparent",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          touchAction: "auto",
+          ...((style as any) ? RNStyleSheet.flatten(style as any) : {}),
+        }}
+      >
+        {isLoading && <div>Carregando mapa...</div>}
+      </div>
+      <ReportMapModal report={selectedReport} onClose={() => setSelectedReport(null)} />
+    </>
   );
 }

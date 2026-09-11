@@ -36,6 +36,16 @@ export default function SecurityAnalysisWeb() {
       .catch(console.error);
   }, []);
 
+  const mapReports = useMemo(() => reports.map((report: any) => ({
+    ...report,
+    location: {
+      ...(report.location || {}),
+      latitude: Number(report.location?.latitude ?? report.latitude),
+      longitude: Number(report.location?.longitude ?? report.longitude),
+      address: report.location?.address || report.city || undefined,
+    },
+  })).filter((report: any) => Number.isFinite(report.location.latitude) && Number.isFinite(report.location.longitude)), [reports]);
+
   const weekly = useMemo(() => {
     const start = startOfWeek(new Date());
     const counts = WEEKDAYS.map(day => ({ day, count: 0 }));
@@ -52,7 +62,7 @@ export default function SecurityAnalysisWeb() {
   const areas = useMemo(() => {
     const map: Record<string, number> = {};
     reports.forEach(report => {
-      const name = report.location?.address?.split(',')[0] || 'Localização desconhecida';
+      const name = report.location?.address?.split(',')[0] || report.city || 'Localização desconhecida';
       map[name] = (map[name] || 0) + 1;
     });
     return Object.entries(map).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count).slice(0, 5);
@@ -73,7 +83,7 @@ export default function SecurityAnalysisWeb() {
 
         <View style={styles.card}>
           <View style={styles.sectionHead}><ThemedText style={styles.sectionTitle}>Mapa de ocorrências</ThemedText><ThemedText style={styles.sectionHint}>Somente segurança</ThemedText></View>
-          <View style={styles.map}><MapComponent reports={reports} userLocation={userLocation} /></View>
+          <View style={styles.map}><MapComponent reports={mapReports} userLocation={userLocation} /></View>
         </View>
 
         <View style={styles.card}>

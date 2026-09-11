@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { ThemedText } from "./themed-text";
 import { C } from "../constants/theme";
-import { createReportImageUrl } from "../services/supabase";
+import { createReportImageUrl, createSupabaseAvatarUrl } from "../services/supabase";
 
 export interface MapReport {
   id: string;
@@ -20,6 +20,10 @@ export interface MapReport {
   status?: string;
   image_url?: string | null;
   created_at?: string | null;
+  reporter?: {
+    name?: string | null;
+    avatar_path?: string | null;
+  } | null;
   location?: {
     latitude?: number;
     longitude?: number;
@@ -78,6 +82,8 @@ function formatDateTime(value?: string | null) {
 export default function ReportMapModal({ report, onClose }: ReportMapModalProps) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarLoading, setAvatarLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -107,7 +113,36 @@ export default function ReportMapModal({ report, onClose }: ReportMapModalProps)
     };
   }, [report?.image_url]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadAvatar = async () => {
+      setAvatarUrl(null);
+      if (!report?.reporter?.avatar_path) {
+        setAvatarLoading(false);
+        return;
+      }
+
+      setAvatarLoading(true);
+      try {
+        const signedUrl = await createSupabaseAvatarUrl(report.reporter.avatar_path);
+        if (!cancelled) setAvatarUrl(signedUrl);
+      } catch (error) {
+        console.warn("Não foi possível carregar a foto de perfil do denunciante:", error);
+      } finally {
+        if (!cancelled) setAvatarLoading(false);
+      }
+    };
+
+    loadAvatar();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [report?.reporter?.avatar_path]);
+
   const status = getStatusInfo(report?.status);
+  const reporterName = report?.reporter?.name || "Usuário não identificado";
 
   return (
     <Modal
@@ -141,6 +176,24 @@ export default function ReportMapModal({ report, onClose }: ReportMapModalProps)
             contentContainerStyle={styles.content}
             showsVerticalScrollIndicator={false}
           >
+            <View style={styles.reporterCard}>
+              <View style={styles.avatar}>
+                {avatarLoading ? (
+                  <ActivityIndicator size="small" color={C.primary} />
+                ) : avatarUrl ? (
+                  <Image source={{ uri: avatarUrl }} style={styles.avatarImage} resizeMode="cover" />
+                ) : (
+                  <Ionicons name="person" size={22} color={C.text3} />
+                )}
+              </View>
+              <View style={styles.reporterCopy}>
+                <ThemedText style={styles.label}>Denunciante</ThemedText>
+                <ThemedText style={styles.reporterName} numberOfLines={1}>
+                  {reporterName}
+                </ThemedText>
+              </View>
+            </View>
+
             <View style={styles.photoCard}>
               {imageLoading ? (
                 <View style={styles.photoPlaceholder}>
@@ -263,6 +316,32 @@ const styles = StyleSheet.create({
   },
   scroll: { flexGrow: 0 },
   content: { padding: 18, gap: 12 },
+  reporterCard: {
+    minHeight: 68,
+    borderRadius: 14,
+    backgroundColor: C.surface2,
+    borderWidth: 1,
+    borderColor: C.border,
+    padding: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 11,
+  },
+  avatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    overflow: "hidden",
+    backgroundColor: C.surface,
+    borderWidth: 1,
+    borderColor: C.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarImage: { width: "100%", height: "100%" },
+  reporterCopy: { flex: 1, minWidth: 0 },
+  reporterName: { marginTop: 2, fontSize: 14, fontWeight: "800", color: C.text },
+  label: { fontSize: 11, color: C.text3, fontWeight: "600" },
   photoCard: {
     width: "100%",
     height: 230,
@@ -299,7 +378,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   statusCopy: { flex: 1 },
-  label: { fontSize: 11, color: C.text3, fontWeight: "600" },
   statusLabel: { marginTop: 2, fontSize: 15, fontWeight: "800" },
   infoCard: {
     borderRadius: 14,

@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
-import { Alert, FlatList, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, Image, Modal, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { C } from '../../constants/theme';
 import { deleteReport, getAdminReports, setReportPublicVisibility, updateReportStatus } from '../../services/reports';
 import { createReportImageUrl, createSupabaseAvatarUrl } from '../../services/supabase';
@@ -83,36 +83,62 @@ export default function ManageReportsFiltered({ security = false }: { security?:
     } catch (error) { console.error(error); Alert.alert('Erro', 'Falha ao atualizar status.'); }
   };
 
+  const runVisibilityChange = async (report: Report) => {
+    const hidden = Boolean(report.hidden_from_public);
+    try {
+      await setReportPublicVisibility(report.id, !hidden);
+      setReports(prev => prev.map(r => r.id === report.id ? { ...r, hidden_from_public: !hidden } : r));
+      setSelectedReport(prev => prev?.id === report.id ? { ...prev, hidden_from_public: !hidden } : prev);
+    } catch (error) {
+      console.error(error);
+      const message = hidden ? 'Falha ao mostrar a denúncia.' : 'Falha ao ocultar a denúncia.';
+      if (Platform.OS === 'web') window.alert(message);
+      else Alert.alert('Erro', message);
+    }
+  };
+
   const handleVisibilityChange = (report: Report) => {
     const hidden = Boolean(report.hidden_from_public);
-    Alert.alert(
-      hidden ? 'Mostrar denúncia' : 'Ocultar denúncia',
-      hidden
-        ? 'A denúncia voltará a ficar disponível para os usuários somente se ainda estiver dentro das regras de visibilidade.'
-        : 'A denúncia será ocultada do mapa e das consultas dos usuários, mas continuará disponível para a administração.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: hidden ? 'Mostrar' : 'Ocultar', onPress: async () => {
-          try {
-            await setReportPublicVisibility(report.id, !hidden);
-            setReports(prev => prev.map(r => r.id === report.id ? { ...r, hidden_from_public: !hidden } : r));
-            setSelectedReport(prev => prev?.id === report.id ? { ...prev, hidden_from_public: !hidden } : prev);
-          } catch (error) {
-            console.error(error);
-            Alert.alert('Erro', hidden ? 'Falha ao mostrar a denúncia.' : 'Falha ao ocultar a denúncia.');
-          }
-        } },
-      ],
-    );
+    const title = hidden ? 'Mostrar denúncia' : 'Ocultar denúncia';
+    const message = hidden
+      ? 'A denúncia voltará a ficar disponível para os usuários somente se ainda estiver dentro das regras de visibilidade.'
+      : 'A denúncia será ocultada do mapa e das consultas dos usuários, mas continuará disponível para a administração.';
+    const action = () => { void runVisibilityChange(report); };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(`${title}\n\n${message}`)) action();
+      return;
+    }
+
+    Alert.alert(title, message, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: hidden ? 'Mostrar' : 'Ocultar', onPress: action },
+    ]);
+  };
+
+  const runDelete = async (id: string) => {
+    try {
+      await deleteReport(id);
+      setReports(prev => prev.filter(r => r.id !== id));
+      setSelectedReport(null);
+    } catch (error) {
+      console.error(error);
+      const message = 'Falha ao excluir a denúncia. Verifique se ela pertence à sua cidade.';
+      if (Platform.OS === 'web') window.alert(message);
+      else Alert.alert('Erro', message);
+    }
   };
 
   const handleDelete = (id: string) => {
-    Alert.alert('Confirmar exclusão permanente', 'Esta ação remove a denúncia do banco de dados e não pode ser desfeita.', [
+    const message = 'Esta ação remove a denúncia do banco de dados e não pode ser desfeita.';
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Confirmar exclusão permanente\n\n${message}`)) void runDelete(id);
+      return;
+    }
+
+    Alert.alert('Confirmar exclusão permanente', message, [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Excluir permanentemente', style: 'destructive', onPress: async () => {
-        try { await deleteReport(id); setReports(prev => prev.filter(r => r.id !== id)); setSelectedReport(null); }
-        catch (error) { console.error(error); Alert.alert('Erro', 'Falha ao excluir a denúncia. Verifique se ela pertence à sua cidade.'); }
-      } },
+      { text: 'Excluir permanentemente', style: 'destructive', onPress: () => { void runDelete(id); } },
     ]);
   };
 

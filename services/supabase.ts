@@ -387,7 +387,9 @@ export async function createSupabaseReport(payload: Record<string, unknown>) {
   }
 
   if (distance > radius) {
-    throw new Error("Denúncia fora da área permitida da cidade.");
+    throw new Error(
+      `Denúncia fora da cidade cadastrada. Você precisa estar dentro de ${cityRec.name} para enviar uma denúncia.`,
+    );
   }
 
   let uploadedPhotoPath: string | null = null;

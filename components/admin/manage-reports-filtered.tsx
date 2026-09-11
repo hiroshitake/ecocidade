@@ -3,15 +3,16 @@ import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
 import { Alert, FlatList, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { C } from '../../constants/theme';
-import { deleteReport, getAdminReports, updateReportStatus } from '../../services/reports';
+import { deleteReport, getAdminReports, setReportPublicVisibility, updateReportStatus } from '../../services/reports';
 import { createReportImageUrl, createSupabaseAvatarUrl } from '../../services/supabase';
 import { ThemedText } from '../themed-text';
 import { ThemedView } from '../themed-view';
 
 interface Report {
   id: string; category?: string; description?: string; status?: string; image_url?: string | null;
+  hidden_from_public?: boolean;
   reporter?: { name?: string | null; email?: string | null; avatar_path?: string | null; avatar_url?: string | null } | null;
-  location?: { latitude?: number; longitude?: number; address?: string }; created_at?: string;
+  location?: { latitude?: number; longitude?: number; address?: string }; created_at?: string; resolved_at?: string | null;
 }
 
 const STATUS_OPTIONS = [
@@ -77,17 +78,40 @@ export default function ManageReportsFiltered({ security = false }: { security?:
     try {
       await updateReportStatus(selectedReport.id, newStatus);
       setReports(prev => prev.map(r => r.id === selectedReport.id ? { ...r, status: newStatus } : r));
-      setSelectedReport(null);
+      setSelectedReport(prev => prev?.id === selectedReport.id ? { ...prev, status: newStatus } : prev);
       Alert.alert('Sucesso', 'Status atualizado com sucesso.');
     } catch (error) { console.error(error); Alert.alert('Erro', 'Falha ao atualizar status.'); }
   };
 
+  const handleVisibilityChange = (report: Report) => {
+    const hidden = Boolean(report.hidden_from_public);
+    Alert.alert(
+      hidden ? 'Mostrar denúncia' : 'Ocultar denúncia',
+      hidden
+        ? 'A denúncia voltará a ficar disponível para os usuários somente se ainda estiver dentro das regras de visibilidade.'
+        : 'A denúncia será ocultada do mapa e das consultas dos usuários, mas continuará disponível para a administração.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: hidden ? 'Mostrar' : 'Ocultar', onPress: async () => {
+          try {
+            await setReportPublicVisibility(report.id, !hidden);
+            setReports(prev => prev.map(r => r.id === report.id ? { ...r, hidden_from_public: !hidden } : r));
+            setSelectedReport(prev => prev?.id === report.id ? { ...prev, hidden_from_public: !hidden } : prev);
+          } catch (error) {
+            console.error(error);
+            Alert.alert('Erro', hidden ? 'Falha ao mostrar a denúncia.' : 'Falha ao ocultar a denúncia.');
+          }
+        } },
+      ],
+    );
+  };
+
   const handleDelete = (id: string) => {
-    Alert.alert('Confirmar exclusão', 'Deseja excluir esta denúncia?', [
+    Alert.alert('Confirmar exclusão permanente', 'Esta ação remove a denúncia do banco de dados e não pode ser desfeita.', [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Excluir', style: 'destructive', onPress: async () => {
+      { text: 'Excluir permanentemente', style: 'destructive', onPress: async () => {
         try { await deleteReport(id); setReports(prev => prev.filter(r => r.id !== id)); setSelectedReport(null); }
-        catch (error) { console.error(error); Alert.alert('Erro', 'Falha ao excluir a denúncia.'); }
+        catch (error) { console.error(error); Alert.alert('Erro', 'Falha ao excluir a denúncia. Verifique se ela pertence à sua cidade.'); }
       } },
     ]);
   };
@@ -119,10 +143,13 @@ export default function ManageReportsFiltered({ security = false }: { security?:
       <FlatList
         data={reports} keyExtractor={item => item.id} contentContainerStyle={styles.list} onRefresh={loadReports} refreshing={loading}
         renderItem={({ item }) => (
-          <TouchableOpacity style={[styles.card, security && styles.securityCard]} onPress={() => openReport(item)}>
+          <TouchableOpacity style={[styles.card, security && styles.securityCard, item.hidden_from_public && styles.hiddenCard]} onPress={() => openReport(item)}>
             <View style={styles.cardTop}>
               <View style={styles.cardInfo}>
-                <ThemedText style={[styles.category, security && { color: C.danger }]}>{security ? 'SEGURANÇA' : (item.category || 'SEM CATEGORIA').toUpperCase()}</ThemedText>
+                <View style={styles.categoryRow}>
+                  <ThemedText style={[styles.category, security && { color: C.danger }]}>{security ? 'SEGURANÇA' : (item.category || 'SEM CATEGORIA').toUpperCase()}</ThemedText>
+                  {item.hidden_from_public ? <View style={styles.hiddenBadge}><ThemedText style={styles.hiddenBadgeText}>OCULTA</ThemedText></View> : null}
+                </View>
                 <ThemedText style={styles.address} numberOfLines={1}>{item.location?.address || 'Localização desconhecida'}</ThemedText>
               </View>
               <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.deleteButton}><MaterialCommunityIcons name="trash-can-outline" size={21} color={C.danger} /></TouchableOpacity>
@@ -154,8 +181,17 @@ export default function ManageReportsFiltered({ security = false }: { security?:
               <View style={styles.detail}><ThemedText style={styles.label}>Localização</ThemedText><ThemedText style={styles.value}>{selectedReport.location?.address || 'Localização desconhecida'}</ThemedText></View>
               <View style={styles.detail}><ThemedText style={styles.label}>Data e hora</ThemedText><ThemedText style={styles.value}>{formatDate(selectedReport.created_at)}</ThemedText></View>
               <View style={styles.detail}><ThemedText style={styles.label}>Status</ThemedText><ThemedText style={[styles.value, { color: statusColor(selectedReport.status) }]}>{statusLabel(selectedReport.status)}</ThemedText></View>
+              <View style={styles.detail}><ThemedText style={styles.label}>Visibilidade</ThemedText><ThemedText style={[styles.value, { color: selectedReport.hidden_from_public ? C.danger : C.eco }]}>{selectedReport.hidden_from_public ? 'Oculta para usuários' : 'Visível conforme as regras públicas'}</ThemedText></View>
               <ThemedText style={styles.label}>Alterar status</ThemedText>
               {STATUS_OPTIONS.map(option => <TouchableOpacity key={option.id} style={[styles.statusOption, normalizeStatus(selectedReport.status) === option.id && { borderColor: option.color, backgroundColor: option.color + '12' }]} onPress={() => handleStatusChange(option.id)}><MaterialCommunityIcons name={option.icon as any} size={19} color={option.color} /><ThemedText style={[styles.statusOptionText, normalizeStatus(selectedReport.status) === option.id && { color: option.color }]}>{option.label}</ThemedText></TouchableOpacity>)}
+              <TouchableOpacity style={[styles.visibilityButton, selectedReport.hidden_from_public && styles.showButton]} onPress={() => handleVisibilityChange(selectedReport)}>
+                <MaterialCommunityIcons name={selectedReport.hidden_from_public ? 'eye-outline' : 'eye-off-outline'} size={19} color={selectedReport.hidden_from_public ? C.eco : C.danger} />
+                <ThemedText style={[styles.visibilityButtonText, { color: selectedReport.hidden_from_public ? C.eco : C.danger }]}>{selectedReport.hidden_from_public ? 'Mostrar para usuários' : 'Ocultar para usuários'}</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.permanentDeleteButton} onPress={() => handleDelete(selectedReport.id)}>
+                <MaterialCommunityIcons name="trash-can-outline" size={19} color={C.danger} />
+                <ThemedText style={styles.permanentDeleteText}>Excluir permanentemente</ThemedText>
+              </TouchableOpacity>
             </ScrollView>
             <TouchableOpacity style={styles.closeButton} onPress={() => setSelectedReport(null)}><ThemedText style={styles.closeText}>Fechar</ThemedText></TouchableOpacity>
           </>}
@@ -168,6 +204,6 @@ export default function ManageReportsFiltered({ security = false }: { security?:
 const styles = StyleSheet.create({
   container: { flex: 1 }, header: { flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface },
   headerIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' }, headerText: { flex: 1, marginLeft: 12 }, title: { fontSize: 20, fontWeight: '800', color: C.text }, subtitle: { fontSize: 11, color: C.text3, marginTop: 2 }, countBadge: { minWidth: 34, height: 34, borderRadius: 17, backgroundColor: C.surface2, alignItems: 'center', justifyContent: 'center' }, countText: { fontWeight: '800', color: C.text },
-  list: { padding: 16, gap: 12 }, card: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 16 }, securityCard: { borderColor: C.danger + '55' }, cardTop: { flexDirection: 'row', alignItems: 'flex-start' }, cardInfo: { flex: 1 }, category: { fontSize: 11, fontWeight: '900', color: C.primary, letterSpacing: 0.7 }, address: { fontSize: 13, color: C.text2, marginTop: 4 }, deleteButton: { padding: 2, marginLeft: 8 }, description: { fontSize: 14, color: C.text, marginTop: 14, lineHeight: 20 }, cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }, date: { fontSize: 11, color: C.text3 }, statusBadge: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999 }, statusText: { fontSize: 10, fontWeight: '800' }, empty: { alignItems: 'center', padding: 48 }, emptyTitle: { fontSize: 16, fontWeight: '700', color: C.text, marginTop: 12 }, emptyText: { fontSize: 12, color: C.text3, marginTop: 4, textAlign: 'center' },
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 16 }, modal: { maxHeight: '90%', backgroundColor: C.surface, borderRadius: 20, overflow: 'hidden' }, modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 18, borderBottomWidth: 1, borderBottomColor: C.border }, modalEyebrow: { fontSize: 10, fontWeight: '900', color: C.text3, letterSpacing: 1 }, modalTitle: { fontSize: 19, fontWeight: '800', color: C.text, marginTop: 2 }, modalBody: { padding: 18, gap: 12 }, reporterRow: { flexDirection: 'row', alignItems: 'center', gap: 11, padding: 12, borderRadius: 12, backgroundColor: C.surface2 }, avatar: { width: 48, height: 48, borderRadius: 24, overflow: 'hidden', backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }, avatarImage: { width: '100%', height: '100%' }, reporterCopy: { flex: 1, minWidth: 0 }, photo: { height: 220, borderRadius: 14, backgroundColor: C.surface2, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }, detail: { padding: 14, borderRadius: 12, backgroundColor: C.surface2 }, label: { fontSize: 10, fontWeight: '800', color: C.text3, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 5 }, value: { fontSize: 14, color: C.text, lineHeight: 20 }, secondary: { fontSize: 11, color: C.text3, marginTop: 3 }, statusOption: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderWidth: 1, borderColor: C.border, borderRadius: 11, marginTop: 8 }, statusOptionText: { fontSize: 13, fontWeight: '700', color: C.text }, closeButton: { margin: 16, marginTop: 0, padding: 13, borderRadius: 11, backgroundColor: C.primary, alignItems: 'center' }, closeText: { color: C.white, fontWeight: '800' },
+  list: { padding: 16, gap: 12 }, card: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 16 }, securityCard: { borderColor: C.danger + '55' }, hiddenCard: { opacity: 0.72 }, cardTop: { flexDirection: 'row', alignItems: 'flex-start' }, cardInfo: { flex: 1 }, categoryRow: { flexDirection: 'row', alignItems: 'center', gap: 7 }, category: { fontSize: 11, fontWeight: '900', color: C.primary, letterSpacing: 0.7 }, hiddenBadge: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 999, backgroundColor: C.danger + '18' }, hiddenBadgeText: { fontSize: 8, fontWeight: '900', color: C.danger }, address: { fontSize: 13, color: C.text2, marginTop: 4 }, deleteButton: { padding: 2, marginLeft: 8 }, description: { fontSize: 14, color: C.text, marginTop: 14, lineHeight: 20 }, cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }, date: { fontSize: 11, color: C.text3 }, statusBadge: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999 }, statusText: { fontSize: 10, fontWeight: '800' }, empty: { alignItems: 'center', padding: 48 }, emptyTitle: { fontSize: 16, fontWeight: '700', color: C.text, marginTop: 12 }, emptyText: { fontSize: 12, color: C.text3, marginTop: 4, textAlign: 'center' },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 16 }, modal: { maxHeight: '90%', backgroundColor: C.surface, borderRadius: 20, overflow: 'hidden' }, modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 18, borderBottomWidth: 1, borderBottomColor: C.border }, modalEyebrow: { fontSize: 10, fontWeight: '900', color: C.text3, letterSpacing: 1 }, modalTitle: { fontSize: 19, fontWeight: '800', color: C.text, marginTop: 2 }, modalBody: { padding: 18, gap: 12 }, reporterRow: { flexDirection: 'row', alignItems: 'center', gap: 11, padding: 12, borderRadius: 12, backgroundColor: C.surface2 }, avatar: { width: 48, height: 48, borderRadius: 24, overflow: 'hidden', backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }, avatarImage: { width: '100%', height: '100%' }, reporterCopy: { flex: 1, minWidth: 0 }, photo: { height: 220, borderRadius: 14, backgroundColor: C.surface2, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }, detail: { padding: 14, borderRadius: 12, backgroundColor: C.surface2 }, label: { fontSize: 10, fontWeight: '800', color: C.text3, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 5 }, value: { fontSize: 14, color: C.text, lineHeight: 20 }, secondary: { fontSize: 11, color: C.text3, marginTop: 3 }, statusOption: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderWidth: 1, borderColor: C.border, borderRadius: 11, marginTop: 8 }, statusOptionText: { fontSize: 13, fontWeight: '700', color: C.text }, visibilityButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 13, borderRadius: 11, borderWidth: 1, borderColor: C.danger + '55', backgroundColor: C.danger + '0c', marginTop: 8 }, showButton: { borderColor: C.eco + '55', backgroundColor: C.eco + '0c' }, visibilityButtonText: { fontSize: 13, fontWeight: '800' }, permanentDeleteButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 13, borderRadius: 11, backgroundColor: C.danger + '15', marginTop: 8 }, permanentDeleteText: { color: C.danger, fontSize: 13, fontWeight: '900' }, closeButton: { margin: 16, marginTop: 0, padding: 13, borderRadius: 11, backgroundColor: C.primary, alignItems: 'center' }, closeText: { color: C.white, fontWeight: '800' },
 });

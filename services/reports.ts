@@ -4,12 +4,10 @@ import {
   createSupabaseDangerZone,
   createSupabaseReport,
   deleteSupabaseDangerZone,
-  deleteSupabaseReport,
   isSupabaseConfigured,
   listSupabaseDangerZones,
   listSupabaseReports,
   supabase,
-  updateSupabaseReportStatus,
 } from "./supabase";
 import { setSupabaseReportPublicVisibility } from "./report-visibility";
 
@@ -152,8 +150,17 @@ export async function getAdminReports() {
 }
 
 export async function updateReportStatus(reportId: string, status: string) {
-  if (isSupabaseConfigured()) return updateSupabaseReportStatus(reportId, status);
-  throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
+  if (!isSupabaseConfigured() || !supabase) {
+    throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
+  }
+
+  const { data, error } = await supabase.rpc("admin_update_report_status", {
+    p_report_id: reportId,
+    p_status: status,
+  });
+
+  if (error) throw error;
+  return data;
 }
 
 export async function setReportPublicVisibility(reportId: string, hidden: boolean) {
@@ -162,8 +169,17 @@ export async function setReportPublicVisibility(reportId: string, hidden: boolea
 }
 
 export async function deleteReport(reportId: string) {
-  if (isSupabaseConfigured()) return deleteSupabaseReport(reportId);
-  throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
+  if (!isSupabaseConfigured() || !supabase) {
+    throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
+  }
+
+  const { data, error } = await supabase.rpc("admin_delete_report", {
+    p_report_id: reportId,
+  });
+
+  if (error) throw error;
+  if (!data) throw new Error("A denúncia não foi excluída.");
+  return { id: data };
 }
 
 export async function createDangerZone(payload: any) {

@@ -8,6 +8,7 @@ import {
   isSupabaseConfigured,
   listSupabaseDangerZones,
   listSupabaseReports,
+  setSupabaseReportPublicVisibility,
   supabase,
   updateSupabaseReportStatus,
 } from "./supabase";
@@ -152,6 +153,11 @@ export async function getAdminReports() {
 
 export async function updateReportStatus(reportId: string, status: string) {
   if (isSupabaseConfigured()) return updateSupabaseReportStatus(reportId, status);
+  throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
+}
+
+export async function setReportPublicVisibility(reportId: string, hidden: boolean) {
+  if (isSupabaseConfigured()) return setSupabaseReportPublicVisibility(reportId, hidden);
   throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
 }
 

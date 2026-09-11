@@ -8,10 +8,10 @@ import {
   isSupabaseConfigured,
   listSupabaseDangerZones,
   listSupabaseReports,
-  setSupabaseReportPublicVisibility,
   supabase,
   updateSupabaseReportStatus,
 } from "./supabase";
+import { setSupabaseReportPublicVisibility } from "./report-visibility";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
 const AUTH_TOKEN_KEY = "ecocidade.token";

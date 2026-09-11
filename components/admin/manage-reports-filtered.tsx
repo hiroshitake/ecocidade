@@ -4,13 +4,13 @@ import React, { useCallback, useState } from 'react';
 import { Alert, FlatList, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { C } from '../../constants/theme';
 import { deleteReport, getAdminReports, updateReportStatus } from '../../services/reports';
-import { createReportImageUrl } from '../../services/supabase';
+import { createReportImageUrl, createSupabaseAvatarUrl } from '../../services/supabase';
 import { ThemedText } from '../themed-text';
 import { ThemedView } from '../themed-view';
 
 interface Report {
   id: string; category?: string; description?: string; status?: string; image_url?: string | null;
-  reporter?: { name?: string | null; email?: string | null } | null;
+  reporter?: { name?: string | null; email?: string | null; avatar_path?: string | null; avatar_url?: string | null } | null;
   location?: { latitude?: number; longitude?: number; address?: string }; created_at?: string;
 }
 
@@ -43,9 +43,21 @@ export default function ManageReportsFiltered({ security = false }: { security?:
         return security ? category === 'seguranca' : category !== 'seguranca';
       });
       const withImages = await Promise.all(filtered.map(async report => {
-        if (!report.image_url) return report;
-        try { return { ...report, image_url: await createReportImageUrl(report.image_url) }; }
-        catch { return { ...report, image_url: null }; }
+        let imageUrl = report.image_url;
+        let avatarUrl = report.reporter?.avatar_url || null;
+        if (report.image_url) {
+          try { imageUrl = await createReportImageUrl(report.image_url); }
+          catch { imageUrl = null; }
+        }
+        if (report.reporter?.avatar_path) {
+          try { avatarUrl = await createSupabaseAvatarUrl(report.reporter.avatar_path); }
+          catch { avatarUrl = null; }
+        }
+        return {
+          ...report,
+          image_url: imageUrl,
+          reporter: report.reporter ? { ...report.reporter, avatar_url: avatarUrl } : null,
+        };
       }));
       setReports(withImages);
     } catch (error) {
@@ -127,8 +139,17 @@ export default function ManageReportsFiltered({ security = false }: { security?:
           {selectedReport && <>
             <View style={styles.modalHeader}><View><ThemedText style={styles.modalEyebrow}>{security ? 'SEGURANÇA' : 'ZELADORIA'}</ThemedText><ThemedText style={styles.modalTitle}>#{selectedReport.id.slice(0, 8).toUpperCase()}</ThemedText></View><TouchableOpacity onPress={() => setSelectedReport(null)}><MaterialCommunityIcons name="close" size={24} color={C.text2} /></TouchableOpacity></View>
             <ScrollView contentContainerStyle={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <View style={styles.reporterRow}>
+                <View style={styles.avatar}>
+                  {selectedReport.reporter?.avatar_url ? <Image source={{ uri: selectedReport.reporter.avatar_url }} style={styles.avatarImage} resizeMode="cover" /> : <MaterialCommunityIcons name="account-circle-outline" size={29} color={C.text3} />}
+                </View>
+                <View style={styles.reporterCopy}>
+                  <ThemedText style={styles.label}>Denunciante</ThemedText>
+                  <ThemedText style={styles.value} numberOfLines={1}>{selectedReport.reporter?.name || selectedReport.reporter?.email || 'Usuário não identificado'}</ThemedText>
+                  {selectedReport.reporter?.name && selectedReport.reporter?.email ? <ThemedText style={styles.secondary}>{selectedReport.reporter.email}</ThemedText> : null}
+                </View>
+              </View>
               {imageLoading ? <View style={styles.photo}><ThemedText style={styles.emptyText}>Carregando foto...</ThemedText></View> : selectedReport.image_url ? <Image source={{ uri: selectedReport.image_url }} style={styles.photo} resizeMode="cover" /> : <View style={styles.photo}><MaterialCommunityIcons name="image-off-outline" size={34} color={C.text3} /><ThemedText style={styles.emptyText}>Sem foto</ThemedText></View>}
-              <View style={styles.detail}><ThemedText style={styles.label}>Denunciante</ThemedText><ThemedText style={styles.value}>{selectedReport.reporter?.name || selectedReport.reporter?.email || 'Usuário não identificado'}</ThemedText>{selectedReport.reporter?.name && selectedReport.reporter?.email ? <ThemedText style={styles.secondary}>{selectedReport.reporter.email}</ThemedText> : null}</View>
               <View style={styles.detail}><ThemedText style={styles.label}>Descrição</ThemedText><ThemedText style={styles.value}>{selectedReport.description || 'Sem descrição'}</ThemedText></View>
               <View style={styles.detail}><ThemedText style={styles.label}>Localização</ThemedText><ThemedText style={styles.value}>{selectedReport.location?.address || 'Localização desconhecida'}</ThemedText></View>
               <View style={styles.detail}><ThemedText style={styles.label}>Data e hora</ThemedText><ThemedText style={styles.value}>{formatDate(selectedReport.created_at)}</ThemedText></View>
@@ -148,5 +169,5 @@ const styles = StyleSheet.create({
   container: { flex: 1 }, header: { flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface },
   headerIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' }, headerText: { flex: 1, marginLeft: 12 }, title: { fontSize: 20, fontWeight: '800', color: C.text }, subtitle: { fontSize: 11, color: C.text3, marginTop: 2 }, countBadge: { minWidth: 34, height: 34, borderRadius: 17, backgroundColor: C.surface2, alignItems: 'center', justifyContent: 'center' }, countText: { fontWeight: '800', color: C.text },
   list: { padding: 16, gap: 12 }, card: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 16 }, securityCard: { borderColor: C.danger + '55' }, cardTop: { flexDirection: 'row', alignItems: 'flex-start' }, cardInfo: { flex: 1 }, category: { fontSize: 11, fontWeight: '900', color: C.primary, letterSpacing: 0.7 }, address: { fontSize: 13, color: C.text2, marginTop: 4 }, deleteButton: { padding: 2, marginLeft: 8 }, description: { fontSize: 14, color: C.text, marginTop: 14, lineHeight: 20 }, cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }, date: { fontSize: 11, color: C.text3 }, statusBadge: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999 }, statusText: { fontSize: 10, fontWeight: '800' }, empty: { alignItems: 'center', padding: 48 }, emptyTitle: { fontSize: 16, fontWeight: '700', color: C.text, marginTop: 12 }, emptyText: { fontSize: 12, color: C.text3, marginTop: 4, textAlign: 'center' },
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 16 }, modal: { maxHeight: '90%', backgroundColor: C.surface, borderRadius: 20, overflow: 'hidden' }, modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 18, borderBottomWidth: 1, borderBottomColor: C.border }, modalEyebrow: { fontSize: 10, fontWeight: '900', color: C.text3, letterSpacing: 1 }, modalTitle: { fontSize: 19, fontWeight: '800', color: C.text, marginTop: 2 }, modalBody: { padding: 18, gap: 12 }, photo: { height: 220, borderRadius: 14, backgroundColor: C.surface2, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }, detail: { padding: 14, borderRadius: 12, backgroundColor: C.surface2 }, label: { fontSize: 10, fontWeight: '800', color: C.text3, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 5 }, value: { fontSize: 14, color: C.text, lineHeight: 20 }, secondary: { fontSize: 11, color: C.text3, marginTop: 3 }, statusOption: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderWidth: 1, borderColor: C.border, borderRadius: 11, marginTop: 8 }, statusOptionText: { fontSize: 13, fontWeight: '700', color: C.text }, closeButton: { margin: 16, marginTop: 0, padding: 13, borderRadius: 11, backgroundColor: C.primary, alignItems: 'center' }, closeText: { color: C.white, fontWeight: '800' },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 16 }, modal: { maxHeight: '90%', backgroundColor: C.surface, borderRadius: 20, overflow: 'hidden' }, modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 18, borderBottomWidth: 1, borderBottomColor: C.border }, modalEyebrow: { fontSize: 10, fontWeight: '900', color: C.text3, letterSpacing: 1 }, modalTitle: { fontSize: 19, fontWeight: '800', color: C.text, marginTop: 2 }, modalBody: { padding: 18, gap: 12 }, reporterRow: { flexDirection: 'row', alignItems: 'center', gap: 11, padding: 12, borderRadius: 12, backgroundColor: C.surface2 }, avatar: { width: 48, height: 48, borderRadius: 24, overflow: 'hidden', backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }, avatarImage: { width: '100%', height: '100%' }, reporterCopy: { flex: 1, minWidth: 0 }, photo: { height: 220, borderRadius: 14, backgroundColor: C.surface2, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }, detail: { padding: 14, borderRadius: 12, backgroundColor: C.surface2 }, label: { fontSize: 10, fontWeight: '800', color: C.text3, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 5 }, value: { fontSize: 14, color: C.text, lineHeight: 20 }, secondary: { fontSize: 11, color: C.text3, marginTop: 3 }, statusOption: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderWidth: 1, borderColor: C.border, borderRadius: 11, marginTop: 8 }, statusOptionText: { fontSize: 13, fontWeight: '700', color: C.text }, closeButton: { margin: 16, marginTop: 0, padding: 13, borderRadius: 11, backgroundColor: C.primary, alignItems: 'center' }, closeText: { color: C.white, fontWeight: '800' },
 });

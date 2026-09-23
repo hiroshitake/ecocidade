@@ -147,9 +147,20 @@ export default function ManageReportsFiltered({ security = false }: { security?:
     if (!report.image_url) return;
     setImageLoading(true);
     try {
-      const url = await createReportImageUrl(report.image_url);
-      setSelectedReport(current => current?.id === report.id ? { ...current, image_url: url } : current);
-    } catch { setSelectedReport(current => current?.id === report.id ? { ...current, image_url: null } : current); }
+      // loadReports already converts storage paths into signed URLs.
+      // Do not sign an already signed URL again.
+      const imageUrl = /^https?:\/\//i.test(report.image_url)
+        ? report.image_url
+        : await createReportImageUrl(report.image_url);
+
+      setSelectedReport(current =>
+        current?.id === report.id ? { ...current, image_url: imageUrl } : current,
+      );
+    } catch {
+      setSelectedReport(current =>
+        current?.id === report.id ? { ...current, image_url: null } : current,
+      );
+    }
     finally { setImageLoading(false); }
   };
 

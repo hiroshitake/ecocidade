@@ -77,9 +77,29 @@ export async function getMyReports() {
 
 export async function getPublicReports() {
   if (isSupabaseConfigured()) {
+    const now = Date.now();
+    const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
+
     const reports = (await listSupabaseReports()).filter((report: any) => {
       const category = String(report?.category || "").toLowerCase();
-      return category !== "seguranca";
+      if (category === "seguranca") return false;
+
+      // Defense-in-depth: the public map must never expose reports
+      // manually hidden by an administrator, even if RLS/policies change.
+      if (report?.hidden_from_public === true) return false;
+
+      // Resolved reports remain public for at most 3 days.
+      if (String(report?.status || "").toLowerCase() === "resolved") {
+        const resolvedAt = report?.resolved_at
+          ? new Date(report.resolved_at).getTime()
+          : NaN;
+
+        if (Number.isFinite(resolvedAt) && now - resolvedAt > threeDaysMs) {
+          return false;
+        }
+      }
+
+      return true;
     });
 
     const userIds = Array.from(

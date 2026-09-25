@@ -6,7 +6,9 @@ import {
   deleteSupabaseDangerZone,
   isSupabaseConfigured,
   listSupabaseDangerZones,
+  listSupabaseDangerZonesByCity,
   listSupabaseReports,
+  getSupabaseSessionUser,
   supabase,
 } from "./supabase";
 import { setSupabaseReportPublicVisibility } from "./report-visibility";
@@ -138,7 +140,16 @@ export async function getAllReports() {
 
 export async function getAdminReports() {
   if (isSupabaseConfigured()) {
-    const reports = await listSupabaseReports();
+    const user = await getSupabaseSessionUser();
+    if (!user?.city_id || user.role !== "admin") {
+      throw new Error("Administrador sem cidade cadastrada.");
+    }
+
+    // O dashboard administrativo é sempre limitado à cidade do administrador.
+    // O mapa público continua usando getPublicReports(), que possui regras próprias.
+    const reports = (await listSupabaseReports()).filter(
+      (report: any) => String(report?.city_id || "") === String(user.city_id),
+    );
     const userIds = Array.from(
       new Set(
         (reports || [])
@@ -209,6 +220,19 @@ export async function createDangerZone(payload: any) {
 
 export async function getDangerZones() {
   if (isSupabaseConfigured()) return listSupabaseDangerZones();
+  throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
+}
+
+export async function getAdminDangerZones() {
+  if (isSupabaseConfigured()) {
+    const user = await getSupabaseSessionUser();
+    if (!user?.city_id || user.role !== "admin") {
+      throw new Error("Administrador sem cidade cadastrada.");
+    }
+
+    return listSupabaseDangerZonesByCity(user.city_id);
+  }
+
   throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
 }
 

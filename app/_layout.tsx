@@ -1,9 +1,11 @@
 import { Stack } from "expo-router";
 import { ToastProvider } from "../context/toast-context";
+import DangerZoneLocationMonitor from "../components/DangerZoneLocationMonitor";
 
 export default function RootLayout() {
   return (
     <ToastProvider>
+      <DangerZoneLocationMonitor />
       <Stack
         screenOptions={{
           headerShown: false,

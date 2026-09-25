@@ -13,7 +13,7 @@ import {
     View,
 } from 'react-native';
 import { C } from '../../constants/theme';
-import { createDangerZone, deleteDangerZone, getDangerZones } from '../../services/reports';
+import { createDangerZone, deleteDangerZone, getAdminDangerZones } from '../../services/reports';
 import { ThemedText } from '../themed-text';
 import { ThemedView } from '../themed-view';
 
@@ -49,7 +49,7 @@ export default function DangerZonesScreen() {
 
   const loadDangerZones = useCallback(async () => {
     try {
-      const zones = (await getDangerZones()) as DangerZone[];
+      const zones = (await getAdminDangerZones()) as DangerZone[];
       setDangerZones(zones);
     } catch (error) {
       console.error('Erro ao carregar zonas de perigo:', error);

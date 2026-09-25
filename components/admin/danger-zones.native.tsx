@@ -102,6 +102,11 @@ export default function DangerZonesScreen() {
       resetForm();
     } catch (error) {
       console.error('Erro ao criar zona de perigo:', error);
+      const message = error instanceof Error ? error.message : '';
+      if (message.includes('fora dos limites')) {
+        Alert.alert('Localização inválida', 'Crie uma zona perigosa somente dentro do raio de sua cidade.');
+        return;
+      }
       Alert.alert('Erro', 'Não foi possível criar essa área de perigo.');
     }
   };

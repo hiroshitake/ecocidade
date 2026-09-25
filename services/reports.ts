@@ -216,3 +216,23 @@ export async function deleteDangerZone(id: string) {
   if (isSupabaseConfigured()) return deleteSupabaseDangerZone(id);
   throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
 }
+
+export async function notifyDangerZoneLocationEvent(
+  dangerZoneId: string,
+  event: "outside" | "near" | "inside",
+) {
+  if (!isSupabaseConfigured() || !supabase) {
+    throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
+  }
+
+  const { data, error } = await supabase.rpc(
+    "create_danger_zone_location_notification",
+    {
+      p_danger_zone_id: dangerZoneId,
+      p_event: event,
+    },
+  );
+
+  if (error) throw error;
+  return Boolean(data);
+}

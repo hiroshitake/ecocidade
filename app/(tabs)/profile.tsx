@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   ActivityIndicator,
   Image,
@@ -64,17 +65,21 @@ const ProfileScreen: React.FC = () => {
     loadProfile();
   }, [loadProfile]);
 
-  useEffect(() => {
-    let active = true;
-    getUnreadNotificationCount()
-      .then((count) => {
-        if (active) setUnreadNotifications(count);
-      })
-      .catch((error) => console.warn("Erro ao carregar contador de notificações:", error));
-    return () => {
-      active = false;
-    };
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      getUnreadNotificationCount()
+        .then((count) => {
+          if (active) setUnreadNotifications(count);
+        })
+        .catch((error) =>
+          console.warn("Erro ao carregar contador de notificações:", error),
+        );
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
 
   const handleLogout = () => setIsOpen(true);
 

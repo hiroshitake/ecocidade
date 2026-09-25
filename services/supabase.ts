@@ -508,6 +508,8 @@ export async function createSupabaseDangerZone(
     throw new Error("Supabase não configurado.");
   }
 
+  const user = await getSupabaseSessionUser();
+
   const { data, error } = await supabase
     .from("danger_zones")
     .insert({
@@ -517,6 +519,7 @@ export async function createSupabaseDangerZone(
       longitude: payload.longitude,
       radius: payload.radius,
       severity: payload.severity || "media",
+      city_id: user?.city_id || null,
       active: true,
     })
     .select()

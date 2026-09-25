@@ -14,6 +14,7 @@ import { ConfirmationModal } from "../../components/ConfirmationModal";
 import { ErrorState } from "../../components/ErrorState";
 import { C } from "../../constants/theme";
 import { useToast } from "../../context/toast-context";
+import { getUnreadNotificationCount } from "../../services/notifications";
 import { formatBirthDate } from "../../functions/masks";
 import {
   getCurrentUserAvatarUrl,
@@ -37,6 +38,7 @@ const ProfileScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const toast = useToast();
 
   const loadProfile = useCallback(async () => {
@@ -61,6 +63,18 @@ const ProfileScreen: React.FC = () => {
   useEffect(() => {
     loadProfile();
   }, [loadProfile]);
+
+  useEffect(() => {
+    let active = true;
+    getUnreadNotificationCount()
+      .then((count) => {
+        if (active) setUnreadNotifications(count);
+      })
+      .catch((error) => console.warn("Erro ao carregar contador de notificações:", error));
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleLogout = () => setIsOpen(true);
 
@@ -114,6 +128,20 @@ const ProfileScreen: React.FC = () => {
           </View>
         )}
 
+        <TouchableOpacity style={styles.notificationBtn} onPress={() => router.push("/notifications")}>
+          <View style={styles.notificationIconWrap}>
+            <Ionicons name="notifications-outline" size={20} color={C.primary} />
+            {unreadNotifications > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>
+                  {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                </Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.notificationText}>Notificações</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.settingsBtn} onPress={() => router.push("/settings")}>
           <Ionicons name="settings-outline" size={20} color={C.primary} />
           <Text style={styles.settingsText}>Configurações</Text>
@@ -149,6 +177,11 @@ const styles = StyleSheet.create({
   infoRow: { width: "100%", flexDirection: "row", justifyContent: "space-between", backgroundColor: C.surface, padding: 16, borderRadius: 12, marginBottom: 24 },
   infoLabel: { fontSize: 14, color: C.text2 },
   infoValue: { fontSize: 14, fontWeight: "600", color: C.text },
+  notificationBtn: { width: "100%", flexDirection: "row", borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 },
+  notificationIconWrap: { position: "relative" },
+  notificationBadge: { position: "absolute", top: -7, right: -9, minWidth: 16, height: 16, paddingHorizontal: 3, borderRadius: 8, backgroundColor: C.danger, alignItems: "center", justifyContent: "center" },
+  notificationBadgeText: { color: C.white, fontSize: 9, fontWeight: "800" },
+  notificationText: { color: C.primary, fontSize: 15, fontWeight: "700" },
   settingsBtn: { width: "100%", flexDirection: "row", borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 },
   settingsText: { color: C.primary, fontSize: 15, fontWeight: "700" },
   logoutBtn: { width: "100%", flexDirection: "row", backgroundColor: C.danger, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", gap: 8 },

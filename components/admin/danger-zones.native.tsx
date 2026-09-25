@@ -5,7 +5,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import { Alert, FlatList, Modal, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { C } from '../../constants/theme';
 import { resolveUserLocationWithFallback } from '../../services/auth';
-import { createDangerZone, deleteDangerZone, getDangerZones } from '../../services/reports';
+import { createDangerZone, deleteDangerZone, getAdminDangerZones } from '../../services/reports';
 import { ThemedText } from '../themed-text';
 import { ThemedView } from '../themed-view';
 
@@ -41,7 +41,7 @@ export default function DangerZonesScreen() {
 
   const loadDangerZones = useCallback(async () => {
     try {
-      const zones = (await getDangerZones()) as DangerZone[];
+      const zones = (await getAdminDangerZones()) as DangerZone[];
       setDangerZones(zones);
     } catch (error) {
       console.error('Erro ao carregar zonas de perigo:', error);
@@ -86,6 +86,11 @@ export default function DangerZonesScreen() {
       resetForm();
     } catch (error) {
       console.error('Erro ao criar zona de perigo:', error);
+      const message = error instanceof Error ? error.message : '';
+      if (message.includes('fora dos limites')) {
+        Alert.alert('Localização inválida', 'Crie uma zona perigosa somente dentro do raio de sua cidade.');
+        return;
+      }
       Alert.alert('Erro', 'Não foi possível criar essa área de perigo.');
     }
   };

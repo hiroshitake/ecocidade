@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { C } from '../../constants/theme';
 import { createDangerZone, deleteDangerZone, getAdminDangerZones } from '../../services/reports';
-import { resolveUserLocationWithFallback } from '../../services/auth';
 import MapComponent from '../map.web';
 import { ThemedText } from '../themed-text';
 import { ThemedView } from '../themed-view';
@@ -31,7 +30,6 @@ export default function DangerZonesWeb() {
   const [dangerZones, setDangerZones] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [zoneName, setZoneName] = useState('');
   const [description, setDescription] = useState('');
   const [severity, setSeverity] = useState<'baixa' | 'media' | 'alta'>('media');
@@ -39,11 +37,6 @@ export default function DangerZonesWeb() {
 
   useEffect(() => {
     loadDangerZones();
-    resolveUserLocationWithFallback()
-      .then(({ location }) => {
-        if (location) setUserLocation(location);
-      })
-      .catch(() => {});
   }, []);
 
   const loadDangerZones = async () => {
@@ -78,6 +71,11 @@ export default function DangerZonesWeb() {
       setRadius(300);
     } catch (error) {
       console.error('Erro ao salvar zona:', error);
+      const message = error instanceof Error ? error.message : '';
+      if (message.includes('fora dos limites')) {
+        alert('Crie uma zona perigosa somente dentro do raio de sua cidade.');
+        return;
+      }
       alert('Não foi possível salvar a zona de perigo.');
     }
   };
@@ -107,7 +105,6 @@ export default function DangerZonesWeb() {
           <MapComponent
             reports={[]}
             zones={dangerZones}
-            userLocation={userLocation}
             selectedLocation={selectedLocation}
             selectLocation
             onSelectLocation={setSelectedLocation}
@@ -117,7 +114,7 @@ export default function DangerZonesWeb() {
 
         <View style={styles.infoCard}>
           <MaterialCommunityIcons name="information" size={18} color={C.primary} />
-          <ThemedText style={styles.infoText}>O mapa começa na sua localização. Clique no mapa para escolher a localização da nova zona.</ThemedText>
+          <ThemedText style={styles.infoText}>Clique no mapa para escolher a localizacao da nova zona.</ThemedText>
         </View>
 
         <View style={styles.formCard}>

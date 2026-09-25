@@ -73,7 +73,9 @@ create trigger danger_zones_notify_created
 after insert on public.danger_zones
 for each row execute function public.notify_danger_zone_created();
 
-revoke execute on function public.notify_danger_zone_created() from anon, authenticated;
+revoke execute on function public.notify_danger_zone_created() from public;
+revoke execute on function public.notify_danger_zone_created() from anon;
+revoke execute on function public.notify_danger_zone_created() from authenticated;
 
 create or replace function public.create_danger_zone_location_notification(
   p_danger_zone_id uuid,
@@ -164,5 +166,6 @@ begin
 end;
 $function$;
 
+revoke execute on function public.create_danger_zone_location_notification(uuid, text) from public;
 revoke execute on function public.create_danger_zone_location_notification(uuid, text) from anon;
 grant execute on function public.create_danger_zone_location_notification(uuid, text) to authenticated;

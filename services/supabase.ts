@@ -515,13 +515,59 @@ export async function createSupabaseDangerZone(
     );
   }
 
+  const latitude = Number(payload.latitude);
+  const longitude = Number(payload.longitude);
+
+  if (
+    !Number.isFinite(latitude) ||
+    !Number.isFinite(longitude) ||
+    latitude < -90 ||
+    latitude > 90 ||
+    longitude < -180 ||
+    longitude > 180
+  ) {
+    throw new Error("Localização inválida.");
+  }
+
+  const { data: city, error: cityError } = await supabase
+    .from("cities")
+    .select("id, name, latitude, longitude, radius_m")
+    .eq("id", currentUser.city_id)
+    .maybeSingle();
+
+  if (cityError) {
+    throw new Error(
+      `Não foi possível validar o limite da cidade: ${cityError.message}`,
+    );
+  }
+
+  if (!city) {
+    throw new Error("Cidade do administrador não encontrada.");
+  }
+
+  const toRad = (value: number) => (value * Math.PI) / 180;
+  const dLat = toRad(latitude - Number(city.latitude));
+  const dLon = toRad(longitude - Number(city.longitude));
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(Number(city.latitude))) *
+      Math.cos(toRad(latitude)) *
+      Math.sin(dLon / 2) ** 2;
+  const distance = 2 * 6371000 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  if (!Number.isFinite(distance) || distance > Number(city.radius_m)) {
+    throw new Error(
+      `A localização escolhida está fora dos limites de ${city.name}. Escolha um ponto dentro da cidade para criar a área de perigo.`,
+    );
+  }
+
   const { data, error } = await supabase
     .from("danger_zones")
     .insert({
       name: payload.name,
       description: payload.description,
-      latitude: payload.latitude,
-      longitude: payload.longitude,
+      latitude,
+      longitude,
       radius: payload.radius,
       severity: payload.severity || "media",
       active: true,

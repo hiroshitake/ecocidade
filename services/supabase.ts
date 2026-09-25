@@ -518,6 +518,7 @@ export async function createSupabaseDangerZone(
       radius: payload.radius,
       severity: payload.severity || "media",
       active: true,
+      city_id: (await getSupabaseSessionUser())?.city_id || null,
     })
     .select()
     .single();
@@ -534,6 +535,21 @@ export async function listSupabaseDangerZones() {
   const { data, error } = await supabase
     .from("danger_zones")
     .select("*")
+    .eq("active", true)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function listSupabaseDangerZonesByCity(cityId: string) {
+  if (!supabase) {
+    throw new Error("Supabase não configurado.");
+  }
+
+  const { data, error } = await supabase
+    .from("danger_zones")
+    .select("*")
+    .eq("city_id", cityId)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return data || [];

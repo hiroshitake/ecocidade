@@ -1,5 +1,16 @@
 -- Danger zone notifications and proximity state tracking
 
+
+-- Backfill older profiles whose city name was stored before city_id was introduced.
+update public.profiles p
+set city_id = c.id,
+    updated_at = now()
+from public.cities c
+where p.city_id is null
+  and p.city is not null
+  and lower(trim(p.city)) = lower(trim(c.name));
+
+
 alter table public.danger_zones
   add column if not exists city_id uuid references public.cities(id) on delete set null;
 
@@ -58,10 +69,17 @@ begin
       coalesce(new.severity, 'media')
     )
   from public.profiles p
+  left join public.cities c on c.id = new.city_id
   where p.role = 'user'
     and (
       new.city_id is null
       or p.city_id = new.city_id
+      or (
+        p.city_id is null
+        and p.city is not null
+        and c.name is not null
+        and lower(trim(p.city)) = lower(trim(c.name))
+      )
     );
 
   return new;

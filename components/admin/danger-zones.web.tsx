@@ -71,6 +71,11 @@ export default function DangerZonesWeb() {
       setRadius(300);
     } catch (error) {
       console.error('Erro ao salvar zona:', error);
+      const message = error instanceof Error ? error.message : '';
+      if (message.includes('fora dos limites')) {
+        alert('Crie uma zona perigosa somente dentro do raio de sua cidade.');
+        return;
+      }
       alert('Não foi possível salvar a zona de perigo.');
     }
   };

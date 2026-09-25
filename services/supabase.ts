@@ -250,10 +250,14 @@ export async function deleteSupabaseAvatar(path: string) {
 
 export async function deleteSupabaseAccount() {
   if (!supabase) throw new Error("Supabase não configurado.");
+
   const { data, error } = await supabase.functions.invoke("delete-account", {
+    method: "POST",
     body: {},
   });
+
   if (error) throw error;
+
   return { data, error: null };
 }
 

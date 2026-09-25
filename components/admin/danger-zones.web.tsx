@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { C } from '../../constants/theme';
-import { createDangerZone, deleteDangerZone, getDangerZones } from '../../services/reports';
+import { createDangerZone, deleteDangerZone, getAdminDangerZones } from '../../services/reports';
 import MapComponent from '../map.web';
 import { ThemedText } from '../themed-text';
 import { ThemedView } from '../themed-view';
@@ -42,7 +42,7 @@ export default function DangerZonesWeb() {
   const loadDangerZones = async () => {
     try {
       setLoading(true);
-      const zones = await getDangerZones();
+      const zones = await getAdminDangerZones();
       setDangerZones(zones);
     } catch (error) {
       console.error('Erro ao carregar zonas de perigo:', error);

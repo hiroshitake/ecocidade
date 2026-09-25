@@ -7,6 +7,7 @@ import {
   deleteSupabaseReport,
   isSupabaseConfigured,
   listSupabaseDangerZones,
+  listSupabaseDangerZonesByCity,
   listSupabaseReports,
   updateSupabaseReportStatus,
 } from "./supabase";
@@ -169,6 +170,22 @@ export async function createDangerZone(payload: any) {
 export async function getDangerZones() {
   if (isSupabaseConfigured()) {
     return listSupabaseDangerZones();
+  }
+
+  throw new Error(
+    "Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.",
+  );
+}
+
+export async function getAdminDangerZones() {
+  if (isSupabaseConfigured()) {
+    const user = await getCurrentUserData();
+
+    if (!user?.city_id) {
+      throw new Error("Administrador sem cidade cadastrada.");
+    }
+
+    return listSupabaseDangerZonesByCity(user.city_id);
   }
 
   throw new Error(

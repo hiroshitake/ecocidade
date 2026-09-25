@@ -41,10 +41,7 @@ function distanceMeters(
   );
 }
 
-function classifyZone(
-  distance: number,
-  radius: number,
-): ZoneState {
+function classifyZone(distance: number, radius: number): ZoneState {
   if (distance <= radius) return "inside";
   if (distance <= radius + WARNING_DISTANCE_METERS) return "near";
   return "outside";
@@ -211,9 +208,9 @@ export default function DangerZoneLocationMonitor() {
       try {
         const user = await getCurrentUserData();
 
-        // Áreas de perigo são uma funcionalidade do cidadão. Administradores
-        // não precisam manter o monitor de localização ativo.
-        if (!mounted || !user || user.role === "admin") return;
+        // O monitor também fica ativo para administradores para permitir
+        // testes e para que contas administrativas possam receber alertas.
+        if (!mounted || !user) return;
 
         await loadZones();
         if (!mounted) return;

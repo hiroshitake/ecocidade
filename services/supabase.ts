@@ -508,6 +508,13 @@ export async function createSupabaseDangerZone(
     throw new Error("Supabase não configurado.");
   }
 
+  const currentUser = await getSupabaseSessionUser();
+  if (!currentUser?.city_id) {
+    throw new Error(
+      "Administrador sem cidade cadastrada. Não é possível criar a área de perigo.",
+    );
+  }
+
   const { data, error } = await supabase
     .from("danger_zones")
     .insert({
@@ -518,7 +525,7 @@ export async function createSupabaseDangerZone(
       radius: payload.radius,
       severity: payload.severity || "media",
       active: true,
-      city_id: (await getSupabaseSessionUser())?.city_id || null,
+      city_id: currentUser.city_id,
     })
     .select()
     .single();

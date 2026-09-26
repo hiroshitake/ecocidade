@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   ActivityIndicator,
   Image,
@@ -14,8 +15,13 @@ import { ConfirmationModal } from "../../components/ConfirmationModal";
 import { ErrorState } from "../../components/ErrorState";
 import { C } from "../../constants/theme";
 import { useToast } from "../../context/toast-context";
+import { getUnreadNotificationCount } from "../../services/notifications";
 import { formatBirthDate } from "../../functions/masks";
-import { getCurrentUserData, logout } from "../../services/auth";
+import {
+  getCurrentUserAvatarUrl,
+  getCurrentUserData,
+  logout,
+} from "../../services/auth";
 
 interface UserData {
   id?: string;
@@ -23,15 +29,17 @@ interface UserData {
   email?: string;
   birthdate?: string;
   city?: string;
-  photoURL?: string | null;
+  avatar_path?: string | null;
   createdAt?: Date | null;
 }
 
 const ProfileScreen: React.FC = () => {
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const toast = useToast();
 
   const loadProfile = useCallback(async () => {
@@ -41,11 +49,11 @@ const ProfileScreen: React.FC = () => {
     try {
       const data = await getCurrentUserData();
       setUserData(data);
-      if (!data) {
-        setHasError(true);
-      }
+      setAvatarUrl(await getCurrentUserAvatarUrl(data?.avatar_path));
+      if (!data) setHasError(true);
     } catch (error) {
       setUserData(null);
+      setAvatarUrl(null);
       setHasError(true);
       toast.addToast("Erro ao carregar dados", "error");
     } finally {
@@ -56,6 +64,22 @@ const ProfileScreen: React.FC = () => {
   useEffect(() => {
     loadProfile();
   }, [loadProfile]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      getUnreadNotificationCount()
+        .then((count) => {
+          if (active) setUnreadNotifications(count);
+        })
+        .catch((error) =>
+          console.warn("Erro ao carregar contador de notificações:", error),
+        );
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
 
   const handleLogout = () => setIsOpen(true);
 
@@ -78,16 +102,14 @@ const ProfileScreen: React.FC = () => {
   }
 
   if (hasError && !userData) {
-    return (
-      <ErrorState message="Erro ao carregar dados" onRetry={loadProfile} />
-    );
+    return <ErrorState message="Erro ao carregar dados" onRetry={loadProfile} />;
   }
 
   return (
     <View style={styles.root}>
       <ScrollView contentContainerStyle={styles.container}>
-        {userData?.photoURL ? (
-          <Image source={{ uri: userData.photoURL }} style={styles.photo} />
+        {avatarUrl ? (
+          <Image source={{ uri: avatarUrl }} style={styles.photo} />
         ) : (
           <View style={styles.photoFallback}>
             <Ionicons name="person" size={40} color={C.white} />
@@ -95,28 +117,40 @@ const ProfileScreen: React.FC = () => {
         )}
 
         <Text style={styles.name}>{userData?.name || "Usuário"}</Text>
-        <Text style={styles.email}>
-          {userData?.email || "Nenhum e-mail cadastrado"}
-        </Text>
+        <Text style={styles.email}>{userData?.email || "Nenhum e-mail cadastrado"}</Text>
 
         {userData?.birthdate && (
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Nascimento:</Text>
-            <Text style={styles.infoValue}>
-              {" "}
-              {formatBirthDate(userData.birthdate)}
-            </Text>
+            <Text style={styles.infoValue}>{formatBirthDate(userData.birthdate)}</Text>
           </View>
         )}
 
         {userData?.createdAt && (
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Cadastrado em:</Text>
-            <Text style={styles.infoValue}>
-              {new Date(userData.createdAt).toLocaleDateString("pt-BR")}
-            </Text>
+            <Text style={styles.infoValue}>{new Date(userData.createdAt).toLocaleDateString("pt-BR")}</Text>
           </View>
         )}
+
+        <TouchableOpacity style={styles.notificationBtn} onPress={() => router.push("/notifications")}>
+          <View style={styles.notificationIconWrap}>
+            <Ionicons name="notifications-outline" size={20} color={C.primary} />
+            {unreadNotifications > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>
+                  {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                </Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.notificationText}>Notificações</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.settingsBtn} onPress={() => router.push("/settings")}>
+          <Ionicons name="settings-outline" size={20} color={C.primary} />
+          <Text style={styles.settingsText}>Configurações</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
           <Ionicons name="log-out" size={20} color={C.white} />
@@ -138,81 +172,25 @@ const ProfileScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: C.bg,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: C.bg,
-  },
-  container: {
-    padding: 24,
-    paddingTop: 32,
-    alignItems: "center",
-  },
-  photo: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: C.surface,
-    marginBottom: 20,
-  },
-  photoFallback: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: C.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  name: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: C.text,
-    marginBottom: 8,
-  },
-  email: {
-    fontSize: 15,
-    color: C.text2,
-    marginBottom: 20,
-  },
-  infoRow: {
-    width: "100%",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    backgroundColor: C.surface,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 24,
-  },
-  infoLabel: {
-    fontSize: 14,
-    color: C.text2,
-  },
-  infoValue: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: C.text,
-  },
-  logoutBtn: {
-    flexDirection: "row",
-    backgroundColor: C.danger,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  btnText: {
-    color: C.white,
-    fontSize: 15,
-    fontWeight: "700",
-  },
+  root: { flex: 1, backgroundColor: C.bg },
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: C.bg },
+  container: { padding: 24, paddingTop: 32, alignItems: "center" },
+  photo: { width: 120, height: 120, borderRadius: 60, backgroundColor: C.surface, marginBottom: 20 },
+  photoFallback: { width: 120, height: 120, borderRadius: 60, backgroundColor: C.primary, justifyContent: "center", alignItems: "center", marginBottom: 20 },
+  name: { fontSize: 24, fontWeight: "700", color: C.text, marginBottom: 8 },
+  email: { fontSize: 15, color: C.text2, marginBottom: 20 },
+  infoRow: { width: "100%", flexDirection: "row", justifyContent: "space-between", backgroundColor: C.surface, padding: 16, borderRadius: 12, marginBottom: 24 },
+  infoLabel: { fontSize: 14, color: C.text2 },
+  infoValue: { fontSize: 14, fontWeight: "600", color: C.text },
+  notificationBtn: { width: "100%", flexDirection: "row", borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 },
+  notificationIconWrap: { position: "relative" },
+  notificationBadge: { position: "absolute", top: -7, right: -9, minWidth: 16, height: 16, paddingHorizontal: 3, borderRadius: 8, backgroundColor: C.danger, alignItems: "center", justifyContent: "center" },
+  notificationBadgeText: { color: C.white, fontSize: 9, fontWeight: "800" },
+  notificationText: { color: C.primary, fontSize: 15, fontWeight: "700" },
+  settingsBtn: { width: "100%", flexDirection: "row", borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 },
+  settingsText: { color: C.primary, fontSize: 15, fontWeight: "700" },
+  logoutBtn: { width: "100%", flexDirection: "row", backgroundColor: C.danger, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", gap: 8 },
+  btnText: { color: C.white, fontSize: 15, fontWeight: "700" },
 });
 
 export default ProfileScreen;

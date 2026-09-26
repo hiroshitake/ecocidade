@@ -10,6 +10,7 @@ import {
   updateSupabaseProfile,
   uploadSupabaseAvatar,
   createSupabaseAvatarUrl,
+  deleteSupabaseAvatar,
   deleteSupabaseAccount,
 } from "./supabase";
 
@@ -17,7 +18,15 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
 const AUTH_TOKEN_KEY = "ecocidade.token";
 const AUTH_USER_KEY = "ecocidade.user";
 
-interface AuthUser { id:string; email:string; name:string; role:string; city?:string; birthdate?:string; avatar_path?:string | null; }
+interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  city?: string;
+  birthdate?: string;
+  avatar_path?: string | null;
+}
 interface AuthResponse { id:string; email:string; name:string; role:string; token:string; }
 function getBaseUrl(){ return API_URL; }
 async function request<T>(path:string, init:RequestInit={}, auth=true):Promise<T>{
@@ -48,9 +57,13 @@ export async function uploadUserAvatar(imageUri:string,userId:string){
  if(!isSupabaseConfigured())throw new Error("Supabase não configurado.");
  return uploadSupabaseAvatar(imageUri,userId);
 }
+export async function deleteUserAvatar(path:string){
+ if(!isSupabaseConfigured())throw new Error("Supabase não configurado.");
+ return deleteSupabaseAvatar(path);
+}
 export async function getCurrentUserAvatarUrl(path?:string|null){
  if(!isSupabaseConfigured())return null;
- const user=await getCurrentUserData();
+ const user=path===undefined?await getCurrentUserData():null;
  const avatarPath=path ?? user?.avatar_path;
  if(!avatarPath)return null;
  try{return await createSupabaseAvatarUrl(avatarPath);}catch{return null;}

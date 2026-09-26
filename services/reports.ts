@@ -236,22 +236,6 @@ export async function getAdminDangerZones() {
   throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
 }
 
-export async function getAdminDangerZones() {
-  if (isSupabaseConfigured()) {
-    const user = await getCurrentUserData();
-
-    if (!user?.city_id) {
-      throw new Error("Administrador sem cidade cadastrada.");
-    }
-
-    return listSupabaseDangerZonesByCity(user.city_id);
-  }
-
-  throw new Error(
-    "Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.",
-  );
-}
-
 export async function deleteDangerZone(id: string) {
   if (isSupabaseConfigured()) return deleteSupabaseDangerZone(id);
   throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");

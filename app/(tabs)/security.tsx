@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Image,
@@ -46,6 +47,14 @@ export default function SecurityScreen() {
   const [submittedReport, setSubmittedReport] = useState<any | null>(null);
 
   const router = useRouter();
+
+  // Ao voltar para a tela de segurança, a confirmação anterior não deve permanecer.
+  // A confirmação só é válida para a denúncia que acabou de ser enviada.
+  useFocusEffect(
+    useCallback(() => {
+      setSubmittedReport(null);
+    }, []),
+  );
 
   useEffect(() => {
     (async () => {

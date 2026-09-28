@@ -526,14 +526,18 @@ export default function MapScreen() {
                       styles.statusDot,
                       {
                         backgroundColor:
-                          rep.status === "pending" ? C.warning : C.eco,
+                          String(rep.status || "").toLowerCase() === "pending"
+                            ? C.warning
+                            : ["in_progress", "investigating", "processo", "em processo"].includes(String(rep.status || "").toLowerCase())
+                              ? C.primary
+                              : C.eco,
                       },
                     ]}
                   />
                   <ThemedText style={styles.statusText}>
-                    {rep.status === "pending"
+                    {String(rep.status || "").toLowerCase() === "pending"
                       ? "Aguardando"
-                      : rep.status === "investigating"
+                      : ["in_progress", "investigating", "processo", "em processo"].includes(String(rep.status || "").toLowerCase())
                         ? "Em processo"
                         : "Concluída"}
                   </ThemedText>

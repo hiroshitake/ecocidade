@@ -43,6 +43,7 @@ export default function SecurityScreen() {
   } | null>(null);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [submittedReport, setSubmittedReport] = useState<any | null>(null);
 
   const router = useRouter();
 
@@ -89,8 +90,10 @@ export default function SecurityScreen() {
       const catObj = SEC_CATS.find((c) => c.id === selectedCat);
       const label = catObj ? catObj.label : selectedCat;
 
+      let createdReport: any;
+
       if (isSupabaseConfigured()) {
-        await createSupabaseReport({
+        createdReport = await createSupabaseReport({
           title: `Segurança: ${label}`,
           description: description || "Ocorrência de segurança registrada.",
           latitude: locationToSubmit.latitude,
@@ -101,18 +104,14 @@ export default function SecurityScreen() {
           imageUri: photoUri,
         });
       } else {
-        await createReport(undefined, {
+        createdReport = await createReport(undefined, {
           category: "seguranca",
           description,
           location: locationToSubmit,
         });
       }
 
-      Alert.alert(
-        "✅ Denúncia Enviada",
-        "Denúncia anônima enviada com sucesso!\n\nApenas as autoridades competentes terão acesso. Sua identidade está protegida.",
-        [{ text: "OK", onPress: () => router.push("/map") }],
-      );
+      setSubmittedReport(createdReport);
     } catch (error: any) {
       let msg = error?.message || "Tente novamente mais tarde.";
       if (msg.includes("fora da área permitida")) {
@@ -222,12 +221,62 @@ export default function SecurityScreen() {
     ]);
   };
 
-  const callEmergency = () => {
-    Alert.alert(
-      "Emergência",
-      "Em caso de emergência real, ligue:\n\n🚓 190 — Polícia\n🚑 192 — SAMU\n🚒 193 — Bombeiros",
+  if (submittedReport) {
+    const protocol = submittedReport.id
+      ? `#${String(submittedReport.id).slice(0, 8).toUpperCase()}`
+      : "Registrada";
+
+    return (
+      <View style={styles.root}>
+        <View style={styles.header}>
+          <View style={{ width: 36 }} />
+          <Text style={styles.headerTitle}>Denúncia de Segurança</Text>
+          <View style={{ width: 36 }} />
+        </View>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.confirmationContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.confirmationIcon}>
+            <Ionicons name="checkmark-shield" size={58} color={C.eco} />
+          </View>
+          <Text style={styles.confirmationTitle}>Denúncia enviada!</Text>
+          <Text style={styles.confirmationText}>
+            Sua denúncia de segurança foi registrada e encaminhada para análise.
+          </Text>
+          <View style={styles.protocolCard}>
+            <Text style={styles.protocolLabel}>PROTOCOLO</Text>
+            <Text style={styles.protocolValue}>{protocol}</Text>
+            <Text style={styles.protocolHint}>
+              Guarde este número para acompanhar sua denúncia.
+            </Text>
+          </View>
+          <View style={styles.confirmationNotice}>
+            <Ionicons name="shield-checkmark" size={20} color={C.eco} />
+            <Text style={styles.confirmationNoticeText}>
+              Sua identidade não é exibida publicamente. O acesso à denúncia é
+              restrito aos responsáveis pelo atendimento.
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.confirmationPrimary}
+            onPress={() => router.replace("/map")}
+          >
+            <Text style={styles.confirmationPrimaryText}>Voltar ao mapa</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.confirmationSecondary}
+            onPress={() => router.replace("/(tabs)/reports")}
+          >
+            <Text style={styles.confirmationSecondaryText}>
+              Ver minhas denúncias
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
     );
-  };
+  }
 
   return (
     <View style={styles.root}>
@@ -254,10 +303,10 @@ export default function SecurityScreen() {
             style={{ flexShrink: 0 }}
           />
           <View style={{ flex: 1 }}>
-            <Text style={styles.anonTitle}>100% Anônimo</Text>
+            <Text style={styles.anonTitle}>Identidade protegida</Text>
             <Text style={styles.anonText}>
-              Sua identidade nunca é registrada. Somente a prefeitura e
-              autoridades competentes têm acesso a esta denúncia.
+              Sua identidade não é exibida publicamente. O acesso à denúncia é
+              restrito aos responsáveis pelo atendimento.
             </Text>
           </View>
         </View>
@@ -354,10 +403,13 @@ export default function SecurityScreen() {
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.btnEmergency} onPress={callEmergency}>
-          <Ionicons name="call" size={20} color={C.danger} />
-          <Text style={styles.btnEmergencyText}>Emergência? Ligue 190</Text>
-        </TouchableOpacity>
+        <View style={styles.emergencyNotice}>
+          <Ionicons name="warning-outline" size={17} color={C.danger} />
+          <Text style={styles.emergencyNoticeText}>
+            Em caso de emergência imediata, procure diretamente os serviços de
+            emergência da sua região.
+          </Text>
+        </View>
       </ScrollView>
     </View>
   );
@@ -381,6 +433,12 @@ const styles = StyleSheet.create({
 
   scroll: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 100 },
+  confirmationContent: {
+    flexGrow: 1,
+    alignItems: "center",
+    padding: 24,
+    paddingBottom: 50,
+  },
 
   anonCard: {
     backgroundColor: C.ecoLight,
@@ -475,16 +533,113 @@ const styles = StyleSheet.create({
   },
   btnDangerText: { color: "white", fontSize: 15, fontWeight: "700" },
 
-  btnEmergency: {
-    borderWidth: 1.5,
-    borderColor: C.danger,
-    borderRadius: 12,
-    paddingVertical: 13,
+  emergencyNotice: {
+    marginTop: 14,
+    paddingHorizontal: 4,
     flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 7,
+  },
+  emergencyNoticeText: {
+    flex: 1,
+    color: C.danger,
+    fontSize: 11,
+    lineHeight: 16,
+    textAlign: "center",
+    fontWeight: "600",
+  },
+
+  confirmationIcon: {
+    width: 104,
+    height: 104,
+    borderRadius: 52,
+    backgroundColor: C.ecoLight,
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    marginTop: 50,
+    marginBottom: 22,
+  },
+  confirmationTitle: {
+    fontSize: 25,
+    fontWeight: "800",
+    color: C.text,
+    textAlign: "center",
+  },
+  confirmationText: {
+    fontSize: 14,
+    color: C.text2,
+    lineHeight: 21,
+    textAlign: "center",
+    marginTop: 10,
+    maxWidth: 360,
+  },
+  protocolCard: {
+    width: "100%",
+    backgroundColor: C.surface,
+    borderWidth: 1,
+    borderColor: C.border,
+    borderRadius: 16,
+    padding: 18,
+    alignItems: "center",
+    marginTop: 24,
+  },
+  protocolLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1,
+    color: C.text3,
+  },
+  protocolValue: {
+    fontSize: 24,
+    fontWeight: "900",
+    color: C.primary,
+    letterSpacing: 1,
+    marginTop: 5,
+  },
+  protocolHint: {
+    fontSize: 11,
+    color: C.text3,
+    textAlign: "center",
+    marginTop: 6,
+  },
+  confirmationNotice: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 9,
+    backgroundColor: C.ecoLight,
+    borderRadius: 12,
+    padding: 13,
     marginTop: 12,
   },
-  btnEmergencyText: { color: C.danger, fontSize: 15, fontWeight: "600" },
+  confirmationNoticeText: {
+    flex: 1,
+    color: C.text2,
+    fontSize: 11,
+    lineHeight: 17,
+  },
+  confirmationPrimary: {
+    width: "100%",
+    backgroundColor: C.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 24,
+  },
+  confirmationPrimaryText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  confirmationSecondary: {
+    width: "100%",
+    paddingVertical: 13,
+    alignItems: "center",
+    marginTop: 4,
+  },
+  confirmationSecondaryText: {
+    color: C.primary,
+    fontSize: 13,
+    fontWeight: "700",
+  },
 });

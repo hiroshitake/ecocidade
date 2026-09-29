@@ -1,6 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { Platform } from "react-native";
+import { makeRedirectUri } from "expo-auth-session";
+import * as QueryParams from "expo-auth-session/build/QueryParams";
+import * as Linking from "expo-linking";
+import * as WebBrowser from "expo-web-browser";
 
 const supabaseUrl =
   process.env.EXPO_PUBLIC_SUPABASE_URL ||
@@ -18,6 +22,69 @@ const appSiteUrl = (
   "https://ecocidadetcc2026.netlify.app"
 ).replace(/\/$/, "");
 const emailRedirectUrl = `${appSiteUrl}/auth/callback`;
+
+// Required by Expo WebBrowser for completing OAuth sessions on web.
+WebBrowser.maybeCompleteAuthSession();
+
+export const googleNativeRedirectUrl = makeRedirectUri({
+  scheme: "ecocidadeapp",
+  path: "auth",
+});
+
+export const googleWebRedirectUrl = `${appSiteUrl}/login`;
+
+async function setSessionFromOAuthUrl(url: string) {
+  if (!supabase) throw new Error("Supabase não configurado.");
+
+  const { params, errorCode } = QueryParams.getQueryParams(url);
+  if (errorCode) throw new Error(errorCode);
+
+  const accessToken = params.access_token;
+  const refreshToken = params.refresh_token;
+
+  if (!accessToken || !refreshToken) {
+    throw new Error("O Google não retornou uma sessão válida.");
+  }
+
+  const { data, error } = await supabase.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  });
+  if (error) throw error;
+  return data.session;
+}
+
+export async function signInWithGoogle() {
+  if (!supabase) throw new Error("Supabase não configurado.");
+
+  const redirectTo = Platform.OS === "web" ? googleWebRedirectUrl : googleNativeRedirectUrl;
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo,
+      skipBrowserRedirect: Platform.OS !== "web",
+    },
+  });
+
+  if (error) throw error;
+  if (!data?.url) throw new Error("Não foi possível iniciar o login com Google.");
+
+  if (Platform.OS === "web") {
+    return null;
+  }
+
+  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+  if (result.type !== "success" || !("url" in result)) {
+    if (result.type === "cancel") return null;
+    throw new Error("O login com Google foi interrompido.");
+  }
+
+  return setSessionFromOAuthUrl(result.url);
+}
+
+export function listenForAuthUrl(callback: (url: string) => void) {
+  return Linking.addEventListener("url", ({ url }) => callback(url));
+}
 
 let client: SupabaseClient | null = null;
 

@@ -1,11 +1,10 @@
 import React, { useEffect } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
-import { Redirect, useRouter } from "expo-router";
+import { Redirect } from "expo-router";
 import { C } from "../constants/theme";
 import { getSupabaseSessionUser, isSupabaseConfigured, supabase } from "../services/supabase";
 
 export default function Index() {
-  const router = useRouter();
   const [checking, setChecking] = React.useState(true);
   const [destination, setDestination] = React.useState<"/login" | "/map" | "/google-profile">("/login");
 

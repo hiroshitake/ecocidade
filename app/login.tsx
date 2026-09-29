@@ -27,6 +27,7 @@ import {
     signInWithSupabase,
     signUpWithSupabase,
     signInWithGoogle,
+    supabase,
 } from "../services/supabase";
 
 export default function LoginScreen() {
@@ -60,11 +61,24 @@ export default function LoginScreen() {
   };
 
   useEffect(() => {
-    if (Platform.OS === "web" && isSupabaseConfigured()) {
+    if (!isSupabaseConfigured()) return;
+
+    let mounted = true;
+    finishAuthenticatedUser().catch((error) =>
+      console.error("Erro ao recuperar sessão:", error),
+    );
+
+    const subscription = supabase?.auth.onAuthStateChange((_event, session) => {
+      if (!mounted || !session) return;
       finishAuthenticatedUser().catch((error) =>
-        console.error("Erro ao recuperar sessão Google:", error),
+        console.error("Erro ao finalizar autenticação:", error),
       );
-    }
+    });
+
+    return () => {
+      mounted = false;
+      subscription?.data.subscription.unsubscribe();
+    };
   }, []);
 
 

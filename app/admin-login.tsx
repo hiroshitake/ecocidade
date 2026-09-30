@@ -63,7 +63,20 @@ export default function AdminLoginScreen() {
     setLoading(true);
 
     try {
-      await signInAdmin(email.trim().toLowerCase(), password);
+      const user = await signInAdmin(email.trim().toLowerCase(), password);
+
+      // O login administrativo usa a mesma sessão do Supabase, mas precisa
+      // entrar explicitamente na árvore de rotas do admin. Sem esse redirect,
+      // o app volta para a navegação comum do cidadão.
+      if (user.role === 'admin') {
+        router.replace('/(admin)/dashboard');
+      } else {
+        Alert.alert(
+          'Acesso negado',
+          'A conta autenticada não possui permissão de administrador.',
+        );
+        setLoading(false);
+      }
     } catch (error: any) {
       console.log('Admin login error:', error?.code, error?.message);
 

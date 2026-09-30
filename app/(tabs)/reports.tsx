@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { C, S } from "../../constants/theme";
+import { useAppTheme } from "../../context/theme-context";
 import { getMyReports } from "../../services/reports";
 
 const TABS = ["Todas", "Aguardando", "Em processo", "Concluídas"];
@@ -56,6 +57,8 @@ const normalizeStatus = (status?: string) => {
 };
 
 export default function ReportsScreen() {
+  const { colors } = useAppTheme();
+  const styles = makeStyles(colors);
   const [activeTab, setActiveTab] = useState("Todas");
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState<any | null>(null);
@@ -330,13 +333,13 @@ export default function ReportsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
+const makeStyles = (colors: typeof C) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg },
 
   header: {
-    backgroundColor: C.surface,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: C.border,
+    borderBottomColor: colors.border,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -344,33 +347,33 @@ const styles = StyleSheet.create({
     height: 60,
     ...S.shadow.sm,
   },
-  headerTitle: { fontSize: 17, fontWeight: "700", color: C.text },
+  headerTitle: { fontSize: 17, fontWeight: "700", color: colors.text },
   badge: {
-    backgroundColor: C.primaryLight,
+    backgroundColor: colors.primaryLight,
     borderRadius: 20,
     paddingVertical: 4,
     paddingHorizontal: 10,
   },
-  badgeText: { fontSize: 11, fontWeight: "700", color: C.primary },
+  badgeText: { fontSize: 11, fontWeight: "700", color: colors.primary },
 
   scroll: { flex: 1 },
 
   statsRow: { flexDirection: "row", gap: 10, padding: 16 },
   statCard: {
     flex: 1,
-    backgroundColor: C.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
     borderRadius: 14,
     padding: 14,
   },
-  statNum: { fontSize: 28, fontWeight: "800", color: C.primary },
-  statLabel: { fontSize: 12, color: C.text3, fontWeight: "500", marginTop: 2 },
+  statNum: { fontSize: 28, fontWeight: "800", color: colors.primary },
+  statLabel: { fontSize: 12, color: colors.text3, fontWeight: "500", marginTop: 2 },
 
   tabBarWrap: { paddingHorizontal: 16, marginBottom: 12 },
   tabBar: {
     flexDirection: "row",
-    backgroundColor: C.surface2,
+    backgroundColor: colors.surface2,
     borderRadius: 12,
     padding: 4,
   },
@@ -380,15 +383,15 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     alignItems: "center",
   },
-  tabBtnActive: { backgroundColor: C.surface, ...S.shadow.sm },
-  tabBtnText: { fontSize: 11, fontWeight: "600", color: C.text2 },
-  tabBtnTextActive: { color: C.primary },
+  tabBtnActive: { backgroundColor: colors.surface, ...S.shadow.sm },
+  tabBtnText: { fontSize: 11, fontWeight: "600", color: colors.text2 },
+  tabBtnTextActive: { color: colors.primary },
 
   card: {
     marginHorizontal: 16,
-    backgroundColor: C.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
     borderRadius: 16,
     overflow: "hidden",
     ...S.shadow.sm,
@@ -399,7 +402,7 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 14,
   },
-  reportBorder: { borderBottomWidth: 1, borderBottomColor: C.border },
+  reportBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
   reportIcon: {
     width: 44,
     height: 44,
@@ -407,13 +410,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  reportTitle: { fontSize: 14, fontWeight: "600", color: C.text },
-  reportSub: { fontSize: 12, color: C.text3, marginTop: 2 },
+  reportTitle: { fontSize: 14, fontWeight: "600", color: colors.text },
+  reportSub: { fontSize: 12, color: colors.text3, marginTop: 2 },
   statusBadge: { borderRadius: 20, paddingVertical: 3, paddingHorizontal: 10 },
   statusText: { fontSize: 11, fontWeight: "700" },
 
   btnPrimary: {
-    backgroundColor: C.primary,
+    backgroundColor: colors.primary,
     borderRadius: 12,
     paddingVertical: 14,
     flexDirection: "row",
@@ -430,14 +433,14 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   modalSheet: {
-    backgroundColor: C.surface,
+    backgroundColor: colors.surface,
     borderRadius: 24,
     maxHeight: "90%",
   },
   modalHandle: {
     width: 36,
     height: 4,
-    backgroundColor: C.border2,
+    backgroundColor: colors.border2,
     borderRadius: 2,
     alignSelf: "center",
     marginTop: 12,
@@ -449,31 +452,31 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 14,
   },
-  modalTitle: { fontSize: 18, fontWeight: "800", color: C.text },
-  modalProto: { fontSize: 12, color: C.text3, marginTop: 3 },
+  modalTitle: { fontSize: 18, fontWeight: "800", color: colors.text },
+  modalProto: { fontSize: 12, color: colors.text3, marginTop: 3 },
   descBox: {
-    backgroundColor: C.surface2,
+    backgroundColor: colors.surface2,
     borderRadius: 12,
     padding: 12,
     marginBottom: 14,
   },
-  descLabel: { fontSize: 12, color: C.text3, marginBottom: 4 },
-  descText: { fontSize: 14, color: C.text },
+  descLabel: { fontSize: 12, color: colors.text3, marginBottom: 4 },
+  descText: { fontSize: 14, color: colors.text },
   datesRow: { flexDirection: "row", gap: 10, marginBottom: 16 },
   dateCard: {
     flex: 1,
-    backgroundColor: C.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
     borderRadius: 12,
     padding: 12,
   },
-  dateLabel: { fontSize: 11, color: C.text3 },
-  dateValue: { fontSize: 13, fontWeight: "600", color: C.text, marginTop: 2 },
+  dateLabel: { fontSize: 11, color: colors.text3 },
+  dateValue: { fontSize: 13, fontWeight: "600", color: colors.text, marginTop: 2 },
   dateCardWide: {
-    backgroundColor: C.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
     borderRadius: 12,
     padding: 12,
     marginBottom: 16,
@@ -481,7 +484,7 @@ const styles = StyleSheet.create({
   timelineTitle: {
     fontSize: 13,
     fontWeight: "700",
-    color: C.text,
+    color: colors.text,
     marginBottom: 10,
   },
   timelineItem: {
@@ -498,15 +501,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexShrink: 0,
   },
-  timelineEvent: { fontSize: 13, fontWeight: "600", color: C.text },
-  timelineSub: { fontSize: 11, color: C.text3 },
+  timelineEvent: { fontSize: 13, fontWeight: "600", color: colors.text },
+  timelineSub: { fontSize: 11, color: colors.text3 },
   btnOutline: {
     borderWidth: 1.5,
-    borderColor: C.primary,
+    borderColor: colors.primary,
     borderRadius: 12,
     paddingVertical: 13,
     alignItems: "center",
     marginTop: 4,
   },
-  btnOutlineText: { color: C.primary, fontSize: 15, fontWeight: "600" },
+  btnOutlineText: { color: colors.primary, fontSize: 15, fontWeight: "600" },
 });

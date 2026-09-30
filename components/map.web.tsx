@@ -153,11 +153,16 @@ export default function MapComponent({
             closePopupOnClick: false,
           }).setView([-23.5505, -46.6333], 13);
 
-          L.tileLayer(isDark ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" : "https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
-            attribution: "© OpenStreetMap contributors",
-            maxZoom: 19,
-            minZoom: 2,
-          }).addTo(map);
+          L.tileLayer(
+            isDark
+              ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+              : "https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
+            {
+              attribution: "© OpenStreetMap contributors",
+              maxZoom: 19,
+              minZoom: 2,
+            },
+          ).addTo(map);
 
           map.on("click", (e: any) => {
             if (selectLocation && onSelectLocationRef.current) {

@@ -1,6 +1,7 @@
-import React from 'react';
-import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { C, S } from '../constants/theme';
+import React from "react";
+import { Modal, View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { S } from "../constants/theme";
+import { useAppTheme } from "../context/theme-context";
 
 interface ConfirmationModalProps {
   title: string;
@@ -16,13 +17,15 @@ interface ConfirmationModalProps {
 export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   title,
   description,
-  confirmText = 'Confirmar',
-  cancelText = 'Cancelar',
+  confirmText = "Confirmar",
+  cancelText = "Cancelar",
   visible,
   onDismiss,
   onConfirm,
   destructive = false,
 }) => {
+  const { colors, isDark } = useAppTheme();
+
   return (
     <Modal
       transparent
@@ -32,26 +35,30 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       statusBarTranslucent
     >
       <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onDismiss}>
-        <View style={styles.modal}>
+        <View style={[styles.modal, { backgroundColor: colors.surface }]}>
           <View style={styles.header}>
-            <Text style={styles.title}>{title}</Text>
+            <View style={[styles.icon, { backgroundColor: destructive ? colors.dangerLight : colors.primaryLight }]}>
+              <Text style={[styles.iconText, { color: destructive ? colors.danger : colors.primary }]}>
+                {destructive ? "!" : "?"}
+              </Text>
+            </View>
+            <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
           </View>
+
           <View style={styles.body}>
-            <Text style={styles.description}>{description}</Text>
+            <Text style={[styles.description, { color: colors.text2 }]}>{description}</Text>
           </View>
-          <View style={[styles.footer, { borderTopColor: C.border }]}>
+
+          <View style={[styles.footer, { borderTopColor: colors.border }]}>
             <TouchableOpacity
-              style={[styles.button, styles.cancelButton]}
+              style={[styles.button, styles.cancelButton, { backgroundColor: colors.surface2, borderColor: colors.border }]}
               onPress={onDismiss}
             >
-              <Text style={styles.cancelText}>{cancelText}</Text>
+              <Text style={[styles.cancelText, { color: colors.text2 }]}>{cancelText}</Text>
             </TouchableOpacity>
+
             <TouchableOpacity
-              style={[
-                styles.button,
-                styles.confirmButton,
-                { backgroundColor: destructive ? C.danger : C.primary },
-              ]}
+              style={[styles.button, { backgroundColor: destructive ? colors.danger : colors.primary }]}
               onPress={() => {
                 onConfirm();
                 onDismiss();
@@ -69,70 +76,55 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.58)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
   },
   modal: {
-    width: '85%',
-    maxWidth: 340,
-    backgroundColor: C.surface,
+    width: "100%",
+    maxWidth: 380,
     borderRadius: S.radius.xl,
-    overflow: 'hidden',
+    overflow: "hidden",
     elevation: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.3,
-    shadowRadius: 20,
+    shadowRadius: 24,
   },
   header: {
-    padding: 20,
-    paddingBottom: 12,
-    alignItems: 'center',
+    paddingHorizontal: 22,
+    paddingTop: 24,
+    paddingBottom: 8,
+    alignItems: "center",
   },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: C.text,
-    textAlign: 'center',
+  icon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
   },
-  body: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  description: {
-    fontSize: 15,
-    color: C.text2,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
+  iconText: { fontSize: 24, fontWeight: "900" },
+  title: { fontSize: 20, fontWeight: "800", textAlign: "center" },
+  body: { paddingHorizontal: 24, paddingVertical: 14 },
+  description: { fontSize: 14, textAlign: "center", lineHeight: 21 },
   footer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderTopWidth: 1,
-    paddingVertical: 12,
+    padding: 14,
+    gap: 10,
   },
   button: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    marginHorizontal: 8,
+    minHeight: 46,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12,
     borderRadius: S.radius.md,
   },
-  cancelButton: {
-    backgroundColor: C.surface2,
-  },
-  confirmButton: {
-    backgroundColor: C.primary,
-  },
-  cancelText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: C.text3,
-  },
-  confirmText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: C.white,
-  },
+  cancelButton: { borderWidth: 1 },
+  cancelText: { fontSize: 14, fontWeight: "700" },
+  confirmText: { fontSize: 14, fontWeight: "800", color: "#fff" },
 });

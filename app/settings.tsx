@@ -5,11 +5,13 @@ import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { ConfirmationModal } from "../components/ConfirmationModal";
 import { C, S } from "../constants/theme";
+import { useAppTheme, type ThemeMode } from "../context/theme-context";
 import { useToast } from "../context/toast-context";
 import { changeUserPassword, deleteUserAccount, deleteUserAvatar, getCurrentUserData, getCurrentUserAvatarUrl, updateUserProfile, uploadUserAvatar } from "../services/auth";
 
 export default function SettingsScreen() {
   const toast = useToast();
+  const { mode, setMode, colors } = useAppTheme();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [passwordSaving, setPasswordSaving] = useState(false);
@@ -111,6 +113,45 @@ export default function SettingsScreen() {
           <Text style={styles.label}>Cidade</Text>
           <TextInput value={city} editable={false} style={[styles.input, styles.disabledInput]} />
           <TouchableOpacity style={styles.primaryButton} onPress={saveProfile} disabled={saving}>{saving ? <ActivityIndicator color={C.white} /> : <Text style={styles.primaryText}>Salvar alterações</Text>}</TouchableOpacity>
+        </View>
+
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Aparência</Text>
+          <Text style={[styles.helper, { color: colors.text2 }]}>
+            Escolha como o EcoCidade deve acompanhar a aparência do seu dispositivo.
+          </Text>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            {([
+              ["system", "Sistema", "phone-portrait-outline"],
+              ["light", "Claro", "sunny-outline"],
+              ["dark", "Escuro", "moon-outline"],
+            ] as const).map(([value, label, icon]) => {
+              const active = mode === value;
+              return (
+                <TouchableOpacity
+                  key={value}
+                  onPress={() => setMode(value as ThemeMode)}
+                  activeOpacity={0.85}
+                  style={{
+                    flex: 1,
+                    minHeight: 76,
+                    borderRadius: 14,
+                    borderWidth: 1,
+                    borderColor: active ? colors.primary : colors.border,
+                    backgroundColor: active ? colors.primaryLight : colors.surface2,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 5,
+                  }}
+                >
+                  <Ionicons name={icon as any} size={20} color={active ? colors.primary : colors.text3} />
+                  <Text style={{ color: active ? colors.primary : colors.text2, fontSize: 12, fontWeight: "800" }}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
 
         <View style={styles.card}>

@@ -74,16 +74,65 @@ export default function ManageReportsFiltered({ security = false }: { security?:
   const formatDate = (value?: string) => value ? new Date(value).toLocaleString('pt-BR') : 'Sem data';
 
   const handleStatusChange = async (newStatus: string) => {
-    if (!selectedReport || normalizeStatus(selectedReport.status) === newStatus) return;
+    if (!selectedReport) return;
+
+    const currentStatus = normalizeStatus(selectedReport.status);
+    if (currentStatus === 'resolved') {
+      Alert.alert('Denúncia concluída', 'Esta denúncia já foi concluída e não pode mais ser alterada manualmente.');
+      return;
+    }
+    if (currentStatus === newStatus) return;
+
+    const confirmMessage =
+      'Após marcar esta denúncia como concluída, ela não poderá mais ter seu status alterado, ser ocultada ou excluída manualmente. Ela seguirá o prazo automático de retenção do sistema.';
+
+    if (newStatus === 'resolved') {
+      if (Platform.OS === 'web') {
+        if (!window.confirm(`Concluir denúncia?\n\n${confirmMessage}`)) return;
+      } else {
+        const confirmed = await new Promise<boolean>(resolve => {
+          Alert.alert('Concluir denúncia?', confirmMessage, [
+            { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'Concluir', onPress: () => resolve(true) },
+          ]);
+        });
+        if (!confirmed) return;
+      }
+    }
+
     try {
-      await updateReportStatus(selectedReport.id, newStatus);
-      setReports(prev => prev.map(r => r.id === selectedReport.id ? { ...r, status: newStatus } : r));
-      setSelectedReport(prev => prev?.id === selectedReport.id ? { ...prev, status: newStatus } : prev);
-      Alert.alert('Sucesso', 'Status atualizado com sucesso.');
-    } catch (error) { console.error(error); Alert.alert('Erro', 'Falha ao atualizar status.'); }
+      const updated = await updateReportStatus(selectedReport.id, newStatus);
+      const resolvedAt = newStatus === 'resolved'
+        ? (updated as any)?.resolved_at || new Date().toISOString()
+        : null;
+
+      setReports(prev => prev.map(r =>
+        r.id === selectedReport.id
+          ? { ...r, status: newStatus, resolved_at: resolvedAt }
+          : r
+      ));
+      setSelectedReport(prev =>
+        prev?.id === selectedReport.id
+          ? { ...prev, status: newStatus, resolved_at: resolvedAt }
+          : prev
+      );
+      Alert.alert('Sucesso', newStatus === 'resolved'
+        ? 'Denúncia concluída. Ela não poderá mais ser alterada manualmente.'
+        : 'Status atualizado com sucesso.');
+    } catch (error) {
+      console.error(error);
+      const message = newStatus === 'resolved'
+        ? 'Não foi possível concluir a denúncia.'
+        : 'Falha ao atualizar status.';
+      Alert.alert('Erro', message);
+    }
   };
 
   const runVisibilityChange = async (report: Report) => {
+    if (normalizeStatus(report.status) === 'resolved') {
+      Alert.alert('Denúncia concluída', 'Esta denúncia não pode mais ser ocultada ou mostrada manualmente.');
+      return;
+    }
     const hidden = Boolean(report.hidden_from_public);
     try {
       await setReportPublicVisibility(report.id, !hidden);
@@ -98,6 +147,10 @@ export default function ManageReportsFiltered({ security = false }: { security?:
   };
 
   const handleVisibilityChange = (report: Report) => {
+    if (normalizeStatus(report.status) === 'resolved') {
+      Alert.alert('Denúncia concluída', 'Esta denúncia não pode mais ser ocultada ou mostrada manualmente.');
+      return;
+    }
     const hidden = Boolean(report.hidden_from_public);
     const title = hidden ? 'Mostrar denúncia' : 'Ocultar denúncia';
     const message = hidden
@@ -117,6 +170,11 @@ export default function ManageReportsFiltered({ security = false }: { security?:
   };
 
   const runDelete = async (id: string) => {
+    const report = reports.find(r => r.id === id);
+    if (report && normalizeStatus(report.status) === 'resolved') {
+      Alert.alert('Denúncia concluída', 'Esta denúncia não pode mais ser excluída manualmente.');
+      return;
+    }
     try {
       await deleteReport(id);
       setReports(prev => prev.filter(r => r.id !== id));
@@ -130,6 +188,11 @@ export default function ManageReportsFiltered({ security = false }: { security?:
   };
 
   const handleDelete = (id: string) => {
+    const report = reports.find(r => r.id === id) || selectedReport;
+    if (report && normalizeStatus(report.status) === 'resolved') {
+      Alert.alert('Denúncia concluída', 'Esta denúncia não pode mais ser excluída manualmente.');
+      return;
+    }
     const message = 'Esta ação remove a denúncia do banco de dados e não pode ser desfeita.';
     if (Platform.OS === 'web') {
       if (window.confirm(`Confirmar exclusão permanente\n\n${message}`)) void runDelete(id);
@@ -189,7 +252,15 @@ export default function ManageReportsFiltered({ security = false }: { security?:
                 </View>
                 <ThemedText style={styles.address} numberOfLines={1}>{item.location?.address || 'Localização desconhecida'}</ThemedText>
               </View>
-              <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.deleteButton}><MaterialCommunityIcons name="trash-can-outline" size={21} color={C.danger} /></TouchableOpacity>
+              {normalizeStatus(item.status) !== 'resolved' ? (
+                <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.deleteButton}>
+                  <MaterialCommunityIcons name="trash-can-outline" size={21} color={C.danger} />
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.deleteButton}>
+                  <MaterialCommunityIcons name="lock-outline" size={19} color={C.text3} />
+                </View>
+              )}
             </View>
             <ThemedText style={styles.description} numberOfLines={2}>{item.description || 'Sem descrição'}</ThemedText>
             <View style={styles.cardBottom}><ThemedText style={styles.date}>{formatDate(item.created_at)}</ThemedText><View style={[styles.statusBadge, { backgroundColor: statusColor(item.status) + '20' }]}><ThemedText style={[styles.statusText, { color: statusColor(item.status) }]}>{statusLabel(item.status)}</ThemedText></View></View>
@@ -219,16 +290,28 @@ export default function ManageReportsFiltered({ security = false }: { security?:
               <View style={styles.detail}><ThemedText style={styles.label}>Data e hora</ThemedText><ThemedText style={styles.value}>{formatDate(selectedReport.created_at)}</ThemedText></View>
               <View style={styles.detail}><ThemedText style={styles.label}>Status</ThemedText><ThemedText style={[styles.value, { color: statusColor(selectedReport.status) }]}>{statusLabel(selectedReport.status)}</ThemedText></View>
               <View style={styles.detail}><ThemedText style={styles.label}>Visibilidade</ThemedText><ThemedText style={[styles.value, { color: selectedReport.hidden_from_public ? C.danger : C.eco }]}>{selectedReport.hidden_from_public ? 'Oculta para usuários' : 'Visível conforme as regras públicas'}</ThemedText></View>
-              <ThemedText style={styles.label}>Alterar status</ThemedText>
-              {STATUS_OPTIONS.map(option => <TouchableOpacity key={option.id} style={[styles.statusOption, normalizeStatus(selectedReport.status) === option.id && { borderColor: option.color, backgroundColor: option.color + '12' }]} onPress={() => handleStatusChange(option.id)}><MaterialCommunityIcons name={option.icon as any} size={19} color={option.color} /><ThemedText style={[styles.statusOptionText, normalizeStatus(selectedReport.status) === option.id && { color: option.color }]}>{option.label}</ThemedText></TouchableOpacity>)}
-              <TouchableOpacity style={[styles.visibilityButton, selectedReport.hidden_from_public && styles.showButton]} onPress={() => handleVisibilityChange(selectedReport)}>
-                <MaterialCommunityIcons name={selectedReport.hidden_from_public ? 'eye-outline' : 'eye-off-outline'} size={19} color={selectedReport.hidden_from_public ? C.eco : C.danger} />
-                <ThemedText style={[styles.visibilityButtonText, { color: selectedReport.hidden_from_public ? C.eco : C.danger }]}>{selectedReport.hidden_from_public ? 'Mostrar para usuários' : 'Ocultar para usuários'}</ThemedText>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.permanentDeleteButton} onPress={() => handleDelete(selectedReport.id)}>
-                <MaterialCommunityIcons name="trash-can-outline" size={19} color={C.danger} />
-                <ThemedText style={styles.permanentDeleteText}>Excluir permanentemente</ThemedText>
-              </TouchableOpacity>
+              {normalizeStatus(selectedReport.status) === 'resolved' ? (
+                <View style={styles.lockedNotice}>
+                  <MaterialCommunityIcons name="lock-outline" size={20} color={C.eco} />
+                  <View style={styles.lockedNoticeCopy}>
+                    <ThemedText style={styles.lockedNoticeTitle}>Denúncia concluída</ThemedText>
+                    <ThemedText style={styles.lockedNoticeText}>Esta denúncia não pode mais ser alterada, ocultada ou excluída manualmente. Ela seguirá o prazo automático de retenção do sistema.</ThemedText>
+                  </View>
+                </View>
+              ) : (
+                <>
+                  <ThemedText style={styles.label}>Alterar status</ThemedText>
+                  {STATUS_OPTIONS.map(option => <TouchableOpacity key={option.id} style={[styles.statusOption, normalizeStatus(selectedReport.status) === option.id && { borderColor: option.color, backgroundColor: option.color + '12' }]} onPress={() => handleStatusChange(option.id)}><MaterialCommunityIcons name={option.icon as any} size={19} color={option.color} /><ThemedText style={[styles.statusOptionText, normalizeStatus(selectedReport.status) === option.id && { color: option.color }]}>{option.label}</ThemedText></TouchableOpacity>)}
+                  <TouchableOpacity style={[styles.visibilityButton, selectedReport.hidden_from_public && styles.showButton]} onPress={() => handleVisibilityChange(selectedReport)}>
+                    <MaterialCommunityIcons name={selectedReport.hidden_from_public ? 'eye-outline' : 'eye-off-outline'} size={19} color={selectedReport.hidden_from_public ? C.eco : C.danger} />
+                    <ThemedText style={[styles.visibilityButtonText, { color: selectedReport.hidden_from_public ? C.eco : C.danger }]}>{selectedReport.hidden_from_public ? 'Mostrar para usuários' : 'Ocultar para usuários'}</ThemedText>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.permanentDeleteButton} onPress={() => handleDelete(selectedReport.id)}>
+                    <MaterialCommunityIcons name="trash-can-outline" size={19} color={C.danger} />
+                    <ThemedText style={styles.permanentDeleteText}>Excluir permanentemente</ThemedText>
+                  </TouchableOpacity>
+                </>
+              )}
             </ScrollView>
             <TouchableOpacity style={styles.closeButton} onPress={() => setSelectedReport(null)}><ThemedText style={styles.closeText}>Fechar</ThemedText></TouchableOpacity>
           </>}

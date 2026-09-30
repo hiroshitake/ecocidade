@@ -3,6 +3,7 @@
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { StyleSheet as RNStyleSheet } from "react-native";
 import ReportMapModal, { MapReport } from "./report-map-modal";
+import { useAppTheme } from "../context/theme-context";
 
 interface Report extends MapReport {}
 
@@ -38,6 +39,7 @@ export default function MapComponent({
   zones = [],
   onZoneClick,
 }: MapComponentProps) {
+  const { isDark } = useAppTheme();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markerLayerRef = useRef<any>(null);
@@ -151,11 +153,16 @@ export default function MapComponent({
             closePopupOnClick: false,
           }).setView([-23.5505, -46.6333], 13);
 
-          L.tileLayer("https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png", {
-            attribution: "© OpenStreetMap contributors",
-            maxZoom: 19,
-            minZoom: 2,
-          }).addTo(map);
+          L.tileLayer(
+            isDark
+              ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+              : "https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
+            {
+              attribution: "© OpenStreetMap contributors",
+              maxZoom: 19,
+              minZoom: 2,
+            },
+          ).addTo(map);
 
           map.on("click", (e: any) => {
             if (selectLocation && onSelectLocationRef.current) {
@@ -183,7 +190,7 @@ export default function MapComponent({
         mapInstanceRef.current = null;
       }
     };
-  }, []);
+  }, [isDark]);
 
   useEffect(() => {
     if (!markerLayerRef.current || typeof window === "undefined") return;
@@ -224,7 +231,7 @@ export default function MapComponent({
       selectedMarkerRef.current = L.marker(
         [selectedLocation.latitude, selectedLocation.longitude],
         { icon: selectedIcon, interactive: false },
-      ).bindPopup('<strong style="color: #0d1b36;">Local selecionado</strong>').addTo(markerLayerRef.current);
+      ).bindPopup('<strong style="color: ${isDark ? "#f5f8ff" : "#0d1b36"};">Local selecionado</strong>').addTo(markerLayerRef.current);
     }
 
     if (zones && zoneLayerRef.current) {

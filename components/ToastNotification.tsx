@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useRef } from "react";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
-import { C } from "../constants/theme";
+import { useAppTheme } from "../context/theme-context";
 
 export type ToastNotificationType = "error" | "warning" | "success";
 
@@ -18,61 +18,30 @@ export const ToastNotification: React.FC<ToastNotificationProps> = ({
   onClose,
   duration = 4000,
 }) => {
+  const { colors } = useAppTheme();
   const translateY = useRef(new Animated.Value(-20)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const showAnimation = Animated.parallel([
-      Animated.timing(translateY, {
-        toValue: 0,
-        duration: 220,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 220,
-        useNativeDriver: true,
-      }),
-    ]);
-
-    showAnimation.start();
+    Animated.parallel([
+      Animated.timing(translateY, { toValue: 0, duration: 220, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+    ]).start();
 
     const timer = setTimeout(() => {
       Animated.parallel([
-        Animated.timing(translateY, {
-          toValue: -12,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        onClose?.();
-      });
+        Animated.timing(translateY, { toValue: -12, duration: 200, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+      ]).start(() => onClose?.());
     }, duration);
 
     return () => clearTimeout(timer);
   }, [duration, onClose, opacity, translateY]);
 
   const palette = {
-    error: {
-      icon: "alert-circle",
-      background: C.dangerLight,
-      color: C.danger,
-    },
-    warning: {
-      icon: "alert-triangle",
-      background: C.warningLight,
-      color: C.warning,
-    },
-    success: {
-      icon: "check-circle",
-      background: C.ecoLight,
-      color: C.eco,
-    },
+    error: { icon: "alert-circle", background: colors.dangerLight, color: colors.danger },
+    warning: { icon: "alert-triangle", background: colors.warningLight, color: colors.warning },
+    success: { icon: "check-circle", background: colors.ecoLight, color: colors.eco },
   } as const;
 
   const theme = palette[type];
@@ -84,13 +53,16 @@ export const ToastNotification: React.FC<ToastNotificationProps> = ({
         styles.toast,
         {
           backgroundColor: theme.background,
+          borderColor: colors.border,
           opacity,
           transform: [{ translateY }],
         },
       ]}
     >
       <View style={styles.content}>
-        <Ionicons name={theme.icon as any} size={18} color={theme.color} />
+        <View style={[styles.iconWrap, { backgroundColor: colors.surface }]}>
+          <Ionicons name={theme.icon as any} size={18} color={theme.color} />
+        </View>
         <Text style={[styles.message, { color: theme.color }]}>{message}</Text>
         <Pressable onPress={onClose} style={styles.closeButton} hitSlop={8}>
           <Ionicons name="close" size={16} color={theme.color} />
@@ -102,31 +74,32 @@ export const ToastNotification: React.FC<ToastNotificationProps> = ({
 
 const styles = StyleSheet.create({
   toast: {
-    borderRadius: 12,
+    borderRadius: 14,
+    borderWidth: 1,
     marginBottom: 10,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.16,
+    shadowRadius: 14,
+    elevation: 6,
     alignSelf: "flex-end",
     width: "100%",
-    maxWidth: 360,
+    maxWidth: 380,
   },
   content: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
   },
-  message: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: "600",
-    lineHeight: 18,
+  iconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  closeButton: {
-    padding: 2,
-  },
+  message: { flex: 1, fontSize: 14, fontWeight: "700", lineHeight: 19 },
+  closeButton: { padding: 4 },
 });

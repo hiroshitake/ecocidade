@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -26,6 +26,8 @@ import {
     isSupabaseConfigured,
     signInWithSupabase,
     signUpWithSupabase,
+    signInWithGoogle,
+    supabase,
 } from "../services/supabase";
 
 export default function LoginScreen() {
@@ -46,6 +48,40 @@ export default function LoginScreen() {
   });
   const router = useRouter();
   const toast = useToast();
+  const finishAuthenticatedUser = async () => {
+    const currentUser = await getSupabaseSessionUser();
+    if (!currentUser) return false;
+    await AsyncStorage.setItem("ecocidade.user", JSON.stringify(currentUser));
+    if (!currentUser.city_id && !currentUser.city) {
+      router.replace("/google-profile");
+    } else {
+      router.replace("/map");
+    }
+    return true;
+  };
+
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+
+    let mounted = true;
+    finishAuthenticatedUser().catch((error) =>
+      console.error("Erro ao recuperar sessão:", error),
+    );
+
+    const subscription = supabase?.auth.onAuthStateChange((_event, session) => {
+      if (!mounted || !session) return;
+      finishAuthenticatedUser().catch((error) =>
+        console.error("Erro ao finalizar autenticação:", error),
+      );
+    });
+
+    return () => {
+      mounted = false;
+      subscription?.data.subscription.unsubscribe();
+    };
+  }, []);
+
+
 
   const cityOptions = [
     { id: "orlândia", name: "Orlândia" },
@@ -366,14 +402,35 @@ export default function LoginScreen() {
 
               <TouchableOpacity
                 style={styles.btnOutline}
-                onPress={() =>
-                  Alert.alert(
-                    "Em breve",
-                    "O login com Google será habilitado em seguida.",
-                  )
-                }
+                onPress={async () => {
+                  try {
+                    setLoading(true);
+                    if (!isSupabaseConfigured()) {
+                      throw new Error("Supabase não configurado.");
+                    }
+                    await signInWithGoogle();
+                    if (Platform.OS !== "web") {
+                      await finishAuthenticatedUser();
+                    }
+                  } catch (error: any) {
+                    console.error("Erro no login com Google:", error);
+                    if (error?.message !== "O login com Google foi interrompido.") {
+                      toast.addToast(
+                        error?.message || "Não foi possível entrar com Google.",
+                        "error",
+                      );
+                    }
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading}
               >
-                <Text style={styles.btnOutlineText}>🇬 Google</Text>
+                {loading ? (
+                  <ActivityIndicator color={C.primary} size="small" />
+                ) : (
+                  <Text style={styles.btnOutlineText}>🇬 Google</Text>
+                )}
               </TouchableOpacity>
             </View>
           )}

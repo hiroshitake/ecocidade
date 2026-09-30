@@ -1,44 +1,42 @@
 import { Tabs } from "expo-router";
 import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
-
 import { HapticTab } from "../../components/haptic-tab";
 import { IconSymbol } from "../../components/ui/icon-symbol";
-import { C } from "../../constants/theme";
-import { useColorScheme } from "../../hooks/use-color-scheme";
+import { useAppTheme } from "../../context/theme-context";
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const { isDark, colors } = useAppTheme();
   const isMobile = Platform.OS !== "web";
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: C.primary,
-        tabBarInactiveTintColor: "#8aa0c2",
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.text3,
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarShowLabel: !isMobile,
         tabBarStyle: {
-          backgroundColor: "#ffffff",
-          borderTopColor: "#e4ecfa",
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
           borderTopWidth: 1,
-          height: isMobile ? 74 : 88,
-          paddingBottom: isMobile ? 12 : 10,
-          paddingTop: isMobile ? 8 : 10,
-          shadowColor: "#1a5fd4",
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.08,
-          shadowRadius: 12,
-          elevation: 8,
+          height: isMobile ? 76 : 84,
+          paddingBottom: isMobile ? 12 : 9,
+          paddingTop: isMobile ? 8 : 9,
+          shadowColor: isDark ? "#000000" : colors.primary,
+          shadowOffset: { width: 0, height: -5 },
+          shadowOpacity: isDark ? 0.28 : 0.08,
+          shadowRadius: 18,
+          elevation: 10,
         },
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: "700",
+          fontWeight: "800",
           marginTop: 2,
         },
         tabBarIconStyle: {
-          marginTop: isMobile ? 0 : 0,
+          marginTop: 0,
         },
       }}
     >
@@ -48,7 +46,7 @@ export default function TabLayout() {
           title: "Mapa",
           tabBarIcon: ({ color }) => (
             <View style={styles.tabIconWrap}>
-              <IconSymbol size={26} name="map.fill" color={color} />
+              <IconSymbol size={25} name="map.fill" color={color} />
             </View>
           ),
         }}
@@ -58,8 +56,8 @@ export default function TabLayout() {
         options={{
           title: "Nova Denúncia",
           tabBarIcon: ({ color }) => (
-            <View style={styles.tabIconWrap}>
-              <IconSymbol size={26} name="plus.circle.fill" color={color} />
+            <View style={[styles.tabIconWrap, styles.actionIcon]}>
+              <IconSymbol size={25} name="plus.circle.fill" color={color} />
             </View>
           ),
         }}
@@ -70,7 +68,7 @@ export default function TabLayout() {
           title: "Denúncias",
           tabBarIcon: ({ color }) => (
             <View style={styles.tabIconWrap}>
-              <IconSymbol size={26} name="list.bullet" color={color} />
+              <IconSymbol size={25} name="list.bullet" color={color} />
             </View>
           ),
         }}
@@ -81,7 +79,7 @@ export default function TabLayout() {
           title: "Segurança",
           tabBarIcon: ({ color }) => (
             <View style={styles.tabIconWrap}>
-              <IconSymbol size={26} name="shield.fill" color={color} />
+              <IconSymbol size={25} name="shield.fill" color={color} />
             </View>
           ),
         }}
@@ -92,7 +90,7 @@ export default function TabLayout() {
           title: "Perfil",
           tabBarIcon: ({ color }) => (
             <View style={styles.tabIconWrap}>
-              <IconSymbol size={26} name="person.fill" color={color} />
+              <IconSymbol size={25} name="person.fill" color={color} />
             </View>
           ),
         }}
@@ -103,10 +101,13 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   tabIconWrap: {
-    width: 32,
-    height: 32,
+    width: 34,
+    height: 34,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 10,
+    borderRadius: 12,
+  },
+  actionIcon: {
+    transform: [{ scale: 1.04 }],
   },
 });

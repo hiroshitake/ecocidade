@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import MapComponent from "../../components/map";
 import { C, S } from "../../constants/theme";
+import { useAppTheme } from "../../context/theme-context";
 import {
   getCurrentUserData,
   resolveUserLocationForSubmission,
@@ -39,6 +40,8 @@ const CATEGORIES = [
 ];
 
 export default function NewReportScreen() {
+  const { colors } = useAppTheme();
+  const styles = makeStyles(colors);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
@@ -273,55 +276,55 @@ export default function NewReportScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
-  header: { backgroundColor: C.surface, borderBottomWidth: 1, borderBottomColor: C.border, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, height: 60, ...S.shadow.sm },
-  headerTitle: { fontSize: 17, fontWeight: "700", color: C.text },
+const makeStyles = (colors: typeof C) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg },
+  header: { backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, height: 60, ...S.shadow.sm },
+  headerTitle: { fontSize: 17, fontWeight: "700", color: colors.text },
   scroll: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 100 },
   stepRow: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
   stepLabels: { flexDirection: "row", justifyContent: "space-between", marginBottom: 20 },
-  stepLabel: { fontSize: 11, fontWeight: "600", color: C.text3, flex: 1, textAlign: "center" },
+  stepLabel: { fontSize: 11, fontWeight: "600", color: colors.text3, flex: 1, textAlign: "center" },
   stepCircle: { width: 28, height: 28, borderRadius: 14, justifyContent: "center", alignItems: "center" },
-  stepDone: { backgroundColor: C.primary },
-  stepCurrent: { backgroundColor: C.primary, shadowColor: C.primaryLight, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 6, elevation: 4 },
-  stepPending: { backgroundColor: C.border },
-  stepNum: { fontSize: 12, fontWeight: "700", color: C.text3 },
-  stepLine: { flex: 1, height: 2, backgroundColor: C.border, marginHorizontal: 6 },
-  stepLineDone: { backgroundColor: C.primary },
-  sectionTitle: { fontSize: 16, fontWeight: "700", color: C.text, marginBottom: 14 },
+  stepDone: { backgroundColor: colors.primary },
+  stepCurrent: { backgroundColor: colors.primary, shadowColor: colors.primaryLight, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 6, elevation: 4 },
+  stepPending: { backgroundColor: colors.border },
+  stepNum: { fontSize: 12, fontWeight: "700", color: colors.text3 },
+  stepLine: { flex: 1, height: 2, backgroundColor: colors.border, marginHorizontal: 6 },
+  stepLineDone: { backgroundColor: colors.primary },
+  sectionTitle: { fontSize: 16, fontWeight: "700", color: colors.text, marginBottom: 14 },
   catGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  catBtn: { width: "30%", flexGrow: 1, backgroundColor: C.surface2, borderWidth: 1.5, borderColor: C.border, borderRadius: 14, padding: 14, alignItems: "center", gap: 6 },
-  catBtnSelected: { backgroundColor: C.primaryLight, borderColor: C.primary },
-  catLabel: { fontSize: 11, fontWeight: "600", textAlign: "center", color: C.text2 },
-  label: { fontSize: 12, fontWeight: "600", color: C.text3, letterSpacing: 0.5, marginBottom: 6, textTransform: "uppercase" },
+  catBtn: { width: "30%", flexGrow: 1, backgroundColor: colors.surface2, borderWidth: 1.5, borderColor: colors.border, borderRadius: 14, padding: 14, alignItems: "center", gap: 6 },
+  catBtnSelected: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
+  catLabel: { fontSize: 11, fontWeight: "600", textAlign: "center", color: colors.text2 },
+  label: { fontSize: 12, fontWeight: "600", color: colors.text3, letterSpacing: 0.5, marginBottom: 6, textTransform: "uppercase" },
   miniMapWrap: { borderRadius: 12, overflow: "hidden", marginBottom: 8 },
   miniMap: { height: 180 },
-  locationRow: { backgroundColor: C.surface2, borderWidth: 1, borderColor: C.border, borderRadius: 10, padding: 10, flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 0 },
-  locationText: { fontSize: 13, color: C.text2, flex: 1 },
-  photoUpload: { backgroundColor: C.surface2, borderWidth: 2, borderColor: C.border2, borderStyle: "dashed", borderRadius: 14, padding: 32, alignItems: "center", gap: 8 },
-  photoTitle: { fontSize: 14, fontWeight: "600", color: C.text2 },
-  photoSub: { fontSize: 12, color: C.text3 },
-  photoSelectedRow: { backgroundColor: C.ecoLight, borderRadius: 10, padding: 12, flexDirection: "row", alignItems: "center", gap: 8 },
-  photoSelectedText: { fontSize: 13, color: C.eco, fontWeight: "600" },
-  textarea: { backgroundColor: C.surface2, color: C.text, borderWidth: 1.5, borderColor: C.border, borderRadius: 12, paddingHorizontal: 16, paddingTop: 13, paddingBottom: 13, fontSize: 15, minHeight: 100 },
-  btnPrimary: { backgroundColor: C.primary, borderRadius: 12, paddingVertical: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, ...S.shadow.sm },
+  locationRow: { backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 10, flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 0 },
+  locationText: { fontSize: 13, color: colors.text2, flex: 1 },
+  photoUpload: { backgroundColor: colors.surface2, borderWidth: 2, borderColor: colors.border2, borderStyle: "dashed", borderRadius: 14, padding: 32, alignItems: "center", gap: 8 },
+  photoTitle: { fontSize: 14, fontWeight: "600", color: colors.text2 },
+  photoSub: { fontSize: 12, color: colors.text3 },
+  photoSelectedRow: { backgroundColor: colors.ecoLight, borderRadius: 10, padding: 12, flexDirection: "row", alignItems: "center", gap: 8 },
+  photoSelectedText: { fontSize: 13, color: colors.eco, fontWeight: "600" },
+  textarea: { backgroundColor: colors.surface2, color: colors.text, borderWidth: 1.5, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 16, paddingTop: 13, paddingBottom: 13, fontSize: 15, minHeight: 100 },
+  btnPrimary: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, ...S.shadow.sm },
   btnPrimaryText: { color: "white", fontSize: 15, fontWeight: "700" },
   photoOptionsOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", alignItems: "center", padding: 20 },
-  photoOptionsCard: { width: "100%", maxWidth: 420, backgroundColor: C.surface, borderRadius: 18, padding: 20, ...S.shadow.lg },
+  photoOptionsCard: { width: "100%", maxWidth: 420, backgroundColor: colors.surface, borderRadius: 18, padding: 20, ...S.shadow.lg },
   photoOptionsHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 18 },
-  photoOptionsTitle: { fontSize: 19, fontWeight: "800", color: C.text },
-  photoOptionsSub: { fontSize: 13, color: C.text3, marginTop: 4 },
-  photoOptionsClose: { width: 36, height: 36, borderRadius: 18, backgroundColor: C.surface2, justifyContent: "center", alignItems: "center" },
-  photoOptionButton: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: C.border, backgroundColor: C.surface2, borderRadius: 14, padding: 13, marginBottom: 10 },
-  photoOptionIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: C.primaryLight, justifyContent: "center", alignItems: "center", marginRight: 12 },
+  photoOptionsTitle: { fontSize: 19, fontWeight: "800", color: colors.text },
+  photoOptionsSub: { fontSize: 13, color: colors.text3, marginTop: 4 },
+  photoOptionsClose: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surface2, justifyContent: "center", alignItems: "center" },
+  photoOptionButton: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface2, borderRadius: 14, padding: 13, marginBottom: 10 },
+  photoOptionIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.primaryLight, justifyContent: "center", alignItems: "center", marginRight: 12 },
   photoOptionTextWrap: { flex: 1 },
-  photoOptionTitle: { fontSize: 14, fontWeight: "700", color: C.text },
-  photoOptionSub: { fontSize: 12, color: C.text3, marginTop: 3 },
+  photoOptionTitle: { fontSize: 14, fontWeight: "700", color: colors.text },
+  photoOptionSub: { fontSize: 12, color: colors.text3, marginTop: 3 },
   photoOptionsCancel: { alignItems: "center", paddingVertical: 12, marginTop: 2 },
-  photoOptionsCancelText: { fontSize: 14, fontWeight: "700", color: C.text2 },
+  photoOptionsCancelText: { fontSize: 14, fontWeight: "700", color: colors.text2 },
   successScreen: { flex: 1, justifyContent: "center", alignItems: "center", padding: 40 },
-  successIcon: { width: 80, height: 80, borderRadius: 40, backgroundColor: C.ecoLight, justifyContent: "center", alignItems: "center", marginBottom: 20 },
-  successTitle: { fontSize: 22, fontWeight: "800", color: C.text, marginBottom: 8 },
-  successSub: { fontSize: 14, color: C.text2, textAlign: "center", lineHeight: 22 },
+  successIcon: { width: 80, height: 80, borderRadius: 40, backgroundColor: colors.ecoLight, justifyContent: "center", alignItems: "center", marginBottom: 20 },
+  successTitle: { fontSize: 22, fontWeight: "800", color: colors.text, marginBottom: 8 },
+  successSub: { fontSize: 14, color: colors.text2, textAlign: "center", lineHeight: 22 },
 });

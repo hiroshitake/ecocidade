@@ -28,6 +28,21 @@ export const lightColors = {
 
   white: "#FFFFFF",
   black: "#111827",
+
+  // Temporary compatibility aliases for legacy components.
+  primaryDark: "#0D3D8F",
+  primaryLight: "#E7F0FF",
+  eco: "#16834B",
+  ecoLight: "#E7F7EE",
+  dangerLight: "#FDECEC",
+  warningLight: "#FFF4D6",
+  bg: "#F6F8FB",
+  surface2: "#EEF2F6",
+  text: "#172033",
+  text2: "#526078",
+  text3: "#718096",
+  border2: "#C8D1DD",
+  tint: "#1557C0",
 } as const;
 
 export const darkColors = {
@@ -60,42 +75,50 @@ export const darkColors = {
 
   white: "#FFFFFF",
   black: "#000000",
-} as const;
 
-/**
- * Semantic color system.
- *
- * The legacy aliases below intentionally remain available during migration.
- * Existing screens can continue to use C.* while new/refactored components
- * should consume semantic tokens from useAppTheme().
- */
-export const C = {
-  primary: lightColors.primary,
-  primaryDark: lightColors.primaryPressed,
-  primaryLight: lightColors.primarySoft,
-  eco: lightColors.success,
-  ecoLight: lightColors.successSoft,
-  danger: lightColors.danger,
-  dangerLight: lightColors.dangerSoft,
-  warning: lightColors.warning,
-  warningLight: lightColors.warningSoft,
-  bg: lightColors.background,
-  surface: lightColors.surface,
-  surface2: lightColors.surfaceMuted,
-  text: lightColors.textPrimary,
-  text2: lightColors.textSecondary,
-  text3: lightColors.textTertiary,
-  border: lightColors.border,
-  border2: lightColors.borderStrong,
-  white: lightColors.white,
-  tint: lightColors.primary,
-};
+  // Temporary compatibility aliases for legacy components.
+  primaryDark: "#A8C7FF",
+  primaryLight: "#172C4D",
+  eco: "#48C982",
+  ecoLight: "#173D2B",
+  dangerLight: "#472229",
+  warningLight: "#44351C",
+  bg: "#0B111B",
+  surface2: "#172232",
+  text: "#F4F7FB",
+  text2: "#B5C0D0",
+  text3: "#8996A8",
+  border2: "#35465C",
+  tint: "#6EA2FF",
+} as const;
 
 export type ThemeColors = typeof lightColors;
 
 export const Colors = {
   light: lightColors,
   dark: darkColors,
+};
+
+export const C = {
+  primary: lightColors.primary,
+  primaryDark: lightColors.primaryDark,
+  primaryLight: lightColors.primaryLight,
+  eco: lightColors.eco,
+  ecoLight: lightColors.ecoLight,
+  danger: lightColors.danger,
+  dangerLight: lightColors.dangerLight,
+  warning: lightColors.warning,
+  warningLight: lightColors.warningLight,
+  bg: lightColors.bg,
+  surface: lightColors.surface,
+  surface2: lightColors.surface2,
+  text: lightColors.text,
+  text2: lightColors.text2,
+  text3: lightColors.text3,
+  border: lightColors.border,
+  border2: lightColors.border2,
+  white: lightColors.white,
+  tint: lightColors.tint,
 };
 
 export const Spacing = {

@@ -73,6 +73,7 @@ const styles = StyleSheet.create({
     borderColor: C.primary,
   },
   label: {
+    width: "100%",
     minHeight: 32,
     textAlign: "center",
     textAlignVertical: "center",
@@ -85,3 +86,4 @@ const styles = StyleSheet.create({
     color: C.primary,
   },
 });
+

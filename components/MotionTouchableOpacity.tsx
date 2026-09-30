@@ -7,6 +7,8 @@ import {
 } from 'react-native';
 import { MOTION } from '../constants/theme';
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 /** Small shared press feedback for the existing touch targets. */
 export function MotionTouchableOpacity({
   children,
@@ -61,18 +63,17 @@ export function MotionTouchableOpacity({
   };
 
   return (
-    <Animated.View style={{ transform: [{ scale }], opacity }}>
-      <Pressable
-        {...props}
-        disabled={disabled}
-        onPressIn={(event) => { animateTo(true); onPressIn?.(event); }}
-        onPressOut={(event) => { animateTo(false); onPressOut?.(event); }}
-        onHoverIn={() => animateHover(true)}
-        onHoverOut={() => animateHover(false)}
-        style={style}
-      >
-        {children}
-      </Pressable>
-    </Animated.View>
+    <AnimatedPressable
+      {...props}
+      disabled={disabled}
+      onPressIn={(event) => { animateTo(true); onPressIn?.(event); }}
+      onPressOut={(event) => { animateTo(false); onPressOut?.(event); }}
+      onHoverIn={() => animateHover(true)}
+      onHoverOut={() => animateHover(false)}
+      style={[style, { transform: [{ scale }], opacity }]}
+    >
+      {children}
+    </AnimatedPressable>
   );
 }
+

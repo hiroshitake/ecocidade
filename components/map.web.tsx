@@ -190,7 +190,7 @@ export default function MapComponent({
         mapInstanceRef.current = null;
       }
     };
-  }, [isDark]);
+  }, []);
 
   useEffect(() => {
     if (!markerLayerRef.current || typeof window === "undefined") return;
@@ -231,7 +231,7 @@ export default function MapComponent({
       selectedMarkerRef.current = L.marker(
         [selectedLocation.latitude, selectedLocation.longitude],
         { icon: selectedIcon, interactive: false },
-      ).bindPopup('<strong style="color: ${isDark ? "#f5f8ff" : "#0d1b36"};">Local selecionado</strong>').addTo(markerLayerRef.current);
+      ).bindPopup(`<strong style="color: ${isDark ? "#f5f8ff" : "#0d1b36"};">Local selecionado</strong>`).addTo(markerLayerRef.current);
     }
 
     if (zones && zoneLayerRef.current) {

@@ -1,6 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -17,8 +16,9 @@ import {
     View,
 } from "react-native";
 import { InlineError } from "../components/InlineError";
-import { C, S } from "../constants/theme";
+import { C, Fonts, S, T } from "../constants/theme";
 import { useToast } from "../context/toast-context";
+import { useIsWide } from "../hooks/use-is-wide";
 import { formatBirthDate } from "../functions/masks";
 import { getCurrentUserData, signIn, signUp } from "../services/auth";
 import {
@@ -46,6 +46,7 @@ export default function LoginScreen() {
   });
   const router = useRouter();
   const toast = useToast();
+  const isWide = useIsWide(900);
 
   const cityOptions = [
     { id: "orlândia", name: "Orlândia" },
@@ -244,33 +245,41 @@ export default function LoginScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <StatusBar barStyle="light-content" />
-      <ScrollView style={styles.root} bounces={false}>
-        <LinearGradient
-          colors={["#1a5fd4", "#0d3d96"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0.4, y: 1 }}
-          style={styles.header}
-        >
+      <ScrollView
+        style={styles.root}
+        contentContainerStyle={isWide ? styles.rootWide : undefined}
+        bounces={false}
+      >
+       <View style={[styles.shell, isWide && styles.shellWide]}>
+        <View style={[styles.header, isWide && styles.headerWide]}>
+          <View style={styles.headerGlowBlue} />
+          <View style={styles.headerGlowGreen} />
           <View style={styles.logoRow}>
             <View style={styles.logoIcon}>
-              <Ionicons name="leaf" size={26} color="white" />
+              <Text style={[styles.logoMark, T.display]}>e</Text>
             </View>
             <View>
-              <Text style={styles.logoText}>
-                ECO<Text style={styles.logoGreen}>cidade</Text>
-              </Text>
-              <Text style={styles.logoSub}>
-                Zeladoria &amp; Segurança Urbana
-              </Text>
+              <Text style={[styles.logoText, T.display]}>Ecocidade</Text>
+              <Text style={styles.logoSub}>ZELADORIA & SEGURANÇA URBANA</Text>
             </View>
           </View>
-          <Text style={styles.headline}>Sua cidade mais inteligente.</Text>
-          <Text style={styles.subheadline}>
-            Reporte problemas, acompanhe resoluções e fique seguro.
-          </Text>
-        </LinearGradient>
+          <View>
+            <Text style={[styles.headline, isWide && styles.headlineWide, T.display]}>
+              Sua cidade, mais inteligente.
+            </Text>
+            <Text style={styles.subheadline}>
+              Reporte problemas, acompanhe resoluções e ajude a cuidar do espaço público.
+            </Text>
+          </View>
+        </View>
 
-        <View style={styles.formArea}>
+        <View style={[styles.formArea, isWide && styles.formAreaWide]}>
+          <Text style={[styles.formTitle, T.display]}>
+            {tab === "login" ? "Entrar na sua conta" : "Criar sua conta"}
+          </Text>
+          <Text style={styles.formSub}>
+            {tab === "login" ? "Acesse com o e-mail cadastrado." : "Leva menos de um minuto."}
+          </Text>
           <View style={styles.tabBar}>
             {(["login", "register"] as const).map((t) => (
               <TouchableOpacity
@@ -373,7 +382,8 @@ export default function LoginScreen() {
                   )
                 }
               >
-                <Text style={styles.btnOutlineText}>🇬 Google</Text>
+                <Ionicons name="logo-google" size={18} color={C.text} />
+                <Text style={styles.btnOutlineText}>Google</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -516,57 +526,136 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
         </View>
+       </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.surface },
+  root: { flex: 1, backgroundColor: C.bg },
+  rootWide: { flexGrow: 1, justifyContent: "center", padding: 32 },
+  shell: { backgroundColor: C.surface, flexGrow: 1 },
+  shellWide: {
+    flexDirection: "row",
+    width: "100%",
+    maxWidth: 1080,
+    alignSelf: "center",
+    borderRadius: 28,
+    overflow: "hidden",
+    minHeight: 620,
+    flexGrow: 0,
+    ...S.shadow.lg,
+  },
   header: {
+    backgroundColor: C.navy,
     paddingTop: Platform.OS === "ios" ? 60 : 48,
     paddingBottom: 40,
     paddingHorizontal: 24,
+    overflow: "hidden",
+    gap: 32,
+  },
+  headerWide: {
+    flex: 1,
+    padding: 44,
+    paddingTop: 44,
+    justifyContent: "space-between",
+  },
+  headerGlowBlue: {
+    position: "absolute",
+    width: 360,
+    height: 360,
+    borderRadius: 180,
+    backgroundColor: C.primary,
+    opacity: 0.35,
+    top: -140,
+    left: -120,
+  },
+  headerGlowGreen: {
+    position: "absolute",
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: C.eco,
+    opacity: 0.22,
+    bottom: -150,
+    right: -90,
   },
   logoRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 32,
+    gap: 12,
   },
   logoIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    width: 44,
+    height: 44,
+    borderRadius: 13,
+    backgroundColor: "rgba(255,255,255,0.10)",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.3)",
+  },
+  logoMark: {
+    color: C.eco,
+    fontSize: 22,
+    fontFamily: Fonts.displayHeavy,
+    fontWeight: "800",
+    marginTop: -2,
   },
   logoText: {
-    fontSize: 26,
+    fontSize: 20,
+    fontFamily: Fonts.displayHeavy,
     fontWeight: "800",
-    color: "white",
-    letterSpacing: -0.5,
+    color: C.white,
+    letterSpacing: -0.4,
   },
-  logoGreen: { color: "#4ade80" },
-  logoSub: { fontSize: 11, color: "rgba(255,255,255,0.7)", fontWeight: "500" },
+  logoGreen: { color: C.eco },
+  logoSub: {
+    fontSize: 10,
+    color: "rgba(255,255,255,0.55)",
+    fontFamily: Fonts.bodyBold,
+    fontWeight: "700",
+    letterSpacing: 1.6,
+    marginTop: 2,
+  },
   headline: {
     fontSize: 28,
+    fontFamily: Fonts.displayHeavy,
     fontWeight: "800",
-    color: "white",
+    color: C.white,
     lineHeight: 34,
-    marginBottom: 8,
+    letterSpacing: -0.6,
+    marginBottom: 10,
   },
-  subheadline: { color: "rgba(255,255,255,0.75)", fontSize: 14 },
+  headlineWide: { fontSize: 40, lineHeight: 46, maxWidth: 420 },
+  subheadline: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 14,
+    lineHeight: 21,
+    maxWidth: 360,
+    fontFamily: Fonts.body,
+  },
   formArea: { backgroundColor: C.surface, padding: 24, paddingBottom: 48 },
+  formAreaWide: { flex: 1, padding: 44, justifyContent: "center" },
+  formTitle: {
+    fontSize: 22,
+    fontFamily: Fonts.displayHeavy,
+    fontWeight: "800",
+    color: C.text,
+    letterSpacing: -0.4,
+  },
+  formSub: {
+    fontSize: 14,
+    color: C.text2,
+    marginTop: 4,
+    marginBottom: 20,
+    fontFamily: Fonts.body,
+  },
   tabBar: {
     flexDirection: "row",
-    backgroundColor: C.surface2,
-    borderRadius: 12,
+    backgroundColor: C.bg,
+    borderRadius: 14,
     padding: 4,
-    marginBottom: 24,
+    marginBottom: 20,
   },
   tabBtn: {
     flex: 1,
@@ -579,21 +668,23 @@ const styles = StyleSheet.create({
   tabBtnTextActive: { color: C.primary },
   label: {
     fontSize: 12,
-    fontWeight: "600",
-    color: C.text3,
-    letterSpacing: 0.5,
+    fontWeight: "700",
+    fontFamily: Fonts.bodyBold,
+    color: C.text2,
+    letterSpacing: 0.2,
     marginBottom: 6,
-    textTransform: "uppercase",
+    marginTop: 4,
   },
   input: {
     backgroundColor: C.surface2,
     color: C.text,
-    borderWidth: 1.5,
-    borderColor: C.border,
-    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: C.border2,
+    borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 13,
     fontSize: 15,
+    fontFamily: Fonts.body,
     marginBottom: 8,
   },
   eyeBtn: { position: "absolute", right: 14, top: 13 },
@@ -601,7 +692,7 @@ const styles = StyleSheet.create({
   forgotText: { fontSize: 13, color: C.primary, fontWeight: "600" },
   btnPrimary: {
     backgroundColor: C.primary,
-    borderRadius: 12,
+    borderRadius: 14,
     paddingVertical: 14,
     flexDirection: "row",
     alignItems: "center",
@@ -609,18 +700,19 @@ const styles = StyleSheet.create({
     gap: 8,
     ...S.shadow.sm,
   },
-  btnText: { color: "white", fontSize: 15, fontWeight: "700" },
+  btnText: { color: "white", fontSize: 15, fontWeight: "800", fontFamily: Fonts.bodyBold },
   btnOutline: {
-    borderWidth: 1.5,
-    borderColor: C.primary,
-    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: C.border2,
+    backgroundColor: C.surface,
+    borderRadius: 14,
     paddingVertical: 14,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
   },
-  btnOutlineText: { color: C.primary, fontSize: 15, fontWeight: "600" },
+  btnOutlineText: { color: C.text, fontSize: 15, fontWeight: "700" },
   adminArea: {
     marginTop: 28,
     paddingTop: 20,
@@ -662,7 +754,7 @@ const styles = StyleSheet.create({
   },
   cityOptionActive: {
     borderColor: C.primary,
-    backgroundColor: "rgba(49, 130, 206, 0.12)",
+    backgroundColor: "rgba(36, 86, 214, 0.10)",
   },
   cityOptionText: {
     color: C.text,

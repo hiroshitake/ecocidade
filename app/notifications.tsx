@@ -6,11 +6,11 @@ import {
   ActivityIndicator,
   FlatList,
   StyleSheet,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { ThemedText } from "../components/themed-text";
 import { C } from "../constants/theme";
+import { MotionTouchableOpacity as TouchableOpacity } from "../components/MotionTouchableOpacity";
 import {
   getNotifications,
   markAllNotificationsAsRead,

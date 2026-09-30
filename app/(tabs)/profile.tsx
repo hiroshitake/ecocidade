@@ -8,12 +8,12 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { ConfirmationModal } from "../../components/ConfirmationModal";
 import { ErrorState } from "../../components/ErrorState";
 import { C } from "../../constants/theme";
+import { MotionTouchableOpacity as TouchableOpacity } from "../../components/MotionTouchableOpacity";
 import { useToast } from "../../context/toast-context";
 import { getUnreadNotificationCount } from "../../services/notifications";
 import { formatBirthDate } from "../../functions/masks";

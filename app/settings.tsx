@@ -2,9 +2,10 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { ConfirmationModal } from "../components/ConfirmationModal";
 import { C, S } from "../constants/theme";
+import { MotionTouchableOpacity as TouchableOpacity } from "../components/MotionTouchableOpacity";
 import { useToast } from "../context/toast-context";
 import { changeUserPassword, deleteUserAccount, deleteUserAvatar, getCurrentUserData, getCurrentUserAvatarUrl, updateUserProfile, uploadUserAvatar } from "../services/auth";
 

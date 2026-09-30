@@ -7,10 +7,10 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
-import { C, S } from "../../constants/theme";
+import { C, CONTROL, S } from "../../constants/theme";
+import { MotionTouchableOpacity as TouchableOpacity } from "../../components/MotionTouchableOpacity";
 import { getMyReports } from "../../services/reports";
 
 const TABS = ["Todas", "Aguardando", "Em processo", "Concluídas"];
@@ -376,12 +376,14 @@ const styles = StyleSheet.create({
   },
   tabBtn: {
     flex: 1,
-    paddingVertical: 8,
+    minHeight: CONTROL.filterHeight,
+    paddingHorizontal: 2,
     borderRadius: 9,
     alignItems: "center",
+    justifyContent: "center",
   },
   tabBtnActive: { backgroundColor: C.surface, ...S.shadow.sm },
-  tabBtnText: { fontSize: 11, fontWeight: "600", color: C.text2 },
+  tabBtnText: { fontSize: 11, lineHeight: 16, fontWeight: "600", color: C.text2, textAlign: "center" },
   tabBtnTextActive: { color: C.primary },
 
   card: {
@@ -413,6 +415,7 @@ const styles = StyleSheet.create({
   statusText: { fontSize: 11, fontWeight: "700" },
 
   btnPrimary: {
+    minHeight: CONTROL.buttonHeight,
     backgroundColor: C.primary,
     borderRadius: 12,
     paddingVertical: 14,

@@ -9,12 +9,12 @@ import {
   Modal,
   ScrollView,
   StyleSheet,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { ThemedText } from '../../components/themed-text';
 import { ThemedView } from '../../components/themed-view';
 import { C } from '../../constants/theme';
+import { MotionTouchableOpacity as TouchableOpacity } from '../../components/MotionTouchableOpacity';
 import { deleteReport, getAdminReports, updateReportStatus } from '../../services/reports';
 import { createReportImageUrl } from '../../services/supabase';
 

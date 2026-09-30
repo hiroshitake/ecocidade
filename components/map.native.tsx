@@ -1,7 +1,9 @@
 ﻿import React, { useEffect, useRef, useState } from "react";
 import { Animated, StyleSheet, View, ViewStyle } from "react-native";
 import MapView, { Circle, Marker, UrlTile } from "react-native-maps";
+import { useIsFocused } from "@react-navigation/native";
 import ReportMapModal, { MapReport } from "./report-map-modal";
+import { useReducedMotion } from "../hooks/use-reduced-motion";
 
 interface Report extends MapReport {}
 
@@ -41,6 +43,8 @@ export default function MapComponent({
   const mapRef = useRef<MapView | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const isFocused = useIsFocused();
+  const reduceMotion = useReducedMotion();
   const pulseAnim = useRef(new Animated.Value(0)).current;
   const validReports = reports.filter(
     (report) => report.location?.latitude != null && report.location?.longitude != null,
@@ -96,6 +100,11 @@ export default function MapComponent({
   }, [selectedLocationCoords, mapReady]);
 
   useEffect(() => {
+    if (!isFocused || reduceMotion) {
+      pulseAnim.stopAnimation();
+      pulseAnim.setValue(0);
+      return;
+    }
     const animation = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 1, duration: 1200, useNativeDriver: true }),
@@ -104,7 +113,7 @@ export default function MapComponent({
     );
     animation.start();
     return () => animation.stop();
-  }, [pulseAnim]);
+  }, [isFocused, pulseAnim, reduceMotion]);
 
   const pulseScale = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 2.4] });
   const pulseOpacity = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 0] });
@@ -139,9 +148,9 @@ export default function MapComponent({
             coordinate={{ latitude: userLocation.latitude, longitude: userLocation.longitude }}
           >
             <View style={styles.pulseMarkerContainer}>
-              <Animated.View
+              {!reduceMotion && <Animated.View
                 style={[styles.pulseRing, { transform: [{ scale: pulseScale }], opacity: pulseOpacity }]}
-              />
+              />}
               <View style={styles.pulseCore} />
             </View>
           </Marker>
@@ -158,7 +167,7 @@ export default function MapComponent({
 
         {zones?.map((zone) => {
           const severity = zone.severity || "baixa";
-          const color = severity === "alta" ? "#d92020" : severity === "media" ? "#d97706" : "#1fa660";
+          const color = severity === "alta" ? "#e5533c" : severity === "media" ? "#f5a623" : "#22b573";
           return (
             <React.Fragment key={zone.id}>
               <Circle
@@ -200,16 +209,16 @@ export default function MapComponent({
 const styles = StyleSheet.create({
   map: {
     flex: 1,
-    backgroundColor: "#f0f4ff",
+    backgroundColor: "#e9eefb",
   },
   selectedMarker: {
     width: 28,
     height: 36,
     borderRadius: 14,
-    backgroundColor: "#1fa660",
+    backgroundColor: "#22b573",
     borderWidth: 3,
     borderColor: "#ffffff",
-    shadowColor: "#1fa660",
+    shadowColor: "#22b573",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.35,
     shadowRadius: 10,
@@ -227,16 +236,16 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: "#1a5fd4",
+    backgroundColor: "#2456d6",
   },
   pulseCore: {
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: "#1a5fd4",
+    backgroundColor: "#2456d6",
     borderWidth: 2.5,
     borderColor: "#ffffff",
-    shadowColor: "#1a5fd4",
+    shadowColor: "#2456d6",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.4,
     shadowRadius: 10,

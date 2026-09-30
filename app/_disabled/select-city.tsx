@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   },
   cityOptionActive: {
     borderColor: C.primary,
-    backgroundColor: "rgba(49, 130, 206, 0.12)",
+    backgroundColor: "rgba(36, 86, 214, 0.10)",
   },
   cityOptionText: {
     color: C.text,

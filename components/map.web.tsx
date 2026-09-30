@@ -106,7 +106,7 @@ export default function MapComponent({
               height: 14px;
               transform: translate(-50%, -50%);
               border-radius: 50%;
-              background: #1a5fd4;
+              background: #2456d6;
               border: 2.5px solid white;
               box-shadow: 0 0 12px rgba(26, 95, 212, 0.5), inset 0 0 4px rgba(255, 255, 255, 0.6);
               z-index: 10;
@@ -118,7 +118,7 @@ export default function MapComponent({
             .ecocidade-selected-marker {
               width: 32px;
               height: 40px;
-              background: #1fa660;
+              background: #22b573;
               border: 3px solid white;
               border-radius: 50% 50% 50% 0;
               transform: rotate(-45deg);
@@ -224,13 +224,13 @@ export default function MapComponent({
       selectedMarkerRef.current = L.marker(
         [selectedLocation.latitude, selectedLocation.longitude],
         { icon: selectedIcon, interactive: false },
-      ).bindPopup('<strong style="color: #0d1b36;">Local selecionado</strong>').addTo(markerLayerRef.current);
+      ).bindPopup('<strong style="color: #0b1f4a;">Local selecionado</strong>').addTo(markerLayerRef.current);
     }
 
     if (zones && zoneLayerRef.current) {
       zones.forEach((zone) => {
         const severity = zone.severity || "baixa";
-        const color = severity === "alta" ? "#d92020" : severity === "media" ? "#d97706" : "#1fa660";
+        const color = severity === "alta" ? "#e5533c" : severity === "media" ? "#f5a623" : "#22b573";
         const circle = L.circle([zone.latitude, zone.longitude], {
           radius: zone.radius,
           color,

@@ -580,7 +580,7 @@ const styles = StyleSheet.create({
   selectedFilterSegmented: {
     backgroundColor: C.primary,
     borderColor: C.primary,
-    shadowColor: "#1a5fd4",
+    shadowColor: "#2456d6",
     shadowOpacity: 0.18,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 8,
@@ -631,11 +631,11 @@ const styles = StyleSheet.create({
   },
   gpsDisabledCardWarning: {
     borderColor: "rgba(217, 119, 6, 0.25)",
-    shadowColor: "#d97706",
+    shadowColor: "#f5a623",
   },
   gpsDisabledCardInfo: {
     borderColor: "rgba(26, 95, 212, 0.18)",
-    shadowColor: "#1a5fd4",
+    shadowColor: "#2456d6",
   },
   gpsDisabledTitle: {
     marginTop: 12,

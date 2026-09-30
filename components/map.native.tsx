@@ -158,7 +158,7 @@ export default function MapComponent({
 
         {zones?.map((zone) => {
           const severity = zone.severity || "baixa";
-          const color = severity === "alta" ? "#d92020" : severity === "media" ? "#d97706" : "#1fa660";
+          const color = severity === "alta" ? "#e5533c" : severity === "media" ? "#f5a623" : "#22b573";
           return (
             <React.Fragment key={zone.id}>
               <Circle
@@ -200,16 +200,16 @@ export default function MapComponent({
 const styles = StyleSheet.create({
   map: {
     flex: 1,
-    backgroundColor: "#f0f4ff",
+    backgroundColor: "#e9eefb",
   },
   selectedMarker: {
     width: 28,
     height: 36,
     borderRadius: 14,
-    backgroundColor: "#1fa660",
+    backgroundColor: "#22b573",
     borderWidth: 3,
     borderColor: "#ffffff",
-    shadowColor: "#1fa660",
+    shadowColor: "#22b573",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.35,
     shadowRadius: 10,
@@ -227,16 +227,16 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: "#1a5fd4",
+    backgroundColor: "#2456d6",
   },
   pulseCore: {
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: "#1a5fd4",
+    backgroundColor: "#2456d6",
     borderWidth: 2.5,
     borderColor: "#ffffff",
-    shadowColor: "#1a5fd4",
+    shadowColor: "#2456d6",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.4,
     shadowRadius: 10,

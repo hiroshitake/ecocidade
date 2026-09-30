@@ -13,8 +13,9 @@ import {
   View,
 } from "react-native";
 import MapComponent from "../../components/map";
+import { CategoryOptionGrid } from "../../components/CategoryOptionGrid";
 import { MotionTouchableOpacity as TouchableOpacity } from "../../components/MotionTouchableOpacity";
-import { C, S } from "../../constants/theme";
+import { C, CONTROL, S } from "../../constants/theme";
 import { resolveUserLocationForSubmission } from "../../services/auth";
 import { createReport } from "../../services/reports";
 import {
@@ -264,21 +265,7 @@ export default function SecurityScreen() {
 
         {/* ── TIPO DE OCORRÊNCIA ── */}
         <Text style={styles.label}>TIPO DE OCORRÊNCIA</Text>
-        <View style={styles.catGrid}>
-          {SEC_CATS.map((cat) => (
-            <TouchableOpacity
-              key={cat.id}
-              style={[
-                styles.catBtn,
-                selectedCat === cat.id && styles.catBtnSelected,
-              ]}
-              onPress={() => setSelectedCat(cat.id)}
-            >
-              <Ionicons name={cat.icon} size={28} color={C.primary} />
-              <Text style={styles.catLabel}>{cat.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <CategoryOptionGrid options={SEC_CATS} selectedId={selectedCat} onSelect={setSelectedCat} />
 
         {/* ── LOCALIZAÇÃO ── */}
         <Text style={[styles.label, { marginTop: 16 }]}>LOCALIZAÇÃO ATUAL</Text>
@@ -405,25 +392,6 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
 
-  catGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  catBtn: {
-    width: "47%",
-    flexGrow: 1,
-    backgroundColor: C.surface2,
-    borderWidth: 1.5,
-    borderColor: C.border,
-    borderRadius: 14,
-    padding: 14,
-    alignItems: "center",
-    gap: 6,
-  },
-  catBtnSelected: { backgroundColor: C.primaryLight, borderColor: C.primary },
-  catLabel: {
-    fontSize: 11,
-    fontWeight: "600",
-    textAlign: "center",
-    color: C.text2,
-  },
 
   miniMapWrap: { borderRadius: 12, overflow: "hidden" },
   miniMap: { height: 180 },
@@ -464,6 +432,7 @@ const styles = StyleSheet.create({
   photoSelectedText: { fontSize: 13, color: C.eco, fontWeight: "600" },
 
   btnDanger: {
+    minHeight: CONTROL.buttonHeight,
     backgroundColor: C.danger,
     borderRadius: 12,
     paddingVertical: 14,
@@ -476,6 +445,7 @@ const styles = StyleSheet.create({
   btnDangerText: { color: "white", fontSize: 15, fontWeight: "700" },
 
   btnEmergency: {
+    minHeight: CONTROL.buttonHeight,
     borderWidth: 1.5,
     borderColor: C.danger,
     borderRadius: 12,

@@ -5,13 +5,13 @@ import {
   ActivityIndicator,
   ScrollView,
   StyleSheet,
-  TouchableOpacity,
   View,
 } from "react-native";
 import MapComponent from "../../components/map";
+import { MotionTouchableOpacity as TouchableOpacity } from "../../components/MotionTouchableOpacity";
 import { ThemedText } from "../../components/themed-text";
 import { ThemedView } from "../../components/themed-view";
-import { C } from "../../constants/theme";
+import { C, CONTROL } from "../../constants/theme";
 import { resolveUserLocationWithFallback } from "../../services/auth";
 import { getDangerZones, getPublicReports } from "../../services/reports";
 
@@ -566,7 +566,7 @@ const styles = StyleSheet.create({
   },
   filterButtonSegmented: {
     paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingVertical: 8,
     borderRadius: 12,
     marginRight: 8,
     backgroundColor: "#f3f6fb",
@@ -574,7 +574,7 @@ const styles = StyleSheet.create({
     borderColor: "#dfe7f5",
     justifyContent: "center",
     alignItems: "center",
-    minHeight: 38,
+    minHeight: CONTROL.filterHeight,
     flexDirection: "row",
   },
   selectedFilterSegmented: {
@@ -588,6 +588,7 @@ const styles = StyleSheet.create({
   },
   filterTextSegmented: {
     fontSize: 12,
+    lineHeight: 16,
     fontWeight: "700",
     color: C.text2,
     textTransform: "capitalize",

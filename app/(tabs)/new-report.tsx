@@ -14,8 +14,9 @@ import {
   View,
 } from "react-native";
 import MapComponent from "../../components/map";
+import { CategoryOptionGrid } from "../../components/CategoryOptionGrid";
 import { MotionTouchableOpacity as TouchableOpacity } from "../../components/MotionTouchableOpacity";
-import { C, S } from "../../constants/theme";
+import { C, CONTROL, S } from "../../constants/theme";
 import {
   getCurrentUserData,
   resolveUserLocationForSubmission,
@@ -243,9 +244,7 @@ export default function NewReportScreen() {
         <View style={styles.stepLabels}>{["Categoria", "Detalhes", "Enviar"].map((l) => <Text key={l} style={styles.stepLabel}>{l}</Text>)}</View>
         {step === 1 && <View>
           <Text style={styles.sectionTitle}>Tipo do problema</Text>
-          <View style={styles.catGrid}>{CATEGORIES.map((cat) => <TouchableOpacity key={cat.id} style={[styles.catBtn, selectedCat === cat.id && styles.catBtnSelected]} onPress={() => setSelectedCat(cat.id)}>
-            <Ionicons name={cat.icon} size={28} color={C.primary} /><Text style={styles.catLabel}>{cat.label}</Text>
-          </TouchableOpacity>)}</View>
+          <CategoryOptionGrid options={CATEGORIES} selectedId={selectedCat} onSelect={setSelectedCat} />
           <TouchableOpacity style={[styles.btnPrimary, { marginTop: 24, opacity: selectedCat ? 1 : 0.45 }]} onPress={() => { if (!selectedCat) { Alert.alert("Atenção", "Selecione o tipo de problema para continuar."); return; } setStep(2); }}>
             <Text style={styles.btnPrimaryText}>Continuar</Text><Ionicons name="arrow-forward" size={20} color="white" />
           </TouchableOpacity>
@@ -290,10 +289,6 @@ const styles = StyleSheet.create({
   stepLine: { flex: 1, height: 2, backgroundColor: C.border, marginHorizontal: 6 },
   stepLineDone: { backgroundColor: C.primary },
   sectionTitle: { fontSize: 16, fontWeight: "700", color: C.text, marginBottom: 14 },
-  catGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  catBtn: { width: "30%", flexGrow: 1, backgroundColor: C.surface2, borderWidth: 1.5, borderColor: C.border, borderRadius: 14, padding: 14, alignItems: "center", gap: 6 },
-  catBtnSelected: { backgroundColor: C.primaryLight, borderColor: C.primary },
-  catLabel: { fontSize: 11, fontWeight: "600", textAlign: "center", color: C.text2 },
   label: { fontSize: 12, fontWeight: "600", color: C.text3, letterSpacing: 0.5, marginBottom: 6, textTransform: "uppercase" },
   miniMapWrap: { borderRadius: 12, overflow: "hidden", marginBottom: 8 },
   miniMap: { height: 180 },
@@ -305,7 +300,7 @@ const styles = StyleSheet.create({
   photoSelectedRow: { backgroundColor: C.ecoLight, borderRadius: 10, padding: 12, flexDirection: "row", alignItems: "center", gap: 8 },
   photoSelectedText: { fontSize: 13, color: C.eco, fontWeight: "600" },
   textarea: { backgroundColor: C.surface2, color: C.text, borderWidth: 1.5, borderColor: C.border, borderRadius: 12, paddingHorizontal: 16, paddingTop: 13, paddingBottom: 13, fontSize: 15, minHeight: 100 },
-  btnPrimary: { backgroundColor: C.primary, borderRadius: 12, paddingVertical: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, ...S.shadow.sm },
+  btnPrimary: { minHeight: CONTROL.buttonHeight, backgroundColor: C.primary, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, ...S.shadow.sm },
   btnPrimaryText: { color: "white", fontSize: 15, fontWeight: "700" },
   photoOptionsOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", alignItems: "center", padding: 20 },
   photoOptionsCard: { width: "100%", maxWidth: 420, backgroundColor: C.surface, borderRadius: 18, padding: 20, ...S.shadow.lg },

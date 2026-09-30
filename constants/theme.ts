@@ -58,6 +58,13 @@ export const MOTION = {
   pressedScale: 0.985,
 };
 
+export const CONTROL = {
+  filterHeight: 44,
+  buttonHeight: 48,
+  categoryTileHeight: 92,
+  categoryIconSize: 22,
+};
+
 export const Colors = {
   light: C,
   dark: C,

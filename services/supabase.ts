@@ -31,7 +31,15 @@ export const googleNativeRedirectUrl = makeRedirectUri({
   path: "auth",
 });
 
-export const googleWebRedirectUrl = `${appSiteUrl}/login`;
+export function getGoogleWebRedirectUrl() {
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    return `${window.location.origin}/login`;
+  }
+
+  return `${appSiteUrl}/login`;
+}
+
+export const googleWebRedirectUrl = getGoogleWebRedirectUrl();
 
 async function setSessionFromOAuthUrl(url: string) {
   if (!supabase) throw new Error("Supabase não configurado.");
@@ -57,7 +65,8 @@ async function setSessionFromOAuthUrl(url: string) {
 export async function signInWithGoogle() {
   if (!supabase) throw new Error("Supabase não configurado.");
 
-  const redirectTo = Platform.OS === "web" ? googleWebRedirectUrl : googleNativeRedirectUrl;
+  const redirectTo =
+    Platform.OS === "web" ? getGoogleWebRedirectUrl() : googleNativeRedirectUrl;
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {

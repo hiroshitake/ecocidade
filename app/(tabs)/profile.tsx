@@ -41,7 +41,9 @@ const ProfileScreen: React.FC = () => {
   const [hasError, setHasError] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const { colors } = useAppTheme();
   const toast = useToast();
+  const styles = makeStyles(colors);
 
   const loadProfile = useCallback(async () => {
     setLoading(true);

@@ -5,7 +5,7 @@ import { ToastProvider } from "../context/toast-context";
 import DangerZoneLocationMonitor from "../components/DangerZoneLocationMonitor";
 
 function AppChrome() {
-  const { isDark } = useAppTheme();
+  const { isDark, colors } = useAppTheme();
 
   return (
     <>
@@ -15,7 +15,7 @@ function AppChrome() {
         screenOptions={{
           headerShown: false,
           contentStyle: {
-            backgroundColor: isDark ? "#0a1220" : "#f0f4ff",
+            backgroundColor: colors.background,
           },
           animation: "fade",
         }}

@@ -12,6 +12,7 @@ import MapComponent from "../../components/map";
 import { ThemedText } from "../../components/themed-text";
 import { ThemedView } from "../../components/themed-view";
 import { C } from "../../constants/theme";
+import { useAppTheme } from "../../context/theme-context";
 import { resolveUserLocationWithFallback } from "../../services/auth";
 import { getDangerZones, getPublicReports } from "../../services/reports";
 
@@ -56,6 +57,8 @@ function formatDistance(distKm: number | null) {
 }
 
 export default function MapScreen() {
+  const { colors } = useAppTheme();
+  const styles = makeStyles(colors);
   const [selectedCategory, setSelectedCategory] = useState("Todas");
   const [reports, setReports] = useState<any[]>([]);
   const [zones, setZones] = useState<any[]>([]);
@@ -526,14 +529,18 @@ export default function MapScreen() {
                       styles.statusDot,
                       {
                         backgroundColor:
-                          rep.status === "pending" ? C.warning : C.eco,
+                          String(rep.status || "").toLowerCase() === "pending"
+                            ? C.warning
+                            : ["in_progress", "investigating", "processo", "em processo"].includes(String(rep.status || "").toLowerCase())
+                              ? C.primary
+                              : C.eco,
                       },
                     ]}
                   />
                   <ThemedText style={styles.statusText}>
-                    {rep.status === "pending"
+                    {String(rep.status || "").toLowerCase() === "pending"
                       ? "Aguardando"
-                      : rep.status === "investigating"
+                      : ["in_progress", "investigating", "processo", "em processo"].includes(String(rep.status || "").toLowerCase())
                         ? "Em processo"
                         : "Concluída"}
                   </ThemedText>
@@ -547,15 +554,15 @@ export default function MapScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: typeof C) => StyleSheet.create({
   container: { flex: 1 },
   filterContainer: {
     paddingTop: 12,
     paddingBottom: 10,
     paddingHorizontal: 12,
-    backgroundColor: C.surface,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: C.border,
+    borderBottomColor: colors.border,
   },
   filterScroll: {
     flexGrow: 0,
@@ -578,8 +585,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
   selectedFilterSegmented: {
-    backgroundColor: C.primary,
-    borderColor: C.primary,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
     shadowColor: "#1a5fd4",
     shadowOpacity: 0.18,
     shadowOffset: { width: 0, height: 4 },
@@ -589,7 +596,7 @@ const styles = StyleSheet.create({
   filterTextSegmented: {
     fontSize: 12,
     fontWeight: "700",
-    color: C.text2,
+    color: colors.text2,
     textTransform: "capitalize",
   },
   selectedFilterTextSegmented: {
@@ -641,13 +648,13 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 18,
     fontWeight: "800",
-    color: C.text,
+    color: colors.text,
   },
   gpsDisabledText: {
     marginTop: 8,
     fontSize: 13,
     lineHeight: 18,
-    color: C.text2,
+    color: colors.text2,
     textAlign: "center",
   },
   locationAlertBanner: {
@@ -675,10 +682,10 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   locationAlertTextWarning: {
-    color: C.warning,
+    color: colors.warning,
   },
   locationAlertTextInfo: {
-    color: C.primary,
+    color: colors.primary,
   },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
 
@@ -687,7 +694,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderTopWidth: 1,
     borderTopColor: "#e5e7eb",
-    backgroundColor: C.surface,
+    backgroundColor: colors.surface,
   },
   nearbyHeaderRow: {
     flexDirection: "row",
@@ -701,32 +708,32 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: C.surface2,
+    backgroundColor: colors.surface2,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
   },
   arrowBtnDisabled: { opacity: 0.4 },
 
   nearbyItemEmpty: {
-    backgroundColor: C.surface2,
+    backgroundColor: colors.surface2,
     padding: 12,
     borderRadius: 10,
     width: 260,
   },
   nearbyCard: {
-    backgroundColor: C.surface2,
+    backgroundColor: colors.surface2,
     borderRadius: 12,
     padding: 12,
     marginRight: 12,
     width: 220,
     borderWidth: 1.5,
-    borderColor: C.border,
+    borderColor: colors.border,
   },
   nearbyCardActive: {
-    borderColor: C.primary,
-    backgroundColor: C.primaryLight,
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
   },
   nearbyCardHeader: {
     flexDirection: "row",
@@ -748,9 +755,9 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 6,
   },
-  distText: { fontSize: 11, fontWeight: "700", color: C.primary },
-  nearbyDesc: { fontSize: 12, color: C.text2, marginBottom: 8, height: 32 },
+  distText: { fontSize: 11, fontWeight: "700", color: colors.primary },
+  nearbyDesc: { fontSize: 12, color: colors.text2, marginBottom: 8, height: 32 },
   statusRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
-  statusText: { fontSize: 11, fontWeight: "600", color: C.text2 },
+  statusText: { fontSize: 11, fontWeight: "600", color: colors.text2 },
 });

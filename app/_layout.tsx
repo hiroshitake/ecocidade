@@ -1,14 +1,23 @@
 import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { ThemeProvider, useAppTheme } from "../context/theme-context";
 import { ToastProvider } from "../context/toast-context";
 import DangerZoneLocationMonitor from "../components/DangerZoneLocationMonitor";
 
-export default function RootLayout() {
+function AppChrome() {
+  const { isDark, colors } = useAppTheme();
+
   return (
-    <ToastProvider>
+    <>
+      <StatusBar style={isDark ? "light" : "dark"} />
       <DangerZoneLocationMonitor />
       <Stack
         screenOptions={{
           headerShown: false,
+          contentStyle: {
+            backgroundColor: colors.background,
+          },
+          animation: "fade",
         }}
       >
         <Stack.Screen name="index" />
@@ -17,6 +26,16 @@ export default function RootLayout() {
         <Stack.Screen name="settings" />
         <Stack.Screen name="modal" options={{ presentation: "modal" }} />
       </Stack>
-    </ToastProvider>
+    </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ThemeProvider>
+      <ToastProvider>
+        <AppChrome />
+      </ToastProvider>
+    </ThemeProvider>
   );
 }

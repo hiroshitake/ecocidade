@@ -2,10 +2,11 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
+    Animated,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -26,6 +27,8 @@ import {
     isSupabaseConfigured,
     signInWithSupabase,
     signUpWithSupabase,
+    signInWithGoogle,
+    supabase,
 } from "../services/supabase";
 
 export default function LoginScreen() {
@@ -37,6 +40,33 @@ export default function LoginScreen() {
   const [selectedCity, setSelectedCity] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const screenOpacity = useRef(new Animated.Value(0)).current;
+  const screenTranslateY = useRef(new Animated.Value(14)).current;
+  const tabOpacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(screenOpacity, {
+        toValue: 1,
+        duration: 420,
+        useNativeDriver: false,
+      }),
+      Animated.timing(screenTranslateY, {
+        toValue: 0,
+        duration: 420,
+        useNativeDriver: false,
+      }),
+    ]).start();
+  }, [screenOpacity, screenTranslateY]);
+
+  useEffect(() => {
+    tabOpacity.setValue(0.65);
+    Animated.timing(tabOpacity, {
+      toValue: 1,
+      duration: 180,
+      useNativeDriver: false,
+    }).start();
+  }, [tab, tabOpacity]);
   const [fieldErrors, setFieldErrors] = useState({
     email: "",
     password: "",
@@ -46,6 +76,40 @@ export default function LoginScreen() {
   });
   const router = useRouter();
   const toast = useToast();
+  const finishAuthenticatedUser = async () => {
+    const currentUser = await getSupabaseSessionUser();
+    if (!currentUser) return false;
+    await AsyncStorage.setItem("ecocidade.user", JSON.stringify(currentUser));
+    if (!currentUser.city_id && !currentUser.city) {
+      router.replace("/google-profile");
+    } else {
+      router.replace("/map");
+    }
+    return true;
+  };
+
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+
+    let mounted = true;
+    finishAuthenticatedUser().catch((error) =>
+      console.error("Erro ao recuperar sessão:", error),
+    );
+
+    const subscription = supabase?.auth.onAuthStateChange((_event, session) => {
+      if (!mounted || !session) return;
+      finishAuthenticatedUser().catch((error) =>
+        console.error("Erro ao finalizar autenticação:", error),
+      );
+    });
+
+    return () => {
+      mounted = false;
+      subscription?.data.subscription.unsubscribe();
+    };
+  }, []);
+
+
 
   const cityOptions = [
     { id: "orlândia", name: "Orlândia" },
@@ -270,7 +334,15 @@ export default function LoginScreen() {
           </Text>
         </LinearGradient>
 
-        <View style={styles.formArea}>
+        <Animated.View
+          style={[
+            styles.formArea,
+            {
+              opacity: Animated.multiply(screenOpacity, tabOpacity),
+              transform: [{ translateY: screenTranslateY }],
+            },
+          ]}
+        >
           <View style={styles.tabBar}>
             {(["login", "register"] as const).map((t) => (
               <TouchableOpacity
@@ -366,14 +438,35 @@ export default function LoginScreen() {
 
               <TouchableOpacity
                 style={styles.btnOutline}
-                onPress={() =>
-                  Alert.alert(
-                    "Em breve",
-                    "O login com Google será habilitado em seguida.",
-                  )
-                }
+                onPress={async () => {
+                  try {
+                    setLoading(true);
+                    if (!isSupabaseConfigured()) {
+                      throw new Error("Supabase não configurado.");
+                    }
+                    await signInWithGoogle();
+                    if (Platform.OS !== "web") {
+                      await finishAuthenticatedUser();
+                    }
+                  } catch (error: any) {
+                    console.error("Erro no login com Google:", error);
+                    if (error?.message !== "O login com Google foi interrompido.") {
+                      toast.addToast(
+                        error?.message || "Não foi possível entrar com Google.",
+                        "error",
+                      );
+                    }
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading}
               >
-                <Text style={styles.btnOutlineText}>🇬 Google</Text>
+                {loading ? (
+                  <ActivityIndicator color={C.primary} size="small" />
+                ) : (
+                  <Text style={styles.btnOutlineText}>🇬 Google</Text>
+                )}
               </TouchableOpacity>
             </View>
           )}
@@ -515,7 +608,7 @@ export default function LoginScreen() {
               <Ionicons name="chevron-forward" size={16} color={C.primary} />
             </TouchableOpacity>
           </View>
-        </View>
+        </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
   );

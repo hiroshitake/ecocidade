@@ -146,10 +146,20 @@ export async function getAdminReports() {
     }
 
     // O dashboard administrativo é sempre limitado à cidade do administrador.
-    // O mapa público continua usando getPublicReports(), que possui regras próprias.
-    const reports = (await listSupabaseReports()).filter(
-      (report: any) => String(report?.city_id || "") === String(user.city_id),
-    );
+    // O filtro é aplicado diretamente no Supabase, em vez de buscar todas as cidades
+    // e filtrar apenas no cliente. Isso mantém o escopo correto e torna a contagem
+    // consistente com a cidade do administrador.
+    if (!supabase) {
+      throw new Error("Supabase não configurado.");
+    }
+
+    const { data: reports, error: reportsError } = await supabase
+      .from("reports")
+      .select("*")
+      .eq("city_id", user.city_id)
+      .order("created_at", { ascending: false });
+
+    if (reportsError) throw reportsError;
     const userIds = Array.from(
       new Set(
         (reports || [])

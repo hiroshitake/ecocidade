@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import MapComponent from "../../components/map";
 import { C, S } from "../../constants/theme";
+import { useAppTheme } from "../../context/theme-context";
 import { resolveUserLocationForSubmission } from "../../services/auth";
 import { createReport } from "../../services/reports";
 import {
@@ -30,6 +31,8 @@ const SEC_CATS = [
 ];
 
 export default function SecurityScreen() {
+  const { colors } = useAppTheme();
+  const styles = makeStyles(colors);
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -363,13 +366,13 @@ export default function SecurityScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
+const makeStyles = (colors: typeof C) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg },
 
   header: {
-    backgroundColor: C.surface,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: C.border,
+    borderBottomColor: colors.border,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -377,15 +380,15 @@ const styles = StyleSheet.create({
     height: 60,
     ...S.shadow.sm,
   },
-  headerTitle: { fontSize: 17, fontWeight: "700", color: C.text },
+  headerTitle: { fontSize: 17, fontWeight: "700", color: colors.text },
 
   scroll: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 100 },
 
   anonCard: {
-    backgroundColor: C.ecoLight,
+    backgroundColor: colors.ecoLight,
     borderWidth: 1.5,
-    borderColor: C.eco,
+    borderColor: colors.eco,
     borderRadius: 14,
     padding: 14,
     marginBottom: 20,
@@ -393,13 +396,13 @@ const styles = StyleSheet.create({
     gap: 10,
     alignItems: "flex-start",
   },
-  anonTitle: { fontSize: 14, fontWeight: "700", color: C.eco, marginBottom: 3 },
-  anonText: { fontSize: 12, color: C.text2, lineHeight: 18 },
+  anonTitle: { fontSize: 14, fontWeight: "700", color: colors.eco, marginBottom: 3 },
+  anonText: { fontSize: 12, color: colors.text2, lineHeight: 18 },
 
   label: {
     fontSize: 12,
     fontWeight: "600",
-    color: C.text3,
+    color: colors.text3,
     letterSpacing: 0.5,
     marginBottom: 10,
     textTransform: "uppercase",
@@ -409,30 +412,30 @@ const styles = StyleSheet.create({
   catBtn: {
     width: "47%",
     flexGrow: 1,
-    backgroundColor: C.surface2,
+    backgroundColor: colors.surface2,
     borderWidth: 1.5,
-    borderColor: C.border,
+    borderColor: colors.border,
     borderRadius: 14,
     padding: 14,
     alignItems: "center",
     gap: 6,
   },
-  catBtnSelected: { backgroundColor: C.primaryLight, borderColor: C.primary },
+  catBtnSelected: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
   catLabel: {
     fontSize: 11,
     fontWeight: "600",
     textAlign: "center",
-    color: C.text2,
+    color: colors.text2,
   },
 
   miniMapWrap: { borderRadius: 12, overflow: "hidden" },
   miniMap: { height: 180 },
 
   textarea: {
-    backgroundColor: C.surface2,
-    color: C.text,
+    backgroundColor: colors.surface2,
+    color: colors.text,
     borderWidth: 1.5,
-    borderColor: C.border,
+    borderColor: colors.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingTop: 13,
@@ -442,29 +445,29 @@ const styles = StyleSheet.create({
   },
 
   photoUpload: {
-    backgroundColor: C.surface2,
+    backgroundColor: colors.surface2,
     borderWidth: 2,
-    borderColor: C.border2,
+    borderColor: colors.border2,
     borderStyle: "dashed",
     borderRadius: 14,
     padding: 28,
     alignItems: "center",
     gap: 8,
   },
-  photoTitle: { fontSize: 14, fontWeight: "600", color: C.text2 },
-  photoSub: { fontSize: 12, color: C.text3 },
+  photoTitle: { fontSize: 14, fontWeight: "600", color: colors.text2 },
+  photoSub: { fontSize: 12, color: colors.text3 },
   photoSelectedRow: {
-    backgroundColor: C.ecoLight,
+    backgroundColor: colors.ecoLight,
     borderRadius: 10,
     padding: 12,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
   },
-  photoSelectedText: { fontSize: 13, color: C.eco, fontWeight: "600" },
+  photoSelectedText: { fontSize: 13, color: colors.eco, fontWeight: "600" },
 
   btnDanger: {
-    backgroundColor: C.danger,
+    backgroundColor: colors.danger,
     borderRadius: 12,
     paddingVertical: 14,
     flexDirection: "row",
@@ -477,7 +480,7 @@ const styles = StyleSheet.create({
 
   btnEmergency: {
     borderWidth: 1.5,
-    borderColor: C.danger,
+    borderColor: colors.danger,
     borderRadius: 12,
     paddingVertical: 13,
     flexDirection: "row",
@@ -486,5 +489,5 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 12,
   },
-  btnEmergencyText: { color: C.danger, fontSize: 15, fontWeight: "600" },
+  btnEmergencyText: { color: colors.danger, fontSize: 15, fontWeight: "600" },
 });

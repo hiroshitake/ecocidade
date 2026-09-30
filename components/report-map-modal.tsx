@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { ThemedText } from "./themed-text";
 import { C } from "../constants/theme";
+import { useAppTheme } from "../context/theme-context";
 import { createReportImageUrl, createSupabaseAvatarUrl } from "../services/supabase";
 
 export interface MapReport {

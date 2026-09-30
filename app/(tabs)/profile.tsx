@@ -14,6 +14,7 @@ import {
 import { ConfirmationModal } from "../../components/ConfirmationModal";
 import { ErrorState } from "../../components/ErrorState";
 import { C } from "../../constants/theme";
+import { useAppTheme } from "../../context/theme-context";
 import { useToast } from "../../context/toast-context";
 import { getUnreadNotificationCount } from "../../services/notifications";
 import { formatBirthDate } from "../../functions/masks";
@@ -171,26 +172,26 @@ const ProfileScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
-  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: C.bg },
+const makeStyles = (colors: typeof C) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg },
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.bg },
   container: { padding: 24, paddingTop: 32, alignItems: "center" },
-  photo: { width: 120, height: 120, borderRadius: 60, backgroundColor: C.surface, marginBottom: 20 },
-  photoFallback: { width: 120, height: 120, borderRadius: 60, backgroundColor: C.primary, justifyContent: "center", alignItems: "center", marginBottom: 20 },
-  name: { fontSize: 24, fontWeight: "700", color: C.text, marginBottom: 8 },
-  email: { fontSize: 15, color: C.text2, marginBottom: 20 },
-  infoRow: { width: "100%", flexDirection: "row", justifyContent: "space-between", backgroundColor: C.surface, padding: 16, borderRadius: 12, marginBottom: 24 },
-  infoLabel: { fontSize: 14, color: C.text2 },
-  infoValue: { fontSize: 14, fontWeight: "600", color: C.text },
-  notificationBtn: { width: "100%", flexDirection: "row", borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 },
+  photo: { width: 120, height: 120, borderRadius: 60, backgroundColor: colors.surface, marginBottom: 20 },
+  photoFallback: { width: 120, height: 120, borderRadius: 60, backgroundColor: colors.primary, justifyContent: "center", alignItems: "center", marginBottom: 20 },
+  name: { fontSize: 24, fontWeight: "700", color: colors.text, marginBottom: 8 },
+  email: { fontSize: 15, color: colors.text2, marginBottom: 20 },
+  infoRow: { width: "100%", flexDirection: "row", justifyContent: "space-between", backgroundColor: colors.surface, padding: 16, borderRadius: 12, marginBottom: 24 },
+  infoLabel: { fontSize: 14, color: colors.text2 },
+  infoValue: { fontSize: 14, fontWeight: "600", color: colors.text },
+  notificationBtn: { width: "100%", flexDirection: "row", borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 },
   notificationIconWrap: { position: "relative" },
-  notificationBadge: { position: "absolute", top: -7, right: -9, minWidth: 16, height: 16, paddingHorizontal: 3, borderRadius: 8, backgroundColor: C.danger, alignItems: "center", justifyContent: "center" },
-  notificationBadgeText: { color: C.white, fontSize: 9, fontWeight: "800" },
-  notificationText: { color: C.primary, fontSize: 15, fontWeight: "700" },
-  settingsBtn: { width: "100%", flexDirection: "row", borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 },
-  settingsText: { color: C.primary, fontSize: 15, fontWeight: "700" },
-  logoutBtn: { width: "100%", flexDirection: "row", backgroundColor: C.danger, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", gap: 8 },
-  btnText: { color: C.white, fontSize: 15, fontWeight: "700" },
+  notificationBadge: { position: "absolute", top: -7, right: -9, minWidth: 16, height: 16, paddingHorizontal: 3, borderRadius: 8, backgroundColor: colors.danger, alignItems: "center", justifyContent: "center" },
+  notificationBadgeText: { color: colors.white, fontSize: 9, fontWeight: "800" },
+  notificationText: { color: colors.primary, fontSize: 15, fontWeight: "700" },
+  settingsBtn: { width: "100%", flexDirection: "row", borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 },
+  settingsText: { color: colors.primary, fontSize: 15, fontWeight: "700" },
+  logoutBtn: { width: "100%", flexDirection: "row", backgroundColor: colors.danger, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", gap: 8 },
+  btnText: { color: colors.white, fontSize: 15, fontWeight: "700" },
 });
 
 export default ProfileScreen;

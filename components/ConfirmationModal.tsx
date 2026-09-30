@@ -1,5 +1,6 @@
 import React from 'react';
-import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Modal, View, Text, StyleSheet } from 'react-native';
+import { MotionTouchableOpacity as TouchableOpacity } from './MotionTouchableOpacity';
 import { C, S } from '../constants/theme';
 
 interface ConfirmationModalProps {

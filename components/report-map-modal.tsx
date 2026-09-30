@@ -6,9 +6,9 @@ import {
   Modal,
   ScrollView,
   StyleSheet,
-  TouchableOpacity,
   View,
 } from "react-native";
+import { MotionTouchableOpacity as TouchableOpacity } from "./MotionTouchableOpacity";
 import { ThemedText } from "./themed-text";
 import { C } from "../constants/theme";
 import { createReportImageUrl, createSupabaseAvatarUrl } from "../services/supabase";

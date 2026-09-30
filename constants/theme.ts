@@ -51,6 +51,13 @@ export const S = {
   },
 };
 
+export const MOTION = {
+  pressIn: 110,
+  pressOut: 150,
+  hover: 140,
+  pressedScale: 0.985,
+};
+
 export const Colors = {
   light: C,
   dark: C,

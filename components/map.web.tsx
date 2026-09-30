@@ -84,6 +84,9 @@ export default function MapComponent({
               align-items: center;
               justify-content: center;
             }
+            @media (prefers-reduced-motion: reduce) {
+              .ecocidade-pulse::before { animation: none !important; opacity: 0.45; transform: translate(-50%, -50%) scale(1.25); }
+            }
             .ecocidade-pulse::before {
               content: '';
               position: absolute;

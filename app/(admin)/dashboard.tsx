@@ -2,10 +2,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { ThemedText } from '../../components/themed-text';
 import { ThemedView } from '../../components/themed-view';
 import { C, S } from '../../constants/theme';
+import { MotionTouchableOpacity as TouchableOpacity } from '../../components/MotionTouchableOpacity';
 import { logout } from '../../services/auth';
 import { getAdminReports } from '../../services/reports';
 

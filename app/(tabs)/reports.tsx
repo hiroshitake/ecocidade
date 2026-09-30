@@ -7,10 +7,10 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { C, S } from "../../constants/theme";
+import { MotionTouchableOpacity as TouchableOpacity } from "../../components/MotionTouchableOpacity";
 import { getMyReports } from "../../services/reports";
 
 const TABS = ["Todas", "Aguardando", "Em processo", "Concluídas"];

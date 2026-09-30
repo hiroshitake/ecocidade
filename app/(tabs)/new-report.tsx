@@ -11,10 +11,10 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 import MapComponent from "../../components/map";
+import { MotionTouchableOpacity as TouchableOpacity } from "../../components/MotionTouchableOpacity";
 import { C, S } from "../../constants/theme";
 import {
   getCurrentUserData,

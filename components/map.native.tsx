@@ -1,7 +1,9 @@
 ﻿import React, { useEffect, useRef, useState } from "react";
 import { Animated, StyleSheet, View, ViewStyle } from "react-native";
 import MapView, { Circle, Marker, UrlTile } from "react-native-maps";
+import { useIsFocused } from "@react-navigation/native";
 import ReportMapModal, { MapReport } from "./report-map-modal";
+import { useReducedMotion } from "../hooks/use-reduced-motion";
 
 interface Report extends MapReport {}
 
@@ -41,6 +43,8 @@ export default function MapComponent({
   const mapRef = useRef<MapView | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const isFocused = useIsFocused();
+  const reduceMotion = useReducedMotion();
   const pulseAnim = useRef(new Animated.Value(0)).current;
   const validReports = reports.filter(
     (report) => report.location?.latitude != null && report.location?.longitude != null,
@@ -96,6 +100,11 @@ export default function MapComponent({
   }, [selectedLocationCoords, mapReady]);
 
   useEffect(() => {
+    if (!isFocused || reduceMotion) {
+      pulseAnim.stopAnimation();
+      pulseAnim.setValue(0);
+      return;
+    }
     const animation = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 1, duration: 1200, useNativeDriver: true }),
@@ -104,7 +113,7 @@ export default function MapComponent({
     );
     animation.start();
     return () => animation.stop();
-  }, [pulseAnim]);
+  }, [isFocused, pulseAnim, reduceMotion]);
 
   const pulseScale = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 2.4] });
   const pulseOpacity = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 0] });
@@ -139,9 +148,9 @@ export default function MapComponent({
             coordinate={{ latitude: userLocation.latitude, longitude: userLocation.longitude }}
           >
             <View style={styles.pulseMarkerContainer}>
-              <Animated.View
+              {!reduceMotion && <Animated.View
                 style={[styles.pulseRing, { transform: [{ scale: pulseScale }], opacity: pulseOpacity }]}
-              />
+              />}
               <View style={styles.pulseCore} />
             </View>
           </Marker>

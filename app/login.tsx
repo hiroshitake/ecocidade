@@ -2,10 +2,11 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
+    Animated,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -39,6 +40,33 @@ export default function LoginScreen() {
   const [selectedCity, setSelectedCity] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const screenOpacity = useRef(new Animated.Value(0)).current;
+  const screenTranslateY = useRef(new Animated.Value(14)).current;
+  const tabOpacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(screenOpacity, {
+        toValue: 1,
+        duration: 420,
+        useNativeDriver: false,
+      }),
+      Animated.timing(screenTranslateY, {
+        toValue: 0,
+        duration: 420,
+        useNativeDriver: false,
+      }),
+    ]).start();
+  }, [screenOpacity, screenTranslateY]);
+
+  useEffect(() => {
+    tabOpacity.setValue(0.65);
+    Animated.timing(tabOpacity, {
+      toValue: 1,
+      duration: 180,
+      useNativeDriver: false,
+    }).start();
+  }, [tab, tabOpacity]);
   const [fieldErrors, setFieldErrors] = useState({
     email: "",
     password: "",
@@ -306,7 +334,15 @@ export default function LoginScreen() {
           </Text>
         </LinearGradient>
 
-        <View style={styles.formArea}>
+        <Animated.View
+          style={[
+            styles.formArea,
+            {
+              opacity: Animated.multiply(screenOpacity, tabOpacity),
+              transform: [{ translateY: screenTranslateY }],
+            },
+          ]}
+        >
           <View style={styles.tabBar}>
             {(["login", "register"] as const).map((t) => (
               <TouchableOpacity
@@ -572,7 +608,7 @@ export default function LoginScreen() {
               <Ionicons name="chevron-forward" size={16} color={C.primary} />
             </TouchableOpacity>
           </View>
-        </View>
+        </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
   );

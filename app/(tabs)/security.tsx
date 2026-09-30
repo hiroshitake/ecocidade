@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import MapComponent from "../../components/map";
 import { C, S } from "../../constants/theme";
+import { useAppTheme } from "../../context/theme-context";
 import { resolveUserLocationForSubmission } from "../../services/auth";
 import { createReport } from "../../services/reports";
 import {
@@ -31,6 +32,8 @@ const SEC_CATS = [
 ];
 
 export default function SecurityScreen() {
+  const { colors } = useAppTheme();
+  const styles = makeStyles(colors);
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -424,13 +427,13 @@ export default function SecurityScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
+const makeStyles = (colors: typeof C) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg },
 
   header: {
-    backgroundColor: C.surface,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: C.border,
+    borderBottomColor: colors.border,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -438,7 +441,7 @@ const styles = StyleSheet.create({
     height: 60,
     ...S.shadow.sm,
   },
-  headerTitle: { fontSize: 17, fontWeight: "700", color: C.text },
+  headerTitle: { fontSize: 17, fontWeight: "700", color: colors.text },
 
   scroll: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 100 },
@@ -450,9 +453,9 @@ const styles = StyleSheet.create({
   },
 
   anonCard: {
-    backgroundColor: C.ecoLight,
+    backgroundColor: colors.ecoLight,
     borderWidth: 1.5,
-    borderColor: C.eco,
+    borderColor: colors.eco,
     borderRadius: 14,
     padding: 14,
     marginBottom: 20,
@@ -460,13 +463,13 @@ const styles = StyleSheet.create({
     gap: 10,
     alignItems: "flex-start",
   },
-  anonTitle: { fontSize: 14, fontWeight: "700", color: C.eco, marginBottom: 3 },
-  anonText: { fontSize: 12, color: C.text2, lineHeight: 18 },
+  anonTitle: { fontSize: 14, fontWeight: "700", color: colors.eco, marginBottom: 3 },
+  anonText: { fontSize: 12, color: colors.text2, lineHeight: 18 },
 
   label: {
     fontSize: 12,
     fontWeight: "600",
-    color: C.text3,
+    color: colors.text3,
     letterSpacing: 0.5,
     marginBottom: 10,
     textTransform: "uppercase",
@@ -476,30 +479,30 @@ const styles = StyleSheet.create({
   catBtn: {
     width: "47%",
     flexGrow: 1,
-    backgroundColor: C.surface2,
+    backgroundColor: colors.surface2,
     borderWidth: 1.5,
-    borderColor: C.border,
+    borderColor: colors.border,
     borderRadius: 14,
     padding: 14,
     alignItems: "center",
     gap: 6,
   },
-  catBtnSelected: { backgroundColor: C.primaryLight, borderColor: C.primary },
+  catBtnSelected: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
   catLabel: {
     fontSize: 11,
     fontWeight: "600",
     textAlign: "center",
-    color: C.text2,
+    color: colors.text2,
   },
 
   miniMapWrap: { borderRadius: 12, overflow: "hidden" },
   miniMap: { height: 180 },
 
   textarea: {
-    backgroundColor: C.surface2,
-    color: C.text,
+    backgroundColor: colors.surface2,
+    color: colors.text,
     borderWidth: 1.5,
-    borderColor: C.border,
+    borderColor: colors.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingTop: 13,
@@ -509,29 +512,29 @@ const styles = StyleSheet.create({
   },
 
   photoUpload: {
-    backgroundColor: C.surface2,
+    backgroundColor: colors.surface2,
     borderWidth: 2,
-    borderColor: C.border2,
+    borderColor: colors.border2,
     borderStyle: "dashed",
     borderRadius: 14,
     padding: 28,
     alignItems: "center",
     gap: 8,
   },
-  photoTitle: { fontSize: 14, fontWeight: "600", color: C.text2 },
-  photoSub: { fontSize: 12, color: C.text3 },
+  photoTitle: { fontSize: 14, fontWeight: "600", color: colors.text2 },
+  photoSub: { fontSize: 12, color: colors.text3 },
   photoSelectedRow: {
-    backgroundColor: C.ecoLight,
+    backgroundColor: colors.ecoLight,
     borderRadius: 10,
     padding: 12,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
   },
-  photoSelectedText: { fontSize: 13, color: C.eco, fontWeight: "600" },
+  photoSelectedText: { fontSize: 13, color: colors.eco, fontWeight: "600" },
 
   btnDanger: {
-    backgroundColor: C.danger,
+    backgroundColor: colors.danger,
     borderRadius: 12,
     paddingVertical: 14,
     flexDirection: "row",
@@ -551,7 +554,7 @@ const styles = StyleSheet.create({
   },
   emergencyNoticeText: {
     flex: 1,
-    color: C.danger,
+    color: colors.danger,
     fontSize: 11,
     lineHeight: 16,
     textAlign: "center",
@@ -562,7 +565,7 @@ const styles = StyleSheet.create({
     width: 104,
     height: 104,
     borderRadius: 52,
-    backgroundColor: C.ecoLight,
+    backgroundColor: colors.ecoLight,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 50,
@@ -571,12 +574,12 @@ const styles = StyleSheet.create({
   confirmationTitle: {
     fontSize: 25,
     fontWeight: "800",
-    color: C.text,
+    color: colors.text,
     textAlign: "center",
   },
   confirmationText: {
     fontSize: 14,
-    color: C.text2,
+    color: colors.text2,
     lineHeight: 21,
     textAlign: "center",
     marginTop: 10,
@@ -584,9 +587,9 @@ const styles = StyleSheet.create({
   },
   protocolCard: {
     width: "100%",
-    backgroundColor: C.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
     borderRadius: 16,
     padding: 18,
     alignItems: "center",
@@ -596,18 +599,18 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "800",
     letterSpacing: 1,
-    color: C.text3,
+    color: colors.text3,
   },
   protocolValue: {
     fontSize: 24,
     fontWeight: "900",
-    color: C.primary,
+    color: colors.primary,
     letterSpacing: 1,
     marginTop: 5,
   },
   protocolHint: {
     fontSize: 11,
-    color: C.text3,
+    color: colors.text3,
     textAlign: "center",
     marginTop: 6,
   },
@@ -616,20 +619,20 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 9,
-    backgroundColor: C.ecoLight,
+    backgroundColor: colors.ecoLight,
     borderRadius: 12,
     padding: 13,
     marginTop: 12,
   },
   confirmationNoticeText: {
     flex: 1,
-    color: C.text2,
+    color: colors.text2,
     fontSize: 11,
     lineHeight: 17,
   },
   confirmationPrimary: {
     width: "100%",
-    backgroundColor: C.primary,
+    backgroundColor: colors.primary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
@@ -647,7 +650,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   confirmationSecondaryText: {
-    color: C.primary,
+    color: colors.primary,
     fontSize: 13,
     fontWeight: "700",
   },

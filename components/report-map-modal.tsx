@@ -80,6 +80,7 @@ function formatDateTime(value?: string | null) {
 }
 
 export default function ReportMapModal({ report, onClose }: ReportMapModalProps) {
+  const { colors } = useAppTheme();
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);

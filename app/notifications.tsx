@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -10,7 +10,8 @@ import {
   View,
 } from "react-native";
 import { ThemedText } from "../components/themed-text";
-import { C } from "../constants/theme";
+import { Colors } from "../constants/theme";
+import { useAppTheme } from "../context/theme-context";
 import {
   getNotifications,
   markAllNotificationsAsRead,
@@ -34,13 +35,15 @@ function getNotificationIcon(type: string) {
   return "file-check-outline";
 }
 
-function getNotificationColor(type: string) {
-  if (type === "report_resolved") return C.eco;
-  if (type === "report_in_progress") return C.primary;
-  return C.primary;
+function getNotificationColor(colors: typeof Colors.light, type: string) {
+  if (type === "report_resolved") return colors.eco;
+  if (type === "report_in_progress") return colors.primary;
+  return colors.primary;
 }
 
 export default function NotificationsScreen() {
+  const { colors, isDark } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -98,7 +101,7 @@ export default function NotificationsScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <MaterialCommunityIcons name="chevron-left" size={28} color={C.primary} />
+          <MaterialCommunityIcons name="chevron-left" size={28} color={colors.primary} />
         </TouchableOpacity>
         <ThemedText style={styles.title}>Notificações</ThemedText>
         <TouchableOpacity onPress={handleMarkAll} style={styles.markAllButton}>
@@ -108,11 +111,11 @@ export default function NotificationsScreen() {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={C.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : loadError ? (
         <View style={styles.center}>
-          <MaterialCommunityIcons name="cloud-off-outline" size={48} color={C.text3} />
+          <MaterialCommunityIcons name="cloud-off-outline" size={48} color={colors.text3} />
           <ThemedText style={styles.errorTitle}>Não foi possível carregar as notificações</ThemedText>
           <ThemedText style={styles.errorText}>Verifique sua conexão e tente novamente.</ThemedText>
           <TouchableOpacity style={styles.retryButton} onPress={loadNotifications}>
@@ -136,13 +139,13 @@ export default function NotificationsScreen() {
               <View
                 style={[
                   styles.icon,
-                  { backgroundColor: getNotificationColor(item.type) + "16" },
+                  { backgroundColor: getNotificationColor(colors, item.type) + "22" },
                 ]}
               >
                 <MaterialCommunityIcons
                   name={getNotificationIcon(item.type) as any}
                   size={22}
-                  color={getNotificationColor(item.type)}
+                  color={getNotificationColor(colors, item.type)}
                 />
               </View>
               <View style={styles.copy}>
@@ -160,7 +163,7 @@ export default function NotificationsScreen() {
               <MaterialCommunityIcons
                 name="bell-outline"
                 size={54}
-                color={C.text3}
+                color={colors.text3}
               />
               <ThemedText style={styles.emptyTitle}>
                 Nenhuma notificação
@@ -176,58 +179,59 @@ export default function NotificationsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: C.bg },
-  header: {
-    minHeight: 64,
-    paddingHorizontal: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: C.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: C.border,
-  },
-  backButton: { padding: 4 },
-  title: { flex: 1, fontSize: 20, fontWeight: "800", color: C.text, marginLeft: 8 },
-  markAllButton: { padding: 8 },
-  markAllText: { color: C.primary, fontSize: 12, fontWeight: "800" },
-  list: { padding: 16, gap: 10 },
-  emptyList: { flexGrow: 1 },
-  card: {
-    flexDirection: "row",
-    padding: 14,
-    borderRadius: 14,
-    backgroundColor: C.surface,
-    borderWidth: 1,
-    borderColor: C.border,
-  },
-  unreadCard: { borderColor: C.primary + "55", backgroundColor: C.surface2 },
-  icon: {
-    width: 44,
-    height: 44,
-    borderRadius: 13,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-  copy: { flex: 1 },
-  titleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  cardTitle: { flex: 1, fontSize: 14, fontWeight: "800", color: C.text },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.primary },
-  message: { fontSize: 13, lineHeight: 19, color: C.text2, marginTop: 4 },
-  date: { fontSize: 11, color: C.text3, marginTop: 8 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
-  errorTitle: { fontSize: 16, fontWeight: "800", color: C.text, marginTop: 12, textAlign: "center" },
-  errorText: { fontSize: 13, color: C.text3, marginTop: 6, textAlign: "center" },
-  retryButton: { marginTop: 16, paddingHorizontal: 18, paddingVertical: 11, borderRadius: 10, backgroundColor: C.primary },
-  retryText: { color: C.white, fontWeight: "800" },
-  empty: { alignItems: "center", justifyContent: "center", padding: 40 },
-  emptyTitle: { fontSize: 17, fontWeight: "800", color: C.text, marginTop: 14 },
-  emptyText: {
-    fontSize: 13,
-    color: C.text3,
-    textAlign: "center",
-    lineHeight: 19,
-    marginTop: 6,
-  },
-});
+const makeStyles = (colors: typeof Colors.light) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.bg },
+    header: {
+      minHeight: 64,
+      paddingHorizontal: 16,
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    backButton: { padding: 4 },
+    title: { flex: 1, fontSize: 20, fontWeight: "800", color: colors.text, marginLeft: 8 },
+    markAllButton: { padding: 8 },
+    markAllText: { color: colors.primary, fontSize: 12, fontWeight: "800" },
+    list: { padding: 16, gap: 10 },
+    emptyList: { flexGrow: 1 },
+    card: {
+      flexDirection: "row",
+      padding: 14,
+      borderRadius: 14,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    unreadCard: { borderColor: colors.primary + "55", backgroundColor: colors.surface2 },
+    icon: {
+      width: 44,
+      height: 44,
+      borderRadius: 13,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 12,
+    },
+    copy: { flex: 1 },
+    titleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+    cardTitle: { flex: 1, fontSize: 14, fontWeight: "800", color: colors.text },
+    dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary },
+    message: { fontSize: 13, lineHeight: 19, color: colors.text2, marginTop: 4 },
+    date: { fontSize: 11, color: colors.text3, marginTop: 8 },
+    center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
+    errorTitle: { fontSize: 16, fontWeight: "800", color: colors.text, marginTop: 12, textAlign: "center" },
+    errorText: { fontSize: 13, color: colors.text3, marginTop: 6, textAlign: "center" },
+    retryButton: { marginTop: 16, paddingHorizontal: 18, paddingVertical: 11, borderRadius: 10, backgroundColor: colors.primary },
+    retryText: { color: colors.white, fontWeight: "800" },
+    empty: { alignItems: "center", justifyContent: "center", padding: 40 },
+    emptyTitle: { fontSize: 17, fontWeight: "800", color: colors.text, marginTop: 14 },
+    emptyText: {
+      fontSize: 13,
+      color: colors.text3,
+      textAlign: "center",
+      lineHeight: 19,
+      marginTop: 6,
+    },
+  });

@@ -3,7 +3,9 @@ import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,6 +13,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import * as Haptics from "expo-haptics";
 import { C } from "../../constants/theme";
 import { useAppTheme } from "../../context/theme-context";
 import { getMyReports } from "../../services/reports";
@@ -70,6 +73,79 @@ const CATEGORY_MAP: Record<string, { label: string; icon: keyof typeof Ionicons.
   tumulto: { label: "Aglomeração / Tumulto", icon: "people-outline" },
   perigo: { label: "Risco estrutural", icon: "warning-outline" },
 };
+
+const NATIVE_DRIVER = Platform.OS !== "web";
+
+function AnimatedTicketCard({
+  children,
+  style,
+  onPress,
+  index,
+}: {
+  children: React.ReactNode;
+  style: any;
+  onPress: () => void;
+  index: number;
+}) {
+  const entryAnim = React.useRef(new Animated.Value(0)).current;
+  const pressAnim = React.useRef(new Animated.Value(1)).current;
+
+  React.useEffect(() => {
+    Animated.timing(entryAnim, {
+      toValue: 1,
+      duration: 320,
+      delay: Math.min(index, 6) * 60,
+      useNativeDriver: NATIVE_DRIVER,
+    }).start();
+  }, [entryAnim]);
+
+  const handlePressIn = () => {
+    Animated.spring(pressAnim, {
+      toValue: 0.97,
+      useNativeDriver: NATIVE_DRIVER,
+      friction: 6,
+      tension: 120,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(pressAnim, {
+      toValue: 1,
+      useNativeDriver: NATIVE_DRIVER,
+      friction: 5,
+      tension: 100,
+    }).start();
+  };
+
+  return (
+    <Animated.View
+      style={[
+        style,
+        {
+          opacity: entryAnim,
+          transform: [
+            {
+              translateY: entryAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [18, 0],
+              }),
+            },
+            { scale: pressAnim },
+          ],
+        },
+      ]}
+    >
+      <TouchableOpacity
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={0.85}
+      >
+        {children}
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
 
 export default function ReportsScreen() {
   const { colors } = useAppTheme();
@@ -167,6 +243,9 @@ export default function ReportsScreen() {
   }, [mappedReports]);
 
   const handleSelectReport = (item: any) => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {}
     setSelectedReport(item);
     if (!isDesktop) {
       setModalOpen(true);
@@ -308,19 +387,24 @@ export default function ReportsScreen() {
           >
             <Ionicons name="arrow-back" size={20} color={colors.text} />
           </TouchableOpacity>
-          <View>
-            <Text style={styles.headerTitle}>Minhas Solicitações</Text>
-            <Text style={styles.headerSubtitle}>Acompanhe suas notificações cívicas</Text>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle} numberOfLines={1}>Minhas Solicitações</Text>
+            <Text style={styles.headerSubtitle} numberOfLines={1}>Acompanhe suas denúncias</Text>
           </View>
         </View>
 
         <TouchableOpacity
           style={styles.newReportBtn}
-          onPress={() => router.push("/new-report")}
+          onPress={() => {
+            try {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            } catch {}
+            router.push("/new-report");
+          }}
           activeOpacity={0.85}
         >
           <Ionicons name="add" size={18} color="#fff" />
-          <Text style={styles.newReportBtnText}>Nova Notificação</Text>
+          <Text style={styles.newReportBtnText}>Nova denúncia</Text>
         </TouchableOpacity>
       </View>
 
@@ -426,17 +510,17 @@ export default function ReportsScreen() {
                   </Text>
                 </View>
               ) : (
-                filteredReports.map((item) => {
+                filteredReports.map((item, itemIndex) => {
                   const isSelected = currentSelection?.id === item.id;
                   return (
-                    <TouchableOpacity
+                    <AnimatedTicketCard
                       key={item.id}
+                      index={itemIndex}
                       style={[
                         styles.ticketCard,
                         isSelected && isDesktop && styles.ticketCardSelected,
                       ]}
                       onPress={() => handleSelectReport(item)}
-                      activeOpacity={0.85}
                     >
                       <View style={styles.ticketHeader}>
                         <View style={styles.ticketCategoryPill}>
@@ -468,7 +552,7 @@ export default function ReportsScreen() {
                           <Text style={styles.ticketDate}>{item.date}</Text>
                         </View>
                       </View>
-                    </TouchableOpacity>
+                    </AnimatedTicketCard>
                   );
                 })
               )}
@@ -529,13 +613,20 @@ const makeStyles = (colors: typeof C) =>
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      paddingHorizontal: 20,
-      paddingVertical: 14,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      gap: 10,
     },
     headerLeft: {
+      flex: 1,
+      minWidth: 0,
       flexDirection: "row",
       alignItems: "center",
-      gap: 12,
+      gap: 10,
+    },
+    headerTextContainer: {
+      flex: 1,
+      minWidth: 0,
     },
     backButton: {
       width: 36,
@@ -559,12 +650,13 @@ const makeStyles = (colors: typeof C) =>
       marginTop: 2,
     },
     newReportBtn: {
+      flexShrink: 0,
       flexDirection: "row",
       alignItems: "center",
-      gap: 6,
+      gap: 5,
       backgroundColor: colors.primary,
-      paddingHorizontal: 16,
-      paddingVertical: 9,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
       borderRadius: 8,
       shadowColor: colors.primary,
       shadowOffset: { width: 0, height: 2 },

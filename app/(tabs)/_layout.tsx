@@ -1,9 +1,62 @@
 import { Tabs } from "expo-router";
-import React from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import React, { useRef } from "react";
+import { Animated, Platform, StyleSheet, TouchableWithoutFeedback, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { HapticTab } from "../../components/haptic-tab";
 import { IconSymbol } from "../../components/ui/icon-symbol";
 import { useAppTheme } from "../../context/theme-context";
+
+function RaisedNewReportTabButton(props: any) {
+  const { isDark, colors } = useAppTheme();
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.88,
+      useNativeDriver: true,
+      friction: 5,
+      tension: 100,
+    }).start();
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch {}
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      friction: 4,
+      tension: 80,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  return (
+    <TouchableWithoutFeedback
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      onPress={props.onPress}
+      accessibilityRole="button"
+      accessibilityLabel="Nova Denúncia"
+    >
+      <View style={styles.raisedButtonOuterWrap}>
+        <Animated.View
+          style={[
+            styles.raisedButton,
+            {
+              backgroundColor: "#0f52ba",
+              borderColor: isDark ? "#111827" : colors.surface,
+              transform: [{ scale: scaleAnim }],
+            },
+          ]}
+        >
+          <Ionicons name="add" size={30} color="#ffffff" />
+        </Animated.View>
+      </View>
+    </TouchableWithoutFeedback>
+  );
+}
 
 export default function TabLayout() {
   const { isDark, colors } = useAppTheme();
@@ -11,15 +64,24 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      key={isDark ? "tabs-dark" : "tabs-light"}
       screenOptions={{
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.text3,
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarShowLabel: !isMobile,
+        tabBarBackground: () => (
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: isDark ? "#111827" : colors.surface,
+            }}
+          />
+        ),
         tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
+          backgroundColor: isDark ? "#111827" : colors.surface,
+          borderTopColor: isDark ? "#1f2937" : colors.border,
           borderTopWidth: 1,
           height: isMobile ? 70 : 76,
           paddingBottom: isMobile ? 10 : 8,
@@ -29,6 +91,7 @@ export default function TabLayout() {
           shadowOpacity: isDark ? 0.25 : 0.05,
           shadowRadius: 8,
           elevation: 4,
+          overflow: "visible",
         },
         tabBarLabelStyle: {
           fontSize: 11,
@@ -52,25 +115,22 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="new-report"
-        options={{
-          title: "Nova Denúncia",
-          tabBarIcon: ({ color }) => (
-            <View style={[styles.tabIconWrap, styles.actionIcon]}>
-              <IconSymbol size={24} name="plus.circle.fill" color={color} />
-            </View>
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="reports"
         options={{
-          title: "Denúncias",
+          title: "Minhas Denúncias",
           tabBarIcon: ({ color }) => (
             <View style={styles.tabIconWrap}>
               <IconSymbol size={22} name="list.bullet" color={color} />
             </View>
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="new-report"
+        options={{
+          title: "Nova Denúncia",
+          tabBarLabel: () => null,
+          tabBarButton: (props) => <RaisedNewReportTabButton {...props} />,
         }}
       />
       <Tabs.Screen
@@ -106,7 +166,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  actionIcon: {
-    transform: [{ scale: 1.05 }],
+  raisedButtonOuterWrap: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  raisedButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+    top: -14,
+    borderWidth: 3,
+    shadowColor: "#0f52ba",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 8,
   },
 });

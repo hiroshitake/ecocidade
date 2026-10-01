@@ -28,11 +28,14 @@ interface MapComponentProps {
   reports?: Report[];
   zones?: Zone[];
   userLocation?: { latitude: number; longitude: number } | null;
+  followUserLocation?: boolean;
   selectedLocation?: { latitude: number; longitude: number } | null;
   selectLocation?: boolean;
   onSelectLocation?: (location: { latitude: number; longitude: number }) => void;
   onSelectReport?: (report: Report) => void;
   selectedReportId?: string | null;
+  onCloseSelectedReport?: () => void;
+  recenterRequest?: number;
   onZoneClick?: (zone: Zone) => void;
 }
 

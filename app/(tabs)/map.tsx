@@ -4,6 +4,8 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 import { router } from "expo-router";
 import {
   ActivityIndicator,
+  LayoutAnimation,
+  Platform,
   useWindowDimensions,
   ScrollView,
   StyleSheet,
@@ -11,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import * as Haptics from "expo-haptics";
 import MapComponent from "../../components/map";
 import { ThemedText } from "../../components/themed-text";
 import { C } from "../../constants/theme";
@@ -60,8 +63,8 @@ function formatDistance(distKm: number | null) {
 }
 
 export default function MapScreen() {
-  const { colors } = useAppTheme();
-  const styles = makeStyles(colors);
+  const { colors, isDark } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors, isDark), [colors, isDark]);
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
 
@@ -83,11 +86,23 @@ export default function MapScreen() {
   const [selectedReportIndex, setSelectedReportIndex] = useState<number>(0);
   // selectedReportId só é preenchido quando o usuário pede explicitamente para abrir os detalhes
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const [recenterRequest, setRecenterRequest] = useState(0);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [isFeedCollapsed, setIsFeedCollapsed] = useState(false);
+
+  const toggleFeedCollapse = () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {}
+    if (Platform.OS !== "web") {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    }
+    setIsFeedCollapsed((prev) => !prev);
+  };
   const scrollViewRef = useRef<ScrollView>(null);
 
   const loadData = useCallback(async () => {
+    setSelectedReportId(null);
     try {
       setLoading(true);
 
@@ -426,6 +441,7 @@ export default function MapScreen() {
               onChangeText={(text) => {
                 setSearchQuery(text);
                 setSelectedReportIndex(0);
+                setSelectedReportId(null);
               }}
             />
             {searchQuery.length > 0 && (
@@ -455,6 +471,7 @@ export default function MapScreen() {
                 onPress={() => {
                   setSelectedCategory(cat.id);
                   setSelectedReportIndex(0);
+                  setSelectedReportId(null);
                 }}
                 activeOpacity={0.8}
               >
@@ -509,18 +526,41 @@ export default function MapScreen() {
             reports={sortedReports}
             zones={formattedZones}
             userLocation={userLocation}
+            followUserLocation={false}
             selectedReportId={selectedReportId}
+            onCloseSelectedReport={() => setSelectedReportId(null)}
+            recenterRequest={recenterRequest}
           />
         )}
       </View>
 
       {/* Floating Side Action Controls */}
-      <View style={styles.floatingControls}>
+      <View
+        style={[
+          styles.floatingControls,
+          !isDesktop &&
+            (isFeedCollapsed
+              ? styles.floatingControlsCollapsed
+              : styles.floatingControlsExpanded),
+        ]}
+      >
         <TouchableOpacity
           style={styles.controlFab}
           onPress={() => {
-            loadData();
-            startLocationWatch();
+            if (userLocation) {
+              setRecenterRequest((value) => value + 1);
+              return;
+            }
+
+            resolveUserLocationWithFallback()
+              .then((resolvedLocation) => {
+                if (!resolvedLocation?.location) return;
+                setUserLocation(resolvedLocation.location);
+                setLocationSource(resolvedLocation.source);
+                setLocationReason(resolvedLocation.reason);
+                setRecenterRequest((value) => value + 1);
+              })
+              .catch(() => {});
           }}
           activeOpacity={0.8}
         >
@@ -550,7 +590,7 @@ export default function MapScreen() {
         <View style={styles.feedHeader}>
           <TouchableOpacity
             style={styles.feedHeaderLeft}
-            onPress={() => setIsFeedCollapsed(!isFeedCollapsed)}
+            onPress={toggleFeedCollapse}
             activeOpacity={0.7}
           >
             <ThemedText style={styles.feedTitle}>
@@ -606,7 +646,8 @@ export default function MapScreen() {
 
             <TouchableOpacity
               style={styles.toggleCollapseBtn}
-              onPress={() => setIsFeedCollapsed(!isFeedCollapsed)}
+              onPress={toggleFeedCollapse}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Ionicons
                 name={isFeedCollapsed ? "chevron-up" : "chevron-down"}
@@ -726,7 +767,7 @@ export default function MapScreen() {
   );
 }
 
-const makeStyles = (colors: typeof C) =>
+const makeStyles = (colors: typeof C, isDark: boolean) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -740,11 +781,11 @@ const makeStyles = (colors: typeof C) =>
       left: 12,
       right: 12,
       zIndex: 20,
-      backgroundColor: "rgba(255, 255, 255, 0.95)",
+      backgroundColor: isDark ? "rgba(17, 24, 39, 0.94)" : "rgba(255, 255, 255, 0.95)",
       borderRadius: 14,
       padding: 10,
       borderWidth: 1,
-      borderColor: "rgba(226, 232, 240, 0.9)",
+      borderColor: colors.border,
       shadowColor: "#0f172a",
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.1,
@@ -890,12 +931,12 @@ const makeStyles = (colors: typeof C) =>
       flexDirection: "row",
       alignItems: "center",
       gap: 6,
-      backgroundColor: "rgba(255, 255, 255, 0.95)",
+      backgroundColor: isDark ? "rgba(17, 24, 39, 0.94)" : "rgba(255, 255, 255, 0.95)",
       paddingHorizontal: 12,
       paddingVertical: 5,
       borderRadius: 14,
       borderWidth: 1,
-      borderColor: "rgba(245, 158, 11, 0.4)",
+      borderColor: isDark ? "rgba(245, 158, 11, 0.3)" : "rgba(245, 158, 11, 0.4)",
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.08,
@@ -905,7 +946,7 @@ const makeStyles = (colors: typeof C) =>
     locationPillText: {
       fontSize: 11,
       fontWeight: "600",
-      color: "#92400e",
+      color: isDark ? "#fbbf24" : "#92400e",
     },
 
     /* Map Surface */
@@ -941,11 +982,17 @@ const makeStyles = (colors: typeof C) =>
       zIndex: 25,
       gap: 8,
     },
+    floatingControlsExpanded: {
+      bottom: 220,
+    },
+    floatingControlsCollapsed: {
+      bottom: 64,
+    },
     controlFab: {
       width: 40,
       height: 40,
       borderRadius: 10,
-      backgroundColor: "rgba(255, 255, 255, 0.95)",
+      backgroundColor: isDark ? "rgba(17, 24, 39, 0.94)" : "rgba(255, 255, 255, 0.95)",
       borderWidth: 1,
       borderColor: colors.border,
       alignItems: "center",
@@ -964,13 +1011,13 @@ const makeStyles = (colors: typeof C) =>
       left: 12,
       right: 12,
       zIndex: 20,
-      backgroundColor: "rgba(255, 255, 255, 0.96)",
+      backgroundColor: isDark ? "rgba(17, 24, 39, 0.95)" : "rgba(255, 255, 255, 0.96)",
       borderRadius: 14,
       paddingHorizontal: 12,
       paddingTop: 10,
       paddingBottom: 10,
       borderWidth: 1,
-      borderColor: "rgba(226, 232, 240, 0.9)",
+      borderColor: colors.border,
       shadowColor: "#0f172a",
       shadowOffset: { width: 0, height: -2 },
       shadowOpacity: 0.1,
@@ -1062,7 +1109,7 @@ const makeStyles = (colors: typeof C) =>
 
     compactCard: {
       width: 260,
-      backgroundColor: "#ffffff",
+      backgroundColor: colors.surface,
       borderRadius: 10,
       padding: 10,
       borderWidth: 1,

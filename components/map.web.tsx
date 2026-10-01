@@ -21,11 +21,14 @@ interface MapComponentProps {
   reports?: Report[];
   zones?: Zone[];
   userLocation?: { latitude: number; longitude: number } | null;
+  followUserLocation?: boolean;
   selectedLocation?: { latitude: number; longitude: number } | null;
   selectLocation?: boolean;
   onSelectLocation?: (location: { latitude: number; longitude: number }) => void;
   onSelectReport?: (report: Report) => void;
   selectedReportId?: string | null;
+  onCloseSelectedReport?: () => void;
+  recenterRequest?: number;
   onZoneClick?: (zone: Zone) => void;
 }
 
@@ -33,11 +36,14 @@ export default function MapComponent({
   style,
   reports = [],
   userLocation = null,
+  followUserLocation = true,
   selectedLocation = null,
   selectLocation = false,
   onSelectLocation,
   onSelectReport,
   selectedReportId = null,
+  onCloseSelectedReport,
+  recenterRequest = 0,
   zones = [],
   onZoneClick,
 }: MapComponentProps) {
@@ -51,8 +57,10 @@ export default function MapComponent({
   const userMarkerRef = useRef<any>(null);
   const selectedMarkerRef = useRef<any>(null);
   const hasSetInitialViewRef = useRef(false);
-  const previousCenteredLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
+  const previousUserLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
+  const previousSelectedLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
   const onSelectLocationRef = useRef(onSelectLocation);
+  const reportsRef = useRef(reports);
 
   useEffect(() => {
     onSelectLocationRef.current = onSelectLocation;
@@ -193,13 +201,21 @@ export default function MapComponent({
   }, []);
 
   useEffect(() => {
-    if (!selectedReportId) return;
-    const report = reports.find((item) => String(item.id) === String(selectedReportId));
+    reportsRef.current = reports;
+  }, [reports]);
+
+  useEffect(() => {
+    if (!selectedReportId) {
+      setSelectedReport(null);
+      return;
+    }
+
+    const report = reportsRef.current.find((item) => String(item.id) === String(selectedReportId));
     if (report) {
       setSelectedReport(report);
       onSelectReport?.(report);
     }
-  }, [selectedReportId, reports]);
+  }, [selectedReportId]);
 
   useEffect(() => {
     if (!markerLayerRef.current || typeof window === "undefined") return;
@@ -263,28 +279,46 @@ export default function MapComponent({
     if (!map) return;
 
     const centerTarget = selectedLocation || userLocation;
-    const locationChanged = centerTarget &&
-      (!previousCenteredLocationRef.current ||
-        centerTarget.latitude !== previousCenteredLocationRef.current.latitude ||
-        centerTarget.longitude !== previousCenteredLocationRef.current.longitude);
+    const selectedLocationChanged =
+      selectedLocation &&
+      (!previousSelectedLocationRef.current ||
+        selectedLocation.latitude !== previousSelectedLocationRef.current.latitude ||
+        selectedLocation.longitude !== previousSelectedLocationRef.current.longitude);
+    const userLocationChanged =
+      userLocation &&
+      (!previousUserLocationRef.current ||
+        userLocation.latitude !== previousUserLocationRef.current.latitude ||
+        userLocation.longitude !== previousUserLocationRef.current.longitude);
 
     if (!hasSetInitialViewRef.current) {
       if (centerTarget) {
         map.setView([centerTarget.latitude, centerTarget.longitude], 13);
+        hasSetInitialViewRef.current = true;
       } else if (zones && zones.length > 0) {
         const first = zones[0];
         map.setView([first.latitude, first.longitude], 13);
+        hasSetInitialViewRef.current = true;
       } else if (validReports.length > 0) {
         const first = validReports[0];
         map.setView([first.location!.latitude!, first.location!.longitude!], 13);
+        hasSetInitialViewRef.current = true;
       }
-      hasSetInitialViewRef.current = true;
-    } else if (locationChanged && centerTarget) {
-      map.setView([centerTarget.latitude, centerTarget.longitude], map.getZoom ? map.getZoom() : 13);
+    } else if (selectedLocationChanged || (followUserLocation && !selectedLocation && userLocationChanged)) {
+      map.setView([centerTarget!.latitude, centerTarget!.longitude], map.getZoom ? map.getZoom() : 13);
     }
 
-    previousCenteredLocationRef.current = centerTarget || null;
+    previousSelectedLocationRef.current = selectedLocation || null;
+    previousUserLocationRef.current = userLocation || null;
   }, [reports, userLocation, selectedLocation, zones, onSelectReport, onZoneClick]);
+
+  useEffect(() => {
+    if (!recenterRequest || !userLocation || !mapInstanceRef.current) return;
+    const map = mapInstanceRef.current;
+    map.setView(
+      [userLocation.latitude, userLocation.longitude],
+      map.getZoom ? map.getZoom() : 13,
+    );
+  }, [recenterRequest, userLocation]);
 
   return (
     <>
@@ -304,7 +338,13 @@ export default function MapComponent({
       >
         {isLoading && <div>Carregando mapa...</div>}
       </div>
-      <ReportMapModal report={selectedReport} onClose={() => setSelectedReport(null)} />
+      <ReportMapModal
+        report={selectedReport}
+        onClose={() => {
+          setSelectedReport(null);
+          onCloseSelectedReport?.();
+        }}
+      />
     </>
   );
 }

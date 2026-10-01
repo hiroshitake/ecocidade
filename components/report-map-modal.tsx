@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -10,7 +10,7 @@ import {
   View,
 } from "react-native";
 import { ThemedText } from "./themed-text";
-import { C } from "../constants/theme";
+import { Colors } from "../constants/theme";
 import { useAppTheme } from "../context/theme-context";
 import { createReportImageUrl, createSupabaseAvatarUrl } from "../services/supabase";
 import ReportRetentionTimer from "./report-retention-timer";
@@ -40,7 +40,7 @@ interface ReportMapModalProps {
   onClose: () => void;
 }
 
-function getStatusInfo(status?: string) {
+function getStatusInfo(colors: typeof Colors.light, status?: string) {
   switch (String(status || "").toLowerCase()) {
     case "resolved":
     case "concluida":
@@ -48,8 +48,8 @@ function getStatusInfo(status?: string) {
       return {
         label: "Concluída",
         icon: "check-circle-outline" as const,
-        color: C.eco,
-        background: "rgba(31, 166, 96, 0.10)",
+        color: colors.eco,
+        background: colors.ecoLight,
       };
     case "in_progress":
     case "investigating":
@@ -58,15 +58,15 @@ function getStatusInfo(status?: string) {
       return {
         label: "Em Processo",
         icon: "progress-clock" as const,
-        color: C.primary,
-        background: "rgba(26, 95, 212, 0.10)",
+        color: colors.primary,
+        background: colors.primaryLight,
       };
     default:
       return {
         label: "Aguardando",
         icon: "clock-alert-outline" as const,
-        color: C.warning,
-        background: "rgba(217, 119, 6, 0.10)",
+        color: colors.warning,
+        background: colors.warningLight,
       };
   }
 }
@@ -85,6 +85,7 @@ function formatDateTime(value?: string | null) {
 
 export default function ReportMapModal({ report, onClose }: ReportMapModalProps) {
   const { colors } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
   const [imageAspectRatio, setImageAspectRatio] = useState(16 / 9);
@@ -158,7 +159,7 @@ export default function ReportMapModal({ report, onClose }: ReportMapModalProps)
     };
   }, [report?.reporter?.avatar_path]);
 
-  const status = getStatusInfo(report?.status);
+  const status = getStatusInfo(colors, report?.status);
   const reporterName = report?.reporter?.name || "Usuário não identificado";
 
   return (
@@ -184,7 +185,7 @@ export default function ReportMapModal({ report, onClose }: ReportMapModalProps)
               style={styles.closeButton}
               onPress={onClose}
             >
-              <Ionicons name="close" size={22} color={C.text2} />
+              <Ionicons name="close" size={22} color={colors.text2} />
             </TouchableOpacity>
           </View>
 
@@ -196,11 +197,11 @@ export default function ReportMapModal({ report, onClose }: ReportMapModalProps)
             <View style={styles.reporterCard}>
               <View style={styles.avatar}>
                 {avatarLoading ? (
-                  <ActivityIndicator size="small" color={C.primary} />
+                  <ActivityIndicator size="small" color={colors.primary} />
                 ) : avatarUrl ? (
                   <Image source={{ uri: avatarUrl }} style={styles.avatarImage} resizeMode="cover" />
                 ) : (
-                  <Ionicons name="person" size={22} color={C.text3} />
+                  <Ionicons name="person" size={22} color={colors.text3} />
                 )}
               </View>
               <View style={styles.reporterCopy}>
@@ -214,7 +215,7 @@ export default function ReportMapModal({ report, onClose }: ReportMapModalProps)
             <View style={styles.photoCard}>
               {imageLoading ? (
                 <View style={styles.photoPlaceholder}>
-                  <ActivityIndicator size="small" color={C.primary} />
+                  <ActivityIndicator size="small" color={colors.primary} />
                   <ThemedText style={styles.placeholderText}>Carregando foto...</ThemedText>
                 </View>
               ) : imageUrl ? (
@@ -233,7 +234,7 @@ export default function ReportMapModal({ report, onClose }: ReportMapModalProps)
                 </TouchableOpacity>
               ) : (
                 <View style={styles.photoPlaceholder}>
-                  <Ionicons name="image-outline" size={34} color={C.text3} />
+                  <Ionicons name="image-outline" size={34} color={colors.text3} />
                   <ThemedText style={styles.placeholderText}>Sem foto disponível</ThemedText>
                 </View>
               )}
@@ -257,7 +258,7 @@ export default function ReportMapModal({ report, onClose }: ReportMapModalProps)
 
             <View style={styles.infoCard}>
               <View style={styles.infoHeader}>
-                <Ionicons name="document-text-outline" size={19} color={C.primary} />
+                <Ionicons name="document-text-outline" size={19} color={colors.primary} />
                 <ThemedText style={styles.sectionTitle}>Descrição</ThemedText>
               </View>
               <ThemedText style={styles.description}>
@@ -267,7 +268,7 @@ export default function ReportMapModal({ report, onClose }: ReportMapModalProps)
 
             {report?.distanceKm != null ? (
               <View style={styles.distanceCard}>
-                <Ionicons name="navigate-outline" size={20} color={C.primary} />
+                <Ionicons name="navigate-outline" size={20} color={colors.primary} />
                 <View style={styles.distanceCopy}>
                   <ThemedText style={styles.label}>Distância</ThemedText>
                   <ThemedText style={styles.distanceValue}>
@@ -281,7 +282,7 @@ export default function ReportMapModal({ report, onClose }: ReportMapModalProps)
 
             <View style={styles.infoGrid}>
               <View style={styles.infoCardSmall}>
-                <Ionicons name="time-outline" size={19} color={C.primary} />
+                <Ionicons name="time-outline" size={19} color={colors.primary} />
                 <ThemedText style={styles.label}>Horário</ThemedText>
                 <ThemedText style={styles.infoValue}>
                   {formatDateTime(report?.created_at)}
@@ -289,7 +290,7 @@ export default function ReportMapModal({ report, onClose }: ReportMapModalProps)
               </View>
 
               <View style={styles.infoCardSmall}>
-                <Ionicons name="location-outline" size={19} color={C.primary} />
+                <Ionicons name="location-outline" size={19} color={colors.primary} />
                 <ThemedText style={styles.label}>Local</ThemedText>
                 <ThemedText style={styles.infoValue} numberOfLines={3}>
                   {report?.location?.address || "Localização no mapa"}
@@ -334,7 +335,8 @@ export default function ReportMapModal({ report, onClose }: ReportMapModalProps)
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: typeof Colors.light) =>
+  StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: "rgba(7, 18, 38, 0.58)",
@@ -346,8 +348,10 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 560,
     maxHeight: "88%",
-    backgroundColor: C.surface,
+    backgroundColor: colors.surface,
     borderRadius: 22,
+    borderWidth: 1,
+    borderColor: colors.border,
     overflow: "hidden",
     shadowColor: "#071226",
     shadowOpacity: 0.22,
@@ -362,34 +366,34 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderBottomWidth: 1,
-    borderBottomColor: C.border,
+    borderBottomColor: colors.border,
   },
   headerText: { flex: 1, minWidth: 0, paddingRight: 12 },
   title: {
     fontSize: 19,
     fontWeight: "800",
-    color: C.text,
+    color: colors.text,
     textTransform: "capitalize",
   },
-  subtitle: { marginTop: 2, fontSize: 12, color: C.text3 },
+  subtitle: { marginTop: 2, fontSize: 12, color: colors.text3 },
   closeButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: C.surface2,
+    backgroundColor: colors.surface2,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
   },
   scroll: { flexGrow: 0 },
   content: { padding: 18, gap: 12 },
   reporterCard: {
     minHeight: 68,
     borderRadius: 14,
-    backgroundColor: C.surface2,
+    backgroundColor: colors.surface2,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
     padding: 10,
     flexDirection: "row",
     alignItems: "center",
@@ -400,32 +404,32 @@ const styles = StyleSheet.create({
     height: 46,
     borderRadius: 23,
     overflow: "hidden",
-    backgroundColor: C.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarImage: { width: "100%", height: "100%" },
   reporterCopy: { flex: 1, minWidth: 0 },
-  reporterName: { marginTop: 2, fontSize: 14, fontWeight: "800", color: C.text },
-  label: { fontSize: 11, color: C.text3, fontWeight: "600" },
+  reporterName: { marginTop: 2, fontSize: 14, fontWeight: "800", color: colors.text },
+  label: { fontSize: 11, color: colors.text3, fontWeight: "600" },
   photoCard: {
     width: "100%",
     minHeight: 180,
     maxHeight: 420,
     borderRadius: 16,
     overflow: "hidden",
-    backgroundColor: C.surface2,
+    backgroundColor: colors.surface2,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
   },
   photo: {
     width: "100%",
     maxHeight: 420,
     borderRadius: 16,
     overflow: "hidden",
-    backgroundColor: C.surface2,
+    backgroundColor: colors.surface2,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -471,13 +475,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
   },
-  placeholderText: { color: C.text3, fontSize: 12, fontWeight: "600" },
+  placeholderText: { color: colors.text3, fontSize: 12, fontWeight: "600" },
   statusCard: {
     minHeight: 70,
     borderRadius: 14,
-    backgroundColor: C.surface2,
+    backgroundColor: colors.surface2,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
     padding: 12,
     flexDirection: "row",
     alignItems: "center",
@@ -494,48 +498,48 @@ const styles = StyleSheet.create({
   statusLabel: { marginTop: 2, fontSize: 15, fontWeight: "800" },
   infoCard: {
     borderRadius: 14,
-    backgroundColor: C.surface2,
+    backgroundColor: colors.surface2,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
     padding: 14,
   },
   infoHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
-  sectionTitle: { fontSize: 14, fontWeight: "800", color: C.text },
-  description: { marginTop: 9, fontSize: 13, lineHeight: 19, color: C.text2 },
+  sectionTitle: { fontSize: 14, fontWeight: "800", color: colors.text },
+  description: { marginTop: 9, fontSize: 13, lineHeight: 19, color: colors.text2 },
   distanceCard: {
     minHeight: 64,
     borderRadius: 14,
-    backgroundColor: C.surface2,
+    backgroundColor: colors.surface2,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
     padding: 13,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
   },
   distanceCopy: { flex: 1 },
-  distanceValue: { marginTop: 3, fontSize: 14, fontWeight: "800", color: C.text },
+  distanceValue: { marginTop: 3, fontSize: 14, fontWeight: "800", color: colors.text },
   infoGrid: { flexDirection: "row", gap: 10 },
   infoCardSmall: {
     flex: 1,
     minHeight: 104,
     borderRadius: 14,
-    backgroundColor: C.surface2,
+    backgroundColor: colors.surface2,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
     padding: 13,
   },
-  infoValue: { marginTop: 6, fontSize: 12, lineHeight: 17, color: C.text2, fontWeight: "600" },
+  infoValue: { marginTop: 6, fontSize: 12, lineHeight: 17, color: colors.text2, fontWeight: "600" },
   footer: {
     padding: 14,
     borderTopWidth: 1,
-    borderTopColor: C.border,
-    backgroundColor: C.surface,
+    borderTopColor: colors.border,
+    backgroundColor: colors.surface,
   },
   closeFooterButton: {
     minHeight: 46,
     borderRadius: 12,
-    backgroundColor: C.primary,
+    backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
   },

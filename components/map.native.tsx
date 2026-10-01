@@ -20,11 +20,14 @@ interface MapComponentProps {
   reports?: Report[];
   zones?: Zone[];
   userLocation?: { latitude: number; longitude: number } | null;
+  followUserLocation?: boolean;
   selectedLocation?: { latitude: number; longitude: number } | null;
   selectLocation?: boolean;
   onSelectLocation?: (location: { latitude: number; longitude: number }) => void;
   onSelectReport?: (report: Report) => void;
   selectedReportId?: string | null;
+  onCloseSelectedReport?: () => void;
+  recenterRequest?: number;
   onZoneClick?: (zone: Zone) => void;
 }
 
@@ -33,22 +36,27 @@ export default function MapComponent({
   reports = [],
   zones = [],
   userLocation = null,
+  followUserLocation = true,
   selectedLocation = null,
   selectLocation = false,
   onSelectLocation,
   onSelectReport,
   selectedReportId = null,
+  onCloseSelectedReport,
+  recenterRequest = 0,
   onZoneClick,
 }: MapComponentProps) {
   const mapRef = useRef<MapView | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const pulseAnim = useRef(new Animated.Value(0)).current;
+  const reportsRef = useRef(reports);
   const validReports = reports.filter(
     (report) => report.location?.latitude != null && report.location?.longitude != null,
   );
   const hasCenteredRef = useRef(false);
-  const previousCenteredLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
+  const previousUserLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
+  const previousSelectedLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
 
   const selectedLocationCoords = selectedLocation || userLocation;
 
@@ -76,12 +84,22 @@ export default function MapComponent({
   useEffect(() => {
     if (!selectedLocationCoords || !mapRef.current || !mapReady) return;
 
-    const locationChanged =
-      !previousCenteredLocationRef.current ||
-      selectedLocationCoords.latitude !== previousCenteredLocationRef.current.latitude ||
-      selectedLocationCoords.longitude !== previousCenteredLocationRef.current.longitude;
+    const selectedLocationChanged =
+      selectedLocation &&
+      (!previousSelectedLocationRef.current ||
+        selectedLocation.latitude !== previousSelectedLocationRef.current.latitude ||
+        selectedLocation.longitude !== previousSelectedLocationRef.current.longitude);
+    const userLocationChanged =
+      userLocation &&
+      (!previousUserLocationRef.current ||
+        userLocation.latitude !== previousUserLocationRef.current.latitude ||
+        userLocation.longitude !== previousUserLocationRef.current.longitude);
 
-    if (!hasCenteredRef.current || locationChanged) {
+    if (
+      !hasCenteredRef.current ||
+      selectedLocationChanged ||
+      (followUserLocation && !selectedLocation && userLocationChanged)
+    ) {
       mapRef.current.animateToRegion(
         {
           latitude: selectedLocationCoords.latitude,
@@ -94,17 +112,39 @@ export default function MapComponent({
       hasCenteredRef.current = true;
     }
 
-    previousCenteredLocationRef.current = selectedLocationCoords;
+    previousSelectedLocationRef.current = selectedLocation || null;
+    previousUserLocationRef.current = userLocation || null;
   }, [selectedLocationCoords, mapReady]);
 
   useEffect(() => {
-    if (!selectedReportId) return;
-    const report = validReports.find((item) => String(item.id) === String(selectedReportId));
+    if (!recenterRequest || !userLocation || !mapRef.current || !mapReady) return;
+    mapRef.current.animateToRegion(
+      {
+        latitude: userLocation.latitude,
+        longitude: userLocation.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      },
+      700,
+    );
+  }, [recenterRequest, userLocation, mapReady]);
+
+  useEffect(() => {
+    reportsRef.current = reports;
+  }, [reports]);
+
+  useEffect(() => {
+    if (!selectedReportId) {
+      setSelectedReport(null);
+      return;
+    }
+
+    const report = reportsRef.current.find((item) => String(item.id) === String(selectedReportId));
     if (report) {
       setSelectedReport(report);
       onSelectReport?.(report);
     }
-  }, [selectedReportId, reports]);
+  }, [selectedReportId]);
 
   useEffect(() => {
     const animation = Animated.loop(
@@ -203,7 +243,13 @@ export default function MapComponent({
         ))}
       </MapView>
 
-      <ReportMapModal report={selectedReport} onClose={() => setSelectedReport(null)} />
+      <ReportMapModal
+        report={selectedReport}
+        onClose={() => {
+          setSelectedReport(null);
+          onCloseSelectedReport?.();
+        }}
+      />
     </>
   );
 }

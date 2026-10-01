@@ -163,6 +163,7 @@ export async function signUpWithSupabase(
   password: string,
   name: string,
   city?: string,
+  birthdate?: string,
 ) {
   if (!supabase) {
     throw new Error("Supabase não configurado.");
@@ -186,6 +187,7 @@ export async function signUpWithSupabase(
       role: "user",
       city: city || null,
       city_id: cityId,
+      birthdate: birthdate ? (() => { const [day, month, year] = birthdate.split("/").map(Number); return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`; })() : null,
       updated_at: new Date().toISOString(),
     });
 
@@ -235,6 +237,7 @@ export async function getSupabaseSessionUser() {
     role: profile?.role || "user",
     city: typeof profile?.city === "string" ? profile.city : undefined,
     city_id: typeof profile?.city_id === "string" ? profile.city_id : undefined,
+    birthdate: typeof profile?.birthdate === "string" ? profile.birthdate : undefined,
     avatar_path:
       typeof profile?.avatar_path === "string" ? profile.avatar_path : null,
   };

@@ -52,14 +52,13 @@ const normalizeStatus = (status?: string) => {
 };
 
 export default function ManageReportsScreen() {
-  const { colors } = useAppTheme();
+  const { colors, isDark } = useAppTheme();
   const STATUS_OPTIONS = useMemo(() => getStatusOptions(colors), [colors]);
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const router = useRouter();
-  const { colors, isDark } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const loadReports = useCallback(async () => {

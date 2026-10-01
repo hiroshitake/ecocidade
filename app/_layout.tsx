@@ -15,7 +15,7 @@ function AppChrome() {
         screenOptions={{
           headerShown: false,
           contentStyle: {
-            backgroundColor: isDark ? "#0a1220" : "#f0f4ff",
+            backgroundColor: isDark ? "#0b0f19" : "#f8fafc",
           },
           animation: "fade",
         }}
@@ -23,7 +23,8 @@ function AppChrome() {
         <Stack.Screen name="index" />
         <Stack.Screen name="login" />
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="settings" />
+        <Stack.Screen name="admin-login" />
+        <Stack.Screen name="(admin)" />
         <Stack.Screen name="modal" options={{ presentation: "modal" }} />
       </Stack>
     </>

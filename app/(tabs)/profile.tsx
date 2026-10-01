@@ -80,7 +80,7 @@ const ProfileScreen: React.FC = () => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={C.primary} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -92,40 +92,57 @@ const ProfileScreen: React.FC = () => {
   return (
     <View style={styles.root}>
       <ScrollView contentContainerStyle={styles.container}>
-        {avatarUrl ? (
-          <Image source={{ uri: avatarUrl }} style={styles.photo} />
-        ) : (
-          <View style={styles.photoFallback}>
-            <Ionicons name="person" size={40} color={C.white} />
-          </View>
-        )}
+        <View style={styles.avatarWrap}>
+          {avatarUrl ? (
+            <Image source={{ uri: avatarUrl }} style={styles.photo} />
+          ) : (
+            <View style={styles.photoFallback}>
+              <Ionicons name="person" size={44} color={colors.white} />
+            </View>
+          )}
+        </View>
 
-        <Text style={styles.name}>{userData?.name || "Usuário"}</Text>
+        <Text style={styles.name}>{userData?.name || "Cidadão"}</Text>
         <Text style={styles.email}>{userData?.email || "Nenhum e-mail cadastrado"}</Text>
 
-        {userData?.birthdate && (
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Nascimento:</Text>
-            <Text style={styles.infoValue}>{formatBirthDate(userData.birthdate)}</Text>
-          </View>
-        )}
+        <View style={styles.card}>
+          <Text style={styles.sectionHeader}>DADOS DA CONTA</Text>
 
-        {userData?.createdAt && (
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Cadastrado em:</Text>
-            <Text style={styles.infoValue}>{new Date(userData.createdAt).toLocaleDateString("pt-BR")}</Text>
-          </View>
-        )}
+          {userData?.birthdate ? (
+            <View style={styles.infoRow}>
+              <View style={styles.labelCol}>
+                <Ionicons name="calendar-outline" size={16} color={colors.text3} />
+                <Text style={styles.infoLabel}>Nascimento</Text>
+              </View>
+              <Text style={styles.infoValue}>{formatBirthDate(userData.birthdate)}</Text>
+            </View>
+          ) : null}
 
-        <TouchableOpacity style={styles.settingsBtn} onPress={() => router.push("/settings")}>
-          <Ionicons name="settings-outline" size={20} color={C.primary} />
-          <Text style={styles.settingsText}>Configurações</Text>
-        </TouchableOpacity>
+          {userData?.createdAt ? (
+            <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
+              <View style={styles.labelCol}>
+                <Ionicons name="time-outline" size={16} color={colors.text3} />
+                <Text style={styles.infoLabel}>Membro desde</Text>
+              </View>
+              <Text style={styles.infoValue}>
+                {new Date(userData.createdAt).toLocaleDateString("pt-BR")}
+              </Text>
+            </View>
+          ) : null}
+        </View>
 
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <Ionicons name="log-out" size={20} color={C.white} />
-          <Text style={styles.btnText}>Deslogar</Text>
-        </TouchableOpacity>
+        <View style={styles.actionsWrap}>
+          <TouchableOpacity style={styles.settingsBtn} onPress={() => router.push("/settings")}>
+            <Ionicons name="settings-outline" size={18} color={colors.text} />
+            <Text style={styles.settingsText}>Configurações do aplicativo</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.text3} style={{ marginLeft: "auto" }} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={18} color={colors.danger} />
+            <Text style={styles.logoutText}>Sair da conta</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
 
       <ConfirmationModal
@@ -144,18 +161,77 @@ const ProfileScreen: React.FC = () => {
 const makeStyles = (colors: typeof C) => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.bg },
-  container: { padding: 24, paddingTop: 32, alignItems: "center" },
-  photo: { width: 120, height: 120, borderRadius: 60, backgroundColor: colors.surface, marginBottom: 20 },
-  photoFallback: { width: 120, height: 120, borderRadius: 60, backgroundColor: colors.primary, justifyContent: "center", alignItems: "center", marginBottom: 20 },
-  name: { fontSize: 24, fontWeight: "700", color: colors.text, marginBottom: 8 },
-  email: { fontSize: 15, color: colors.text2, marginBottom: 20 },
-  infoRow: { width: "100%", flexDirection: "row", justifyContent: "space-between", backgroundColor: colors.surface, padding: 16, borderRadius: 12, marginBottom: 24 },
+  container: { padding: 20, paddingTop: 36, alignItems: "center" },
+  avatarWrap: {
+    padding: 3,
+    borderRadius: 64,
+    borderWidth: 2,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    marginBottom: 16,
+  },
+  photo: { width: 104, height: 104, borderRadius: 52 },
+  photoFallback: { width: 104, height: 104, borderRadius: 52, backgroundColor: colors.primary, justifyContent: "center", alignItems: "center" },
+  name: { fontSize: 22, fontWeight: "700", color: colors.text, marginBottom: 4, letterSpacing: -0.3 },
+  email: { fontSize: 14, color: colors.text2, marginBottom: 28 },
+  card: {
+    width: "100%",
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 20,
+  },
+  sectionHeader: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.text3,
+    letterSpacing: 0.8,
+    marginBottom: 12,
+    marginTop: 4,
+  },
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  labelCol: { flexDirection: "row", alignItems: "center", gap: 8 },
   infoLabel: { fontSize: 14, color: colors.text2 },
   infoValue: { fontSize: 14, fontWeight: "600", color: colors.text },
-  settingsBtn: { width: "100%", flexDirection: "row", borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 },
-  settingsText: { color: colors.primary, fontSize: 15, fontWeight: "700" },
-  logoutBtn: { width: "100%", flexDirection: "row", backgroundColor: colors.danger, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", gap: 8 },
-  btnText: { color: colors.white, fontSize: 15, fontWeight: "700" },
+  actionsWrap: { width: "100%", gap: 10 },
+  settingsBtn: {
+    width: "100%",
+    flexDirection: "row",
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    alignItems: "center",
+    gap: 10,
+  },
+  settingsText: { color: colors.text, fontSize: 14, fontWeight: "600" },
+  logoutBtn: {
+    width: "100%",
+    flexDirection: "row",
+    borderWidth: 1,
+    borderColor: colors.dangerLight,
+    backgroundColor: colors.surface,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 8,
+  },
+  logoutText: { color: colors.danger, fontSize: 14, fontWeight: "600" },
 });
 
 export default ProfileScreen;

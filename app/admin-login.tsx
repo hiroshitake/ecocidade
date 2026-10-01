@@ -286,7 +286,7 @@ export default function AdminLoginScreen() {
             >
               <Ionicons name="arrow-back-outline" size={16} color="#334155" />
               <Text style={styles.btnSecondaryText}>
-                Voltar ao login do munícipe
+                Voltar ao login de usuários
               </Text>
             </TouchableOpacity>
 

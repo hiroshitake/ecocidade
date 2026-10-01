@@ -514,6 +514,7 @@ export default function MapScreen() {
             zones={formattedZones}
             userLocation={userLocation}
             selectedReportId={selectedReportId}
+            onCloseSelectedReport={() => setSelectedReportId(null)}
             recenterRequest={recenterRequest}
           />
         )}

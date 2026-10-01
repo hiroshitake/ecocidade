@@ -64,6 +64,7 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      key={isDark ? "tabs-dark" : "tabs-light"}
       screenOptions={{
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.text3,

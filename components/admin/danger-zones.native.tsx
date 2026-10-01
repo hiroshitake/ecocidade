@@ -13,7 +13,6 @@ import {
     View,
 } from 'react-native';
 import { useAppTheme } from '../../context/theme-context';
-import { useAppTheme } from '../../context/theme-context';
 import { createDangerZone, deleteDangerZone, getAdminDangerZones } from '../../services/reports';
 import { ThemedText } from '../themed-text';
 import { ThemedView } from '../themed-view';

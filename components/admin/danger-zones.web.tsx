@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAppTheme } from '../../context/theme-context';
-import { useAppTheme } from '../../context/theme-context';
 import { createDangerZone, deleteDangerZone, getAdminDangerZones } from '../../services/reports';
 import MapComponent from '../map.web';
 import { ThemedText } from '../themed-text';

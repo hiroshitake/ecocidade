@@ -50,12 +50,13 @@ const startOfWeek = (date: Date) => {
 export default function SecurityAnalysisWeb() {
   const router = useRouter();
   const [reports, setReports] = useState<any[]>([]);
+  const [loadError, setLoadError] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
   useEffect(() => {
     getAdminReports()
       .then(all => setReports((all || []).filter((r: any) => String(r.category || '').toLowerCase() === SECURITY_CATEGORY)))
-      .catch(console.error);
+      .catch(error => { console.error(error); setLoadError(true); });
 
     resolveUserLocationWithFallback()
       .then(resolved => setUserLocation(resolved.location))
@@ -176,6 +177,15 @@ export default function SecurityAnalysisWeb() {
         <ThemedText style={styles.title}>Análise de Segurança</ThemedText>
         <View style={{ width: 24 }} />
       </View>
+      {loadError ? (
+        <View style={styles.errorState}>
+          <ThemedText style={styles.errorTitle}>Não foi possível carregar a análise de segurança</ThemedText>
+          <ThemedText style={styles.errorText}>Verifique sua conexão e tente novamente.</ThemedText>
+          <TouchableOpacity style={styles.retryButton} onPress={() => router.replace("/(admin)/security-analysis")}>
+            <ThemedText style={styles.retryText}>Tentar novamente</ThemedText>
+          </TouchableOpacity>
+        </View>
+      ) : (
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.metric}><MaterialCommunityIcons name="shield-alert" size={34} color={C.danger} /><View><ThemedText style={styles.metricValue}>{reports.length}</ThemedText><ThemedText style={styles.metricLabel}>denúncias de segurança</ThemedText></View></View>
 
@@ -199,10 +209,11 @@ export default function SecurityAnalysisWeb() {
           {areas.length === 0 ? <ThemedText style={styles.empty}>Nenhuma ocorrência com localização válida.</ThemedText> : areas.map((area, index) => <View key={area.id} style={styles.area}><View style={styles.rank}><ThemedText style={styles.rankText}>{index + 1}</ThemedText></View><View style={{ flex: 1 }}><ThemedText style={styles.areaName}>{area.name}</ThemedText><ThemedText style={styles.areaCount}>{area.count} denúncia(s) · centro aproximado {area.latitude.toFixed(4)}, {area.longitude.toFixed(4)}</ThemedText></View></View>)}
         </View>
       </ScrollView>
+      )}
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 }, header: { height: 60, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface }, title: { fontSize: 18, fontWeight: '800', color: C.text }, content: { padding: 16, gap: 16 }, metric: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 18, borderRadius: 16, backgroundColor: C.dangerLight }, metricValue: { fontSize: 30, fontWeight: '900', color: C.danger }, metricLabel: { fontSize: 12, color: C.text2 }, card: { padding: 16, borderRadius: 16, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border }, sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, sectionTitle: { fontSize: 16, fontWeight: '800', color: C.text, marginBottom: 4 }, sectionHint: { fontSize: 11, color: C.text3 }, map: { height: 380, marginTop: 12, borderRadius: 12, overflow: 'hidden' }, chart: { height: 160, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 18 }, barColumn: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', height: '100%' }, bar: { width: 18, borderRadius: 8, backgroundColor: C.danger, marginVertical: 5 }, barValue: { fontSize: 11, fontWeight: '800', color: C.text }, day: { fontSize: 11, color: C.text2 }, empty: { color: C.text3, marginTop: 8 }, locationNote: { fontSize: 10, color: C.text3, marginTop: 6 }, area: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.border }, rank: { width: 30, height: 30, borderRadius: 15, backgroundColor: C.danger, alignItems: 'center', justifyContent: 'center', marginRight: 10 }, rankText: { color: C.white, fontWeight: '800' }, areaName: { fontSize: 13, fontWeight: '700', color: C.text }, areaCount: { fontSize: 11, color: C.text3, marginTop: 2 },
+  container: { flex: 1 }, errorState: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 }, errorTitle: { fontSize: 17, fontWeight: "800", color: C.text, textAlign: "center" }, errorText: { fontSize: 13, color: C.text3, textAlign: "center", marginTop: 6 }, retryButton: { marginTop: 16, paddingHorizontal: 18, paddingVertical: 11, borderRadius: 10, backgroundColor: C.primary }, retryText: { color: C.white, fontWeight: "800" }, header: { height: 60, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface }, title: { fontSize: 18, fontWeight: '800', color: C.text }, content: { padding: 16, gap: 16 }, metric: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 18, borderRadius: 16, backgroundColor: C.dangerLight }, metricValue: { fontSize: 30, fontWeight: '900', color: C.danger }, metricLabel: { fontSize: 12, color: C.text2 }, card: { padding: 16, borderRadius: 16, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border }, sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, sectionTitle: { fontSize: 16, fontWeight: '800', color: C.text, marginBottom: 4 }, sectionHint: { fontSize: 11, color: C.text3 }, map: { height: 380, marginTop: 12, borderRadius: 12, overflow: 'hidden' }, chart: { height: 160, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 18 }, barColumn: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', height: '100%' }, bar: { width: 18, borderRadius: 8, backgroundColor: C.danger, marginVertical: 5 }, barValue: { fontSize: 11, fontWeight: '800', color: C.text }, day: { fontSize: 11, color: C.text2 }, empty: { color: C.text3, marginTop: 8 }, locationNote: { fontSize: 10, color: C.text3, marginTop: 6 }, area: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.border }, rank: { width: 30, height: 30, borderRadius: 15, backgroundColor: C.danger, alignItems: 'center', justifyContent: 'center', marginRight: 10 }, rankText: { color: C.white, fontWeight: '800' }, areaName: { fontSize: 13, fontWeight: '700', color: C.text }, areaCount: { fontSize: 11, color: C.text3, marginTop: 2 },
 });

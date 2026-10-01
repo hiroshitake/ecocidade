@@ -103,7 +103,7 @@ export default function NewReportScreen() {
         Alert.alert("Permissão necessária", "Precisamos de permissão para acessar suas fotos.");
         return;
       }
-      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, quality: 0.7 });
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [4, 3], quality: 0.7 });
       if (!result.canceled && result.assets && result.assets.length > 0) setPhotoUri(result.assets[0].uri);
     } catch (error) {
       console.error("Erro ao abrir fotos:", error);
@@ -124,7 +124,7 @@ export default function NewReportScreen() {
           if (!file) return;
           const reader = new FileReader();
           reader.onload = () => {
-            if (typeof reader.result === "string") setPhotoUri(reader.result);
+            if (typeof reader.result === "string") setCropPhotoUri(reader.result);
           };
           reader.readAsDataURL(file);
         };
@@ -136,7 +136,7 @@ export default function NewReportScreen() {
         Alert.alert("Permissão necessária", "Precisamos de permissão para acessar a câmera.");
         return;
       }
-      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, quality: 0.7 });
+      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [4, 3], quality: 0.7 });
       if (!result.canceled && result.assets && result.assets.length > 0) setPhotoUri(result.assets[0].uri);
     } catch (error) {
       console.error("Erro ao abrir câmera:", error);

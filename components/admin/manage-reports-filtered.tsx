@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, FlatList, Image, Modal, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { C } from '../../constants/theme';
 import { deleteReport, getAdminReports, setReportPublicVisibility, updateReportStatus } from '../../services/reports';
@@ -37,6 +37,7 @@ export default function ManageReportsFiltered({ security = false }: { security?:
   const [imageLoading, setImageLoading] = useState(false);
   const [imageAspectRatio, setImageAspectRatio] = useState(16 / 9);
   const [fullscreenImage, setFullscreenImage] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'in_progress' | 'resolved'>('pending');
 
   const loadReports = useCallback(async () => {
     try {
@@ -238,6 +239,18 @@ export default function ManageReportsFiltered({ security = false }: { security?:
     finally { setImageLoading(false); }
   };
 
+  const filteredReports = useMemo(() => {
+    if (statusFilter === 'all') return reports;
+    return reports.filter(report => normalizeStatus(report.status) === statusFilter);
+  }, [reports, statusFilter]);
+
+  const statusCounts = useMemo(() => ({
+    all: reports.length,
+    pending: reports.filter(report => normalizeStatus(report.status) === 'pending').length,
+    in_progress: reports.filter(report => normalizeStatus(report.status) === 'in_progress').length,
+    resolved: reports.filter(report => normalizeStatus(report.status) === 'resolved').length,
+  }), [reports]);
+
   const title = security ? 'Gerenciar Segurança' : 'Gerenciar Zeladoria';
   const subtitle = security ? 'Ocorrências de segurança registradas pelos usuários' : 'Ocorrências de zeladoria e manutenção da cidade';
 
@@ -277,7 +290,7 @@ export default function ManageReportsFiltered({ security = false }: { security?:
             <View style={styles.cardBottom}><ThemedText style={styles.date}>{formatDate(item.created_at)}</ThemedText><View style={[styles.statusBadge, { backgroundColor: statusColor(item.status) + '20' }]}><ThemedText style={[styles.statusText, { color: statusColor(item.status) }]}>{statusLabel(item.status)}</ThemedText></View></View>
           </TouchableOpacity>
         )}
-        ListEmptyComponent={<View style={styles.empty}><MaterialCommunityIcons name={security ? 'shield-check-outline' : 'check-circle-outline'} size={48} color={C.text3} /><ThemedText style={styles.emptyTitle}>Nenhuma denúncia encontrada</ThemedText><ThemedText style={styles.emptyText}>Novas ocorrências aparecerão aqui.</ThemedText></View>}
+        ListEmptyComponent={<View style={styles.empty}><MaterialCommunityIcons name={security ? 'shield-check-outline' : 'check-circle-outline'} size={48} color={C.text3} /><ThemedText style={styles.emptyTitle}>{statusFilter === 'all' ? 'Nenhuma denúncia encontrada' : `Nenhuma denúncia ${STATUS_OPTIONS.find(option => option.id === statusFilter)?.label.toLowerCase() || 'neste status'}`}</ThemedText><ThemedText style={styles.emptyText}>{statusFilter === 'all' ? 'Novas ocorrências aparecerão aqui.' : 'Altere o filtro para visualizar outras denúncias.'}</ThemedText></View>}
       />
 
       <Modal visible={!!selectedReport} transparent animationType="fade" onRequestClose={() => setSelectedReport(null)}>
@@ -361,6 +374,7 @@ export default function ManageReportsFiltered({ security = false }: { security?:
 const styles = StyleSheet.create({
   container: { flex: 1 }, header: { flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface },
   headerIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' }, headerText: { flex: 1, marginLeft: 12 }, title: { fontSize: 20, fontWeight: '800', color: C.text }, subtitle: { fontSize: 11, color: C.text3, marginTop: 2 }, countBadge: { minWidth: 34, height: 34, borderRadius: 17, backgroundColor: C.surface2, alignItems: 'center', justifyContent: 'center' }, countText: { fontWeight: '800', color: C.text },
+  filterBar: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, gap: 7, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface, flexWrap: 'wrap' }, filterButton: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface2 }, filterButtonActive: { borderColor: C.primary + '55', backgroundColor: C.primary + '0A' }, filterText: { fontSize: 11, fontWeight: '800', color: C.text2 }, filterCount: { minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 5, alignItems: 'center', justifyContent: 'center', backgroundColor: C.surface }, filterCountText: { fontSize: 10, fontWeight: '900', color: C.text3 },
   list: { padding: 16, gap: 12 }, card: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 16 }, securityCard: { borderColor: C.danger + '55' }, hiddenCard: { opacity: 0.72 }, cardTop: { flexDirection: 'row', alignItems: 'flex-start' }, cardInfo: { flex: 1 }, categoryRow: { flexDirection: 'row', alignItems: 'center', gap: 8 }, category: { fontSize: 11, fontWeight: '900', color: C.primary, letterSpacing: 0.7 }, hiddenBadge: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 999, backgroundColor: C.danger + '18' }, hiddenBadgeText: { fontSize: 8, fontWeight: '900', color: C.danger }, address: { fontSize: 13, color: C.text2, marginTop: 4 }, deleteButton: { padding: 2, marginLeft: 8 }, description: { fontSize: 14, color: C.text, marginTop: 14, lineHeight: 20 }, cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }, date: { fontSize: 11, color: C.text3 }, statusBadge: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999 }, statusText: { fontSize: 10, fontWeight: '800' }, empty: { alignItems: 'center', padding: 48 }, emptyTitle: { fontSize: 16, fontWeight: '700', color: C.text, marginTop: 12 }, emptyText: { fontSize: 12, color: C.text3, marginTop: 4, textAlign: 'center' },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 16 },
   fullscreenOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.94)', alignItems: 'center', justifyContent: 'center', padding: 18 },

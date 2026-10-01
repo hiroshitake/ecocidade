@@ -107,13 +107,13 @@ export default function SettingsScreen() {
     }
   };
 
-  if (loading) return <View style={styles.loading}><ActivityIndicator size="large" color={C.primary} /></View>;
+  if (loading) return <View style={[styles.loading, { backgroundColor: colors.bg }]}><ActivityIndicator size="large" color={colors.primary} /></View>;
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { backgroundColor: colors.bg }]}>
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}>
             <Ionicons name="arrow-back" size={22} color={colors.text} />
           </TouchableOpacity>
           <View style={styles.headerText}>
@@ -132,7 +132,7 @@ export default function SettingsScreen() {
               {avatarUrl ? (
                 <Image source={{ uri: avatarUrl }} style={styles.smallAvatar} />
               ) : (
-                <View style={[styles.smallAvatar, styles.avatarFallback]}>
+                <View style={[styles.smallAvatar, styles.avatarFallback, { backgroundColor: colors.surface2 }]}>
                   <Ionicons name="person" size={24} color={C.white} />
                 </View>
               )}
@@ -147,7 +147,7 @@ export default function SettingsScreen() {
 
             {profileOpen && (
               <View style={styles.expandedContent}>
-                <View style={styles.divider} />
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
                 <View style={styles.avatarWrap}>
                   {avatarUrl ? <Image source={{ uri: avatarUrl }} style={styles.avatar} /> : <View style={[styles.avatar, styles.avatarFallback]}><Ionicons name="person" size={42} color={C.white} /></View>}
                   <TouchableOpacity style={styles.avatarButton} onPress={pickAvatar} disabled={saving}>
@@ -246,7 +246,7 @@ export default function SettingsScreen() {
 
             {securityOpen && (
               <View style={styles.expandedContent}>
-                <View style={styles.divider} />
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
                 <Text style={[styles.label, { color: colors.text2 }]}>Senha atual</Text>
                 <TextInput value={currentPassword} onChangeText={setCurrentPassword} secureTextEntry placeholder="Senha atual" placeholderTextColor={colors.text3} style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.bg }]} />
                 <Text style={[styles.label, { color: colors.text2 }]}>Nova senha</Text>
@@ -269,7 +269,7 @@ export default function SettingsScreen() {
                 <Text style={[styles.rowTitle, { color: colors.text }]}>Privacidade</Text>
                 <Text style={[styles.rowDescription, { color: colors.text2 }]}>Visibilidade das suas denúncias e dados</Text>
               </View>
-              <View style={styles.comingSoon}><Text style={styles.comingSoonText}>Em breve</Text></View>
+              <View style={[styles.comingSoon, { backgroundColor: colors.surface2 }]}><Text style={[styles.comingSoonText, { color: colors.text3 }]}>Em breve</Text></View>
             </View>
           </View>
 
@@ -294,9 +294,9 @@ export default function SettingsScreen() {
           <Text style={[styles.groupDescription, { color: colors.text2 }]}>Informações e suporte</Text>
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.infoRow}><Ionicons name="help-circle-outline" size={21} color={colors.text2} /><Text style={[styles.infoText, { color: colors.text }]}>Ajuda e suporte</Text><Text style={[styles.comingSoonText, { color: colors.text3 }]}>Em breve</Text></View>
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
             <View style={styles.infoRow}><Ionicons name="document-text-outline" size={21} color={colors.text2} /><Text style={[styles.infoText, { color: colors.text }]}>Termos de uso</Text><Text style={[styles.comingSoonText, { color: colors.text3 }]}>Em breve</Text></View>
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
             <View style={styles.infoRow}><Ionicons name="shield-outline" size={21} color={colors.text2} /><Text style={[styles.infoText, { color: colors.text }]}>Política de privacidade</Text><Text style={[styles.comingSoonText, { color: colors.text3 }]}>Em breve</Text></View>
           </View>
           <Text style={[styles.version, { color: colors.text3 }]}>ECOcidade • versão 1.0.0</Text>

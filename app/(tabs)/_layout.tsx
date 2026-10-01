@@ -83,7 +83,7 @@ export default function TabLayout() {
                 styles.raisedButton,
                 {
                   backgroundColor: "#0f52ba",
-                  borderColor: colors.surface,
+                  borderColor: isDark ? "#111827" : colors.surface,
                 },
               ]}
             >

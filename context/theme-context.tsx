@@ -18,7 +18,8 @@ const STORAGE_KEY = "@ecocidade/theme-mode";
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const systemScheme = useNativeColorScheme();
+  const nativeScheme = useNativeColorScheme();
+  const systemScheme = nativeScheme ?? Appearance.getColorScheme();
   const [mode, setModeState] = useState<ThemeMode>("system");
 
   useEffect(() => {

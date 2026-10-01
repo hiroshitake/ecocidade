@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";\nimport { router } from "expo-router";
 import {
   ActivityIndicator,
   ScrollView,
@@ -14,7 +14,7 @@ import { ThemedView } from "../../components/themed-view";
 import { C } from "../../constants/theme";
 import { useAppTheme } from "../../context/theme-context";
 import { resolveUserLocationWithFallback } from "../../services/auth";
-import { getDangerZones, getPublicReports } from "../../services/reports";
+import { getDangerZones, getPublicReports } from "../../services/reports";\nimport { getUnreadNotificationCount } from "../../services/notifications";
 
 const categories = [
   "Todas",
@@ -73,7 +73,7 @@ export default function MapScreen() {
   const [locationReason, setLocationReason] = useState<
     "gps" | "gps_unavailable" | "permission_denied" | "city_fallback"
   >("gps_unavailable");
-  const [selectedReportIndex, setSelectedReportIndex] = useState<number>(0);
+  const [selectedReportIndex, setSelectedReportIndex] = useState<number>(0);\n  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
 
   const loadData = useCallback(async () => {
@@ -200,6 +200,10 @@ export default function MapScreen() {
     useCallback(() => {
       loadData();
       startLocationWatch();
+
+      getUnreadNotificationCount()
+        .then(setUnreadNotifications)
+        .catch((error) => console.warn("Erro ao carregar contador de notificações:", error));
 
       return () => {
         stopLocationWatch();
@@ -409,6 +413,23 @@ export default function MapScreen() {
             userLocation={userLocation}
           />
 
+          <TouchableOpacity
+            style={styles.notificationButton}
+            onPress={() => {
+              router.push("/notifications");
+            }}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="notifications-outline" size={23} color={colors.text} />
+            {unreadNotifications > 0 && (
+              <View style={styles.notificationBadge}>
+                <ThemedText style={styles.notificationBadgeText}>
+                  {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                </ThemedText>
+              </View>
+            )}
+          </TouchableOpacity>
+
           {locationReason !== "gps" && (
             <View style={styles.gpsDisabledOverlay} pointerEvents="auto">
               <View
@@ -610,6 +631,43 @@ const makeStyles = (colors: typeof C) => StyleSheet.create({
     position: "relative",
   },
   map: { flex: 1 },
+  notificationButton: {
+    position: "absolute",
+    top: 14,
+    right: 14,
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 20,
+    elevation: 6,
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  notificationBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    minWidth: 19,
+    height: 19,
+    paddingHorizontal: 4,
+    borderRadius: 10,
+    backgroundColor: C.danger,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: colors.surface,
+  },
+  notificationBadgeText: {
+    color: C.white,
+    fontSize: 9,
+    fontWeight: "800",
+  },
   mapDisabled: {
     opacity: 0.42,
     backgroundColor: "rgba(15, 23, 42, 0.08)",

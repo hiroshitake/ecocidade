@@ -51,20 +51,14 @@ export default function AdminDashboard() {
     pending: 0,
     inProgress: 0,
     completed: 0,
-    byCategory: {},
-    byMonth: {},
     recent30: 0,
     recent30Resolved: 0,
     securityTotal: 0,
     securityOpen: 0,
     avgResolutionDays: null,
     oldestPendingDays: null,
-    recent30: 0,
-    recent30Resolved: 0,
-    securityTotal: 0,
-    securityOpen: 0,
-    avgResolutionDays: null,
-    oldestPendingDays: null;
+    byCategory: {},
+    byMonth: {},
   });
   const [loading, setLoading] = useState(true);
   // Additional operational metrics are calculated from the same city-scoped dataset. 
@@ -86,6 +80,12 @@ export default function AdminDashboard() {
         pending: 0,
         inProgress: 0,
         completed: 0,
+        recent30: 0,
+        recent30Resolved: 0,
+        securityTotal: 0,
+        securityOpen: 0,
+        avgResolutionDays: null,
+        oldestPendingDays: null,
         byCategory: {},
         byMonth: {},
       };

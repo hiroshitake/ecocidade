@@ -46,6 +46,30 @@ export default function LoginScreen() {
   const [selectedCity, setSelectedCity] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const handleGoogleLogin = async () => {
+    try {
+      setGoogleLoading(true);
+      if (!isSupabaseConfigured()) {
+        throw new Error("Supabase não configurado.");
+      }
+      await signInWithGoogle();
+      if (Platform.OS !== "web") {
+        await finishAuthenticatedUser();
+      }
+    } catch (error: any) {
+      console.error("Erro no login com Google:", error);
+      if (error?.message !== "O login com Google foi interrompido.") {
+        toast.addToast(
+          error?.message || "Não foi possível entrar com Google.",
+          "error"
+        );
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
   const screenOpacity = useRef(new Animated.Value(0)).current;
   const screenTranslateY = useRef(new Animated.Value(14)).current;
   const tabOpacity = useRef(new Animated.Value(1)).current;

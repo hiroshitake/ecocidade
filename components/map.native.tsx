@@ -50,6 +50,7 @@ export default function MapComponent({
   const [mapReady, setMapReady] = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const pulseAnim = useRef(new Animated.Value(0)).current;
+  const reportsRef = useRef(reports);
   const validReports = reports.filter(
     (report) => report.location?.latitude != null && report.location?.longitude != null,
   );
@@ -129,17 +130,21 @@ export default function MapComponent({
   }, [recenterRequest, userLocation, mapReady]);
 
   useEffect(() => {
+    reportsRef.current = reports;
+  }, [reports]);
+
+  useEffect(() => {
     if (!selectedReportId) {
       setSelectedReport(null);
       return;
     }
 
-    const report = validReports.find((item) => String(item.id) === String(selectedReportId));
+    const report = reportsRef.current.find((item) => String(item.id) === String(selectedReportId));
     if (report) {
       setSelectedReport(report);
       onSelectReport?.(report);
     }
-  }, [selectedReportId, reports]);
+  }, [selectedReportId]);
 
   useEffect(() => {
     const animation = Animated.loop(

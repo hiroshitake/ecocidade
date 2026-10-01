@@ -549,17 +549,17 @@ export default function LoginScreen() {
                       key={c.id}
                       style={[
                         styles.cityOption,
-                        city === c.id && styles.cityOptionActive,
+                        selectedCity === c.id && styles.cityOptionActive,
                       ]}
                       onPress={() => {
-                        setCity(c.id);
+                        setSelectedCity(c.id);
                         if (fieldErrors.city) setError("city", "");
                       }}
                     >
                       <Text
                         style={[
                           styles.cityOptionText,
-                          city === c.id && styles.cityOptionTextActive,
+                          selectedCity === c.id && styles.cityOptionTextActive,
                         ]}
                       >
                         {c.name}

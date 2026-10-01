@@ -25,6 +25,7 @@ interface MapComponentProps {
   onSelectLocation?: (location: { latitude: number; longitude: number }) => void;
   onSelectReport?: (report: Report) => void;
   selectedReportId?: string | null;
+  onCloseSelectedReport?: () => void;
   recenterRequest?: number;
   onZoneClick?: (zone: Zone) => void;
 }
@@ -39,6 +40,7 @@ export default function MapComponent({
   onSelectLocation,
   onSelectReport,
   selectedReportId = null,
+  onCloseSelectedReport,
   recenterRequest = 0,
   onZoneClick,
 }: MapComponentProps) {
@@ -214,7 +216,13 @@ export default function MapComponent({
         ))}
       </MapView>
 
-      <ReportMapModal report={selectedReport} onClose={() => setSelectedReport(null)} />
+      <ReportMapModal
+        report={selectedReport}
+        onClose={() => {
+          setSelectedReport(null);
+          onCloseSelectedReport?.();
+        }}
+      />
     </>
   );
 }

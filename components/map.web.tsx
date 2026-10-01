@@ -53,7 +53,6 @@ export default function MapComponent({
   const userMarkerRef = useRef<any>(null);
   const selectedMarkerRef = useRef<any>(null);
   const hasSetInitialViewRef = useRef(false);
-  const previousCenteredLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
   const onSelectLocationRef = useRef(onSelectLocation);
 
   useEffect(() => {
@@ -269,27 +268,21 @@ export default function MapComponent({
     if (!map) return;
 
     const centerTarget = selectedLocation || userLocation;
-    const locationChanged = centerTarget &&
-      (!previousCenteredLocationRef.current ||
-        centerTarget.latitude !== previousCenteredLocationRef.current.latitude ||
-        centerTarget.longitude !== previousCenteredLocationRef.current.longitude);
 
     if (!hasSetInitialViewRef.current) {
       if (centerTarget) {
         map.setView([centerTarget.latitude, centerTarget.longitude], 13);
+        hasSetInitialViewRef.current = true;
       } else if (zones && zones.length > 0) {
         const first = zones[0];
         map.setView([first.latitude, first.longitude], 13);
+        hasSetInitialViewRef.current = true;
       } else if (validReports.length > 0) {
         const first = validReports[0];
         map.setView([first.location!.latitude!, first.location!.longitude!], 13);
+        hasSetInitialViewRef.current = true;
       }
-      hasSetInitialViewRef.current = true;
-    } else if (locationChanged && centerTarget) {
-      map.setView([centerTarget.latitude, centerTarget.longitude], map.getZoom ? map.getZoom() : 13);
     }
-
-    previousCenteredLocationRef.current = centerTarget || null;
   }, [reports, userLocation, selectedLocation, zones, onSelectReport, onZoneClick]);
 
   useEffect(() => {

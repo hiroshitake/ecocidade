@@ -237,6 +237,7 @@ export default function MapScreen() {
       return {
         ...r,
         dist,
+        distanceKm: dist,
         id: String(r.id),
         category: r.category || r.title || "Denúncia",
         description: r.description || "",

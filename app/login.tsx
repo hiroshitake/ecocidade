@@ -351,10 +351,10 @@ export default function LoginScreen() {
             <ImageBackground
               source={require("../assets/images/login-map.jpg")}
               style={styles.heroBackground}
-              imageStyle={{ opacity: 0.35 }}
+              imageStyle={{ opacity: 0.55 }}
             >
               <LinearGradient
-                colors={["rgba(10, 25, 47, 0.85)", "rgba(11, 19, 41, 0.96)"]}
+                colors={["rgba(10, 25, 47, 0.70)", "rgba(11, 19, 41, 0.88)"]}
                 style={styles.heroGradient}
               >
                 <View style={styles.brandContainer}>

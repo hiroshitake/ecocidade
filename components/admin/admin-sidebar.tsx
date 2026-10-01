@@ -68,6 +68,13 @@ export default function AdminSidebar({
       route: '/(admin)/danger-zones',
       isActive: currentPath.includes('danger-zones'),
     },
+    {
+      id: 'configuracoes',
+      label: 'Configurações',
+      icon: 'cog-outline' as const,
+      route: '/(admin)/settings',
+      isActive: currentPath.includes('settings'),
+    },
   ];
 
   return (

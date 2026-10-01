@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { Appearance, useColorScheme as useNativeColorScheme } from "react-native";
+import { Appearance, Platform, useColorScheme as useNativeColorScheme } from "react-native";
 import { Colors } from "../constants/theme";
 
 export type ThemeMode = "system" | "light" | "dark";
@@ -45,7 +45,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const nativeScheme = useNativeColorScheme();
   const initialStored = getStoredModeSync();
   const [mode, setModeState] = useState<ThemeMode>(initialStored ?? "system");
-  const [isReady, setIsReady] = useState<boolean>(initialStored !== null);
+  const [isReady, setIsReady] = useState<boolean>(true);
+  const [systemScheme, setSystemScheme] = useState<"light" | "dark">(
+    nativeScheme ?? getSystemSchemeSync()
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -53,23 +56,41 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       .then((value) => {
         if (!mounted) return;
         if (value === "light" || value === "dark" || value === "system") {
-          setModeState(value);
-        } else {
-          setModeState("system");
+          setModeState(value as ThemeMode);
         }
       })
-      .catch(() => {
-        if (!mounted) return;
-        setModeState("system");
-      })
-      .finally(() => {
-        if (mounted) {
-          setIsReady(true);
-        }
-      });
+      .catch(() => {});
+
+    // Listen to appearance changes
+    const appearanceListener = Appearance.addChangeListener(({ colorScheme }) => {
+      if (mounted && colorScheme) {
+        setSystemScheme(colorScheme);
+      }
+    });
+
+    // Listen to web matchMedia changes if on web
+    let mediaQuery: MediaQueryList | null = null;
+    let mediaHandler: ((e: MediaQueryListEvent) => void) | null = null;
+    if (typeof window !== "undefined" && window.matchMedia) {
+      try {
+        mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+        mediaHandler = (e: MediaQueryListEvent) => {
+          if (mounted) {
+            setSystemScheme(e.matches ? "dark" : "light");
+          }
+        };
+        mediaQuery.addEventListener("change", mediaHandler);
+      } catch {}
+    }
 
     return () => {
       mounted = false;
+      appearanceListener.remove();
+      if (mediaQuery && mediaHandler) {
+        try {
+          mediaQuery.removeEventListener("change", mediaHandler);
+        } catch {}
+      }
     };
   }, []);
 
@@ -83,7 +104,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem(STORAGE_KEY, nextMode).catch(() => undefined);
   };
 
-  const systemScheme = nativeScheme ?? getSystemSchemeSync();
   const isDark = mode === "dark" || (mode === "system" && systemScheme === "dark");
   const colors = isDark ? Colors.dark : Colors.light;
 
@@ -96,12 +116,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       toggleDarkMode: () => setMode(isDark ? "light" : "dark"),
       colors,
     }),
-    [mode, isDark, isReady, colors],
+    [mode, isDark, isReady, colors]
   );
-
-  if (!isReady) {
-    return null;
-  }
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

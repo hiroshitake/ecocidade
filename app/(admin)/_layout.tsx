@@ -81,6 +81,7 @@ export default function AdminLayout() {
             <Stack.Screen name="manage-seguranca" />
             <Stack.Screen name="danger-zones" />
             <Stack.Screen name="security-analysis" />
+            <Stack.Screen name="settings" />
           </Stack>
         </View>
       </View>

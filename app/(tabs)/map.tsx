@@ -1,35 +1,35 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { router } from "expo-router";
 import {
   ActivityIndicator,
   useWindowDimensions,
   ScrollView,
   StyleSheet,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import MapComponent from "../../components/map";
 import { ThemedText } from "../../components/themed-text";
-import { ThemedView } from "../../components/themed-view";
 import { C } from "../../constants/theme";
 import { useAppTheme } from "../../context/theme-context";
 import { resolveUserLocationWithFallback } from "../../services/auth";
 import { getDangerZones, getPublicReports } from "../../services/reports";
 import { getUnreadNotificationCount } from "../../services/notifications";
 
-const categories = [
-  "Todas",
-  "buraco",
-  "poste",
-  "vazamento",
-  "bueiro",
-  "mato",
-  "calçada",
-  "lixo",
-  "sinalizacao",
-  "outro",
+const CATEGORIES = [
+  { id: "Todas", label: "Todas", icon: "apps-outline" },
+  { id: "buraco", label: "Buraco", icon: "construct-outline" },
+  { id: "poste", label: "Iluminação", icon: "bulb-outline" },
+  { id: "vazamento", label: "Vazamento", icon: "water-outline" },
+  { id: "bueiro", label: "Bueiro", icon: "git-network-outline" },
+  { id: "mato", label: "Mato", icon: "leaf-outline" },
+  { id: "calçada", label: "Calçada", icon: "walk-outline" },
+  { id: "lixo", label: "Lixo", icon: "trash-outline" },
+  { id: "sinalizacao", label: "Sinalização", icon: "alert-circle-outline" },
+  { id: "outro", label: "Outro", icon: "ellipsis-horizontal-outline" },
 ];
 
 function calculateDistanceKm(
@@ -64,7 +64,9 @@ export default function MapScreen() {
   const styles = makeStyles(colors);
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
+
   const [selectedCategory, setSelectedCategory] = useState("Todas");
+  const [searchQuery, setSearchQuery] = useState("");
   const [reports, setReports] = useState<any[]>([]);
   const [zones, setZones] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,6 +83,7 @@ export default function MapScreen() {
   const [selectedReportIndex, setSelectedReportIndex] = useState<number>(0);
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [isFeedCollapsed, setIsFeedCollapsed] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
   const loadData = useCallback(async () => {
@@ -110,19 +113,22 @@ export default function MapScreen() {
     }
   }, []);
 
-  // Mantém uma assinatura de GPS ativa enquanto a tela do mapa estiver em foco.
-  // A posição inicial pode vir do fallback, mas o watcher substitui essa posição
-  // assim que o navegador/aparelho entregar uma posição GPS real e continua
-  // atualizando enquanto o usuário se movimenta.
   const watchRef = useRef<any>(null);
 
   const stopLocationWatch = useCallback(() => {
     try {
       if (!watchRef.current) return;
 
-      if (typeof navigator !== "undefined" && navigator.geolocation && typeof watchRef.current === "number") {
+      if (
+        typeof navigator !== "undefined" &&
+        navigator.geolocation &&
+        typeof watchRef.current === "number"
+      ) {
         navigator.geolocation.clearWatch(watchRef.current as number);
-      } else if (watchRef.current && typeof watchRef.current.remove === "function") {
+      } else if (
+        watchRef.current &&
+        typeof watchRef.current.remove === "function"
+      ) {
         watchRef.current.remove();
       }
     } catch (error) {
@@ -167,11 +173,11 @@ export default function MapScreen() {
       return;
     }
 
-    // Expo / dispositivo nativo.
     (async () => {
       try {
         const location = await import("expo-location");
-        const { status } = await location.default.getForegroundPermissionsAsync();
+        const { status } =
+          await location.default.getForegroundPermissionsAsync();
 
         if (status !== "granted") {
           setLocationSource("none");
@@ -210,7 +216,9 @@ export default function MapScreen() {
 
       getUnreadNotificationCount()
         .then(setUnreadNotifications)
-        .catch((error) => console.warn("Erro ao carregar contador de notificações:", error));
+        .catch((error) =>
+          console.warn("Erro ao carregar contador de notificações:", error),
+        );
 
       return () => {
         stopLocationWatch();
@@ -218,62 +226,95 @@ export default function MapScreen() {
     }, [loadData, startLocationWatch, stopLocationWatch]),
   );
 
-  const filteredReports = reports.filter((item) => {
-    const category = String(item.category || "").toLowerCase();
-    if (category === "seguranca") return false;
-    if (selectedCategory === "Todas") return true;
-    return category === selectedCategory.toLowerCase();
-  });
+  const filteredReports = useMemo(() => {
+    return reports.filter((item) => {
+      const category = String(item.category || "").toLowerCase();
+      if (category === "seguranca") return false;
 
-  const sortedReports = filteredReports
-    .map((r) => {
-      const lat = Number(r.latitude) || 0;
-      const lon = Number(r.longitude) || 0;
-      const dist = userLocation
-        ? calculateDistanceKm(
-            userLocation.latitude,
-            userLocation.longitude,
-            lat,
-            lon,
-          )
-        : null;
-      return {
-        ...r,
-        dist,
-        distanceKm: dist,
-        id: String(r.id),
-        category: r.category || r.title || "Denúncia",
-        description: r.description || "",
-        location: { latitude: lat, longitude: lon },
-      };
-    })
-    .sort((a, b) => {
-      if (a.dist === null || b.dist === null) return 0;
-      return a.dist - b.dist;
+      if (
+        selectedCategory !== "Todas" &&
+        category !== selectedCategory.toLowerCase()
+      ) {
+        return false;
+      }
+
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase().trim();
+        const title = String(item.title || "").toLowerCase();
+        const desc = String(item.description || "").toLowerCase();
+        const cat = String(item.category || "").toLowerCase();
+        const proto = String(item.id || "").toLowerCase();
+        if (
+          !title.includes(query) &&
+          !desc.includes(query) &&
+          !cat.includes(query) &&
+          !proto.includes(query)
+        ) {
+          return false;
+        }
+      }
+
+      return true;
     });
+  }, [reports, selectedCategory, searchQuery]);
 
-  const formattedZones = zones.map((z) => ({
-    id: String(z.id),
-    name: z.name || "Área de risco",
-    latitude: Number(z.latitude) || 0,
-    longitude: Number(z.longitude) || 0,
-    radius: Number(z.radius) || 300,
-    severity: z.severity || "media",
-  }));
+  const sortedReports = useMemo(() => {
+    return filteredReports
+      .map((r) => {
+        const lat = Number(r.latitude) || 0;
+        const lon = Number(r.longitude) || 0;
+        const dist = userLocation
+          ? calculateDistanceKm(
+              userLocation.latitude,
+              userLocation.longitude,
+              lat,
+              lon,
+            )
+          : null;
+        return {
+          ...r,
+          dist,
+          distanceKm: dist,
+          id: String(r.id),
+          category: r.category || r.title || "Denúncia",
+          description: r.description || "",
+          location: { latitude: lat, longitude: lon },
+        };
+      })
+      .sort((a, b) => {
+        if (a.dist === null || b.dist === null) return 0;
+        return a.dist - b.dist;
+      });
+  }, [filteredReports, userLocation]);
+
+  const formattedZones = useMemo(() => {
+    return zones.map((z) => ({
+      id: String(z.id),
+      name: z.name || "Área de risco",
+      latitude: Number(z.latitude) || 0,
+      longitude: Number(z.longitude) || 0,
+      radius: Number(z.radius) || 300,
+      severity: z.severity || "media",
+    }));
+  }, [zones]);
+
+  const handleSelectReport = (index: number, repId: string) => {
+    setSelectedReportIndex(index);
+    setSelectedReportId(repId);
+    scrollViewRef.current?.scrollTo({ x: index * 260, animated: true });
+  };
 
   const handlePrev = () => {
     if (selectedReportIndex > 0) {
       const nextIdx = selectedReportIndex - 1;
-      setSelectedReportIndex(nextIdx);
-      scrollViewRef.current?.scrollTo({ x: nextIdx * 240, animated: true });
+      handleSelectReport(nextIdx, sortedReports[nextIdx].id);
     }
   };
 
   const handleNext = () => {
     if (selectedReportIndex < sortedReports.length - 1) {
       const nextIdx = selectedReportIndex + 1;
-      setSelectedReportIndex(nextIdx);
-      scrollViewRef.current?.scrollTo({ x: nextIdx * 240, animated: true });
+      handleSelectReport(nextIdx, sortedReports[nextIdx].id);
     }
   };
 
@@ -281,136 +322,152 @@ export default function MapScreen() {
     gps: null,
     gps_unavailable: {
       icon: "locate-outline" as keyof typeof Ionicons.glyphMap,
-      title: "GPS desligado",
-      text: "Ative o GPS para usar o mapa e ver denúncias próximas de você.",
-      tone: "warning" as const,
+      title: "GPS em espera",
+      text: "Ative a localização para ordenação exata por proximidade.",
     },
     permission_denied: {
       icon: "warning-outline" as keyof typeof Ionicons.glyphMap,
-      title: "Permissão de localização negada",
-      text: "Para localizar denúncias próximas, permita o uso da sua localização no aparelho.",
-      tone: "warning" as const,
+      title: "Permissão de GPS",
+      text: "Permita o acesso à localização para ver o raio ao seu redor.",
     },
     city_fallback: {
-      icon: "location-outline" as keyof typeof Ionicons.glyphMap,
-      title: "Usando a localização da cidade",
-      text: "O mapa está em modo de fallback com o centro da cidade porque o GPS não está disponível no momento.",
-      tone: "info" as const,
+      icon: "business-outline" as keyof typeof Ionicons.glyphMap,
+      title: "Centro da Cidade",
+      text: "Exibindo panorama municipal com centro urbano padrão.",
     },
   };
 
-  const categoryIcons: Record<string, keyof typeof Ionicons.glyphMap> = {
-    Todas: "apps",
-    buraco: "construct",
-    poste: "flash",
-    vazamento: "water",
-    bueiro: "albums",
-    mato: "leaf",
-    calçada: "walk",
-    lixo: "trash",
-    sinalizacao: "alert-circle",
-    outro: "ellipsis-horizontal",
-  };
-
-  const categoriesDisplay = [
-    "Todas",
-    "buraco",
-    "poste",
-    "vazamento",
-    "bueiro",
-    "mato",
-    "calçada",
-    "lixo",
-    "sinalizacao",
-    "outro",
-  ];
+  const activeReport = sortedReports[selectedReportIndex] || null;
 
   return (
-    <ThemedView style={styles.container}>
-      <ThemedView style={styles.filterContainer}>
+    <View style={styles.container}>
+      {/* Top Floating Civic Command Bar */}
+      <View style={styles.topControlPanel}>
+        <View style={styles.topBarRow}>
+          <View style={styles.brandBadge}>
+            <View style={styles.brandIconWrapper}>
+              <Ionicons name="leaf" size={14} color="#fff" />
+            </View>
+            <View>
+              <ThemedText style={styles.brandTitle}>ECOcidade</ThemedText>
+              <ThemedText style={styles.brandSubtitle}>
+                {sortedReports.length} {sortedReports.length === 1 ? "ocorrência" : "ocorrências"}
+              </ThemedText>
+            </View>
+          </View>
+
+          {/* Search Input Bar */}
+          <View style={styles.searchBarContainer}>
+            <Ionicons name="search" size={16} color={colors.text3} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Buscar rua, categoria ou chamado..."
+              placeholderTextColor={colors.text3}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery("")}>
+                <Ionicons name="close-circle" size={16} color={colors.text3} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Notification Button */}
+          <TouchableOpacity
+            style={styles.actionIconButton}
+            onPress={() => router.push("/notifications")}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="notifications-outline" size={18} color={colors.text} />
+            {unreadNotifications > 0 && (
+              <View style={styles.notifBadge}>
+                <ThemedText style={styles.notifBadgeText}>
+                  {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                </ThemedText>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          {/* Refresh Action */}
+          <TouchableOpacity
+            style={styles.actionIconButton}
+            onPress={loadData}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name={loading ? "sync" : "refresh-outline"}
+              size={18}
+              color={colors.primary}
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* Clean Floating Category Pills */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterScrollContent}
-          style={styles.filterScroll}
+          contentContainerStyle={styles.categoryScrollContent}
+          style={styles.categoryScroll}
         >
-          {categoriesDisplay.map((category) => {
-            const isActive = selectedCategory === category;
-            const iconName = categoryIcons[category] || "funnel";
-
+          {CATEGORIES.map((cat) => {
+            const isActive = selectedCategory === cat.id;
             return (
               <TouchableOpacity
-                key={category}
-                activeOpacity={0.9}
+                key={cat.id}
                 style={[
-                  styles.filterButtonSegmented,
-                  isActive && styles.selectedFilterSegmented,
+                  styles.categoryPill,
+                  isActive && styles.categoryPillActive,
                 ]}
                 onPress={() => {
-                  setSelectedCategory(category);
+                  setSelectedCategory(cat.id);
                   setSelectedReportIndex(0);
                 }}
+                activeOpacity={0.8}
               >
                 <Ionicons
-                  name={iconName}
+                  name={cat.icon as any}
                   size={14}
-                  color={isActive ? "#fff" : C.primary}
-                  style={styles.filterIcon}
+                  color={isActive ? "#fff" : colors.text2}
                 />
                 <ThemedText
                   style={[
-                    styles.filterTextSegmented,
-                    isActive && styles.selectedFilterTextSegmented,
+                    styles.categoryPillText,
+                    isActive && styles.categoryPillTextActive,
                   ]}
                 >
-                  {category}
+                  {cat.label}
                 </ThemedText>
               </TouchableOpacity>
             );
           })}
         </ScrollView>
-      </ThemedView>
+      </View>
 
-      {locationReason !== "gps" && (
-        <View
-          style={[
-            styles.locationAlertBanner,
-            locationAlertConfig[locationReason].tone === "warning"
-              ? styles.locationAlertBannerWarning
-              : styles.locationAlertBannerInfo,
-          ]}
-        >
+      {/* GPS Status Indicator (Discreet Pill) */}
+      {locationReason !== "gps" && locationAlertConfig[locationReason] && (
+        <View style={styles.locationPill}>
           <Ionicons
             name={locationAlertConfig[locationReason].icon}
-            size={16}
-            color={
-              locationAlertConfig[locationReason].tone === "warning"
-                ? C.warning
-                : C.primary
-            }
+            size={14}
+            color="#f59e0b"
           />
-          <ThemedText
-            style={[
-              styles.locationAlertText,
-              locationAlertConfig[locationReason].tone === "warning"
-                ? styles.locationAlertTextWarning
-                : styles.locationAlertTextInfo,
-            ]}
-          >
+          <ThemedText style={styles.locationPillText}>
             {locationAlertConfig[locationReason].title}
           </ThemedText>
         </View>
       )}
 
-      {loading && reports.length === 0 ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={C.primary} />
-          <ThemedText style={{ marginTop: 8 }}>
-            Carregando mapa e denúncias...
-          </ThemedText>
-        </View>
-      ) : (
-        <View style={styles.mapStage}>
+      {/* Map Surface */}
+      <View style={styles.mapContainer}>
+        {loading && reports.length === 0 ? (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <ThemedText style={styles.loadingText}>
+              Carregando camadas do mapa...
+            </ThemedText>
+          </View>
+        ) : (
           <MapComponent
             style={[
               styles.map,
@@ -421,413 +478,611 @@ export default function MapScreen() {
             userLocation={userLocation}
             selectedReportId={selectedReportId}
           />
+        )}
+      </View>
 
-          <TouchableOpacity
-            style={styles.notificationButton}
-            onPress={() => {
-              router.push("/notifications");
-            }}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="notifications-outline" size={23} color={colors.text} />
-            {unreadNotifications > 0 && (
-              <View style={styles.notificationBadge}>
-                <ThemedText style={styles.notificationBadgeText}>
-                  {unreadNotifications > 99 ? "99+" : unreadNotifications}
-                </ThemedText>
-              </View>
-            )}
-          </TouchableOpacity>
-
-          {locationReason !== "gps" && (
-            <View style={styles.gpsDisabledOverlay} pointerEvents="auto">
-              <View
-                style={[
-                  styles.gpsDisabledCard,
-                  locationAlertConfig[locationReason].tone === "warning"
-                    ? styles.gpsDisabledCardWarning
-                    : styles.gpsDisabledCardInfo,
-                ]}
-              >
-                <Ionicons
-                  name={locationAlertConfig[locationReason].icon}
-                  size={28}
-                  color={
-                    locationAlertConfig[locationReason].tone === "warning"
-                      ? C.warning
-                      : C.primary
-                  }
-                />
-                <ThemedText style={styles.gpsDisabledTitle}>
-                  {locationAlertConfig[locationReason].title}
-                </ThemedText>
-                <ThemedText style={styles.gpsDisabledText}>
-                  {locationAlertConfig[locationReason].text}
-                </ThemedText>
-              </View>
-            </View>
-          )}
-        </View>
-      )}
-
-      <ThemedView style={styles.nearbyContainer}>
-        <View style={styles.nearbyHeaderRow}>
-          <ThemedText type="subtitle" style={styles.nearbyTitle}>
-            Denúncias por Proximidade ({sortedReports.length})
-          </ThemedText>
-
-          {sortedReports.length > 1 && (
-            <View style={styles.arrowGroup}>
-              <TouchableOpacity
-                style={[
-                  styles.arrowBtn,
-                  selectedReportIndex === 0 && styles.arrowBtnDisabled,
-                ]}
-                onPress={handlePrev}
-                disabled={selectedReportIndex === 0}
-              >
-                <Ionicons
-                  name="chevron-back"
-                  size={18}
-                  color={selectedReportIndex === 0 ? C.text3 : C.primary}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.arrowBtn,
-                  selectedReportIndex === sortedReports.length - 1 &&
-                    styles.arrowBtnDisabled,
-                ]}
-                onPress={handleNext}
-                disabled={selectedReportIndex === sortedReports.length - 1}
-              >
-                <Ionicons
-                  name="chevron-forward"
-                  size={18}
-                  color={
-                    selectedReportIndex === sortedReports.length - 1
-                      ? C.text3
-                      : C.primary
-                  }
-                />
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        <ScrollView
-          ref={scrollViewRef}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingRight: 20 }}
+      {/* Floating Side Action Controls */}
+      <View style={styles.floatingControls}>
+        <TouchableOpacity
+          style={styles.controlFab}
+          onPress={() => {
+            loadData();
+            startLocationWatch();
+          }}
+          activeOpacity={0.8}
         >
-          {sortedReports.length === 0 ? (
-            <View style={styles.nearbyItemEmpty}>
-              <ThemedText style={{ color: C.text3 }}>
-                Nenhuma denúncia encontrada nesta categoria
+          <Ionicons
+            name="navigate"
+            size={18}
+            color={locationReason === "gps" ? colors.primary : colors.text3}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.controlFab}
+          onPress={() => router.push("/new-report")}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="add" size={22} color={colors.primary} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Modern Floating Bottom Panel (Compact, Non-Intrusive) */}
+      <View
+        style={[
+          styles.bottomFeedPanel,
+          isFeedCollapsed && styles.bottomFeedPanelCollapsed,
+          isDesktop && styles.bottomFeedPanelDesktop,
+        ]}
+      >
+        <View style={styles.feedHeader}>
+          <TouchableOpacity
+            style={styles.feedHeaderLeft}
+            onPress={() => setIsFeedCollapsed(!isFeedCollapsed)}
+            activeOpacity={0.7}
+          >
+            <ThemedText style={styles.feedTitle}>
+              Proximidade
+            </ThemedText>
+            <View style={styles.feedCountBadge}>
+              <ThemedText style={styles.feedCountBadgeText}>
+                {sortedReports.length}
               </ThemedText>
             </View>
-          ) : (
-            sortedReports.map((rep, index) => (
-              <TouchableOpacity
-                key={rep.id}
-                style={[
-                  styles.nearbyCard,
-                  selectedReportIndex === index && styles.nearbyCardActive,
-                ]}
-                onPress={() => {
-                  setSelectedReportIndex(index);
-                  setSelectedReportId(rep.id);
-                }}
-              >
-                <View style={styles.nearbyCardHeader}>
-                  <ThemedText style={styles.nearbyCategory}>
-                    {rep.category}
-                  </ThemedText>
-                  {rep.dist !== null && (
-                    <View style={styles.distBadge}>
-                      <Ionicons name="location" size={12} color={C.primary} />
-                      <ThemedText style={styles.distText}>
-                        {formatDistance(rep.dist)}
-                      </ThemedText>
-                    </View>
-                  )}
-                </View>
-                <ThemedText style={styles.nearbyDesc} numberOfLines={2}>
-                  {rep.description || "Sem descrição cadastrada"}
-                </ThemedText>
-                <View style={styles.statusRow}>
-                  <View
-                    style={[
-                      styles.statusDot,
-                      {
-                        backgroundColor:
-                          String(rep.status || "").toLowerCase() === "pending"
-                            ? C.warning
-                            : ["in_progress", "investigating", "processo", "em processo"].includes(String(rep.status || "").toLowerCase())
-                              ? C.primary
-                              : C.eco,
-                      },
-                    ]}
+          </TouchableOpacity>
+
+          <View style={styles.feedHeaderRight}>
+            {sortedReports.length > 1 && !isFeedCollapsed && (
+              <View style={styles.navArrowsRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.miniArrowBtn,
+                    selectedReportIndex === 0 && styles.miniArrowBtnDisabled,
+                  ]}
+                  onPress={handlePrev}
+                  disabled={selectedReportIndex === 0}
+                >
+                  <Ionicons
+                    name="chevron-back"
+                    size={16}
+                    color={
+                      selectedReportIndex === 0 ? colors.text3 : colors.text
+                    }
                   />
-                  <ThemedText style={styles.statusText}>
-                    {String(rep.status || "").toLowerCase() === "pending"
-                      ? "Aguardando"
-                      : ["in_progress", "investigating", "processo", "em processo"].includes(String(rep.status || "").toLowerCase())
-                        ? "Em processo"
-                        : "Concluída"}
-                  </ThemedText>
-                </View>
-              </TouchableOpacity>
-            ))
-          )}
-        </ScrollView>
-      </ThemedView>
-    </ThemedView>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.miniArrowBtn,
+                    selectedReportIndex === sortedReports.length - 1 &&
+                      styles.miniArrowBtnDisabled,
+                  ]}
+                  onPress={handleNext}
+                  disabled={selectedReportIndex === sortedReports.length - 1}
+                >
+                  <Ionicons
+                    name="chevron-forward"
+                    size={16}
+                    color={
+                      selectedReportIndex === sortedReports.length - 1
+                        ? colors.text3
+                        : colors.text
+                    }
+                  />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={styles.toggleCollapseBtn}
+              onPress={() => setIsFeedCollapsed(!isFeedCollapsed)}
+            >
+              <Ionicons
+                name={isFeedCollapsed ? "chevron-up" : "chevron-down"}
+                size={18}
+                color={colors.text2}
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {!isFeedCollapsed && (
+          <ScrollView
+            ref={scrollViewRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.cardCarouselContent}
+            style={styles.cardCarousel}
+          >
+            {sortedReports.length === 0 ? (
+              <View style={styles.emptyCarouselCard}>
+                <Ionicons
+                  name="shield-checkmark-outline"
+                  size={20}
+                  color={colors.text3}
+                />
+                <ThemedText style={styles.emptyCarouselText}>
+                  Nenhuma ocorrência encontrada nesta categoria ou busca.
+                </ThemedText>
+              </View>
+            ) : (
+              sortedReports.map((rep, index) => {
+                const isSelected = selectedReportIndex === index;
+                const statusStr = String(rep.status || "").toLowerCase();
+                const isPending =
+                  statusStr === "pending" || statusStr === "aguardando";
+                const isResolved =
+                  statusStr === "resolved" ||
+                  statusStr === "concluida" ||
+                  statusStr === "concluída";
+
+                return (
+                  <TouchableOpacity
+                    key={rep.id}
+                    style={[
+                      styles.compactCard,
+                      isSelected && styles.compactCardActive,
+                    ]}
+                    onPress={() => handleSelectReport(index, rep.id)}
+                    activeOpacity={0.88}
+                  >
+                    <View style={styles.cardTopRow}>
+                      <View style={styles.cardCategoryChip}>
+                        <ThemedText style={styles.cardCategoryText}>
+                          {rep.category}
+                        </ThemedText>
+                      </View>
+                      {rep.dist !== null && (
+                        <View style={styles.cardDistanceBadge}>
+                          <Ionicons
+                            name="navigate-outline"
+                            size={11}
+                            color={colors.primary}
+                          />
+                          <ThemedText style={styles.cardDistanceText}>
+                            {formatDistance(rep.dist)}
+                          </ThemedText>
+                        </View>
+                      )}
+                    </View>
+
+                    <ThemedText style={styles.cardDesc} numberOfLines={2}>
+                      {rep.description || "Ocorrência registrada no município."}
+                    </ThemedText>
+
+                    <View style={styles.cardFooter}>
+                      <View style={styles.cardStatusRow}>
+                        <View
+                          style={[
+                            styles.statusIndicatorDot,
+                            {
+                              backgroundColor: isPending
+                                ? "#f59e0b"
+                                : isResolved
+                                  ? "#10b981"
+                                  : "#2563eb",
+                            },
+                          ]}
+                        />
+                        <ThemedText style={styles.cardStatusText}>
+                          {isPending
+                            ? "Aguardando"
+                            : isResolved
+                              ? "Concluída"
+                              : "Em processo"}
+                        </ThemedText>
+                      </View>
+
+                      <View style={styles.cardProtocolBadge}>
+                        <ThemedText style={styles.cardProtocolText}>
+                          #ECO-{String(rep.id).slice(0, 4)}
+                        </ThemedText>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            )}
+          </ScrollView>
+        )}
+      </View>
+    </View>
   );
 }
 
-const makeStyles = (colors: typeof C) => StyleSheet.create({
-  container: { flex: 1 },
-  filterContainer: {
-    paddingTop: 12,
-    paddingBottom: 10,
-    paddingHorizontal: 12,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  filterScroll: {
-    flexGrow: 0,
-  },
-  filterScrollContent: {
-    paddingRight: 8,
-    alignItems: "center",
-  },
-  filterButtonSegmented: {
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 12,
-    marginRight: 8,
-    backgroundColor: "#f3f6fb",
-    borderWidth: 1,
-    borderColor: "#dfe7f5",
-    justifyContent: "center",
-    alignItems: "center",
-    minHeight: 38,
-    flexDirection: "row",
-  },
-  selectedFilterSegmented: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-    shadowColor: "#1a5fd4",
-    shadowOpacity: 0.18,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  filterTextSegmented: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: colors.text2,
-    textTransform: "capitalize",
-  },
-  selectedFilterTextSegmented: {
-    color: "#fff",
-  },
-  filterIcon: {
-    marginRight: 6,
-  },
-  mapStage: {
-    flex: 1,
-    position: "relative",
-  },
-  map: { flex: 1 },
-  notificationButton: {
-    position: "absolute",
-    top: 14,
-    right: 14,
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 1000,
-    elevation: 1000,
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-  },
-  notificationBadge: {
-    position: "absolute",
-    top: -4,
-    right: -4,
-    minWidth: 19,
-    height: 19,
-    paddingHorizontal: 4,
-    borderRadius: 10,
-    backgroundColor: C.danger,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: colors.surface,
-  },
-  notificationBadgeText: {
-    color: C.white,
-    fontSize: 9,
-    fontWeight: "800",
-  },
-  mapDisabled: {
-    opacity: 0.42,
-    backgroundColor: "rgba(15, 23, 42, 0.08)",
-  },
-  gpsDisabledOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(15, 23, 42, 0.15)",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 24,
-    zIndex: 10,
-  },
-  gpsDisabledCard: {
-    width: "100%",
-    maxWidth: 280,
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    borderRadius: 20,
-    borderWidth: 1,
-    paddingVertical: 22,
-    paddingHorizontal: 18,
-    shadowOpacity: 0.12,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
-  },
-  gpsDisabledCardWarning: {
-    borderColor: "rgba(217, 119, 6, 0.25)",
-    shadowColor: "#d97706",
-  },
-  gpsDisabledCardInfo: {
-    borderColor: "rgba(26, 95, 212, 0.18)",
-    shadowColor: "#1a5fd4",
-  },
-  gpsDisabledTitle: {
-    marginTop: 12,
-    fontSize: 18,
-    fontWeight: "800",
-    color: colors.text,
-  },
-  gpsDisabledText: {
-    marginTop: 8,
-    fontSize: 13,
-    lineHeight: 18,
-    color: colors.text2,
-    textAlign: "center",
-  },
-  locationAlertBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginHorizontal: 12,
-    marginTop: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 8,
-  },
-  locationAlertBannerWarning: {
-    backgroundColor: "rgba(217, 119, 6, 0.08)",
-    borderColor: "rgba(217, 119, 6, 0.2)",
-  },
-  locationAlertBannerInfo: {
-    backgroundColor: "rgba(26, 95, 212, 0.08)",
-    borderColor: "rgba(26, 95, 212, 0.18)",
-  },
-  locationAlertText: {
-    flex: 1,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  locationAlertTextWarning: {
-    color: colors.warning,
-  },
-  locationAlertTextInfo: {
-    color: colors.primary,
-  },
-  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+const makeStyles = (colors: typeof C) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.bg,
+    },
 
-  nearbyContainer: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#e5e7eb",
-    backgroundColor: colors.surface,
-  },
-  nearbyHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 7,
-  },
-  nearbyTitle: { fontSize: 13, fontWeight: "700" },
-  arrowGroup: { flexDirection: "row", gap: 6 },
-  arrowBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.surface2,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  arrowBtnDisabled: { opacity: 0.4 },
+    /* Top Floating Command Bar */
+    topControlPanel: {
+      position: "absolute",
+      top: 12,
+      left: 12,
+      right: 12,
+      zIndex: 20,
+      backgroundColor: "rgba(255, 255, 255, 0.94)",
+      borderRadius: 14,
+      padding: 10,
+      borderWidth: 1,
+      borderColor: "rgba(226, 232, 240, 0.9)",
+      shadowColor: "#0f172a",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 12,
+      elevation: 6,
+    },
+    topBarRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 8,
+    },
+    brandBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingRight: 6,
+    },
+    brandIconWrapper: {
+      width: 28,
+      height: 28,
+      borderRadius: 7,
+      backgroundColor: colors.primary,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    brandTitle: {
+      fontSize: 13,
+      fontWeight: "800",
+      color: colors.text,
+      letterSpacing: -0.2,
+      lineHeight: 15,
+    },
+    brandSubtitle: {
+      fontSize: 10,
+      color: colors.text3,
+      fontWeight: "500",
+      lineHeight: 12,
+    },
 
-  nearbyItemEmpty: {
-    backgroundColor: colors.surface2,
-    padding: 12,
-    borderRadius: 10,
-    width: 260,
-  },
-  nearbyCard: {
-    backgroundColor: colors.surface2,
-    borderRadius: 10,
-    padding: 9,
-    marginRight: 9,
-    width: 190,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-  },
-  nearbyCardActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryLight,
-  },
-  nearbyCardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  nearbyCategory: {
-    fontWeight: "700",
-    fontSize: 13,
-    textTransform: "capitalize",
-  },
-  distBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
-    backgroundColor: "rgba(0,122,255,0.1)",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  distText: { fontSize: 10, fontWeight: "700", color: colors.primary },
-  nearbyDesc: { fontSize: 11, color: colors.text2, marginBottom: 6, height: 30 },
-  statusRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  statusDot: { width: 8, height: 8, borderRadius: 4 },
-  statusText: { fontSize: 10, fontWeight: "600", color: colors.text2 },
-});
+    searchBarContainer: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.surface2,
+      borderRadius: 8,
+      paddingHorizontal: 10,
+      height: 34,
+      gap: 6,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: 12,
+      color: colors.text,
+      padding: 0,
+    },
+
+    actionIconButton: {
+      width: 34,
+      height: 34,
+      borderRadius: 8,
+      backgroundColor: colors.surface2,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    notifBadge: {
+      position: "absolute",
+      top: 3,
+      right: 3,
+      backgroundColor: "#ef4444",
+      borderRadius: 6,
+      minWidth: 14,
+      height: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 2,
+    },
+    notifBadgeText: {
+      color: "#fff",
+      fontSize: 8,
+      fontWeight: "800",
+    },
+
+    categoryScroll: {
+      flexGrow: 0,
+    },
+    categoryScrollContent: {
+      gap: 6,
+      paddingRight: 8,
+    },
+    categoryPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 16,
+      backgroundColor: colors.surface2,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    categoryPillActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    categoryPillText: {
+      fontSize: 11,
+      fontWeight: "600",
+      color: colors.text2,
+    },
+    categoryPillTextActive: {
+      color: "#fff",
+    },
+
+    /* GPS Status Pill */
+    locationPill: {
+      position: "absolute",
+      top: 108,
+      alignSelf: "center",
+      zIndex: 15,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: "rgba(255, 255, 255, 0.95)",
+      paddingHorizontal: 12,
+      paddingVertical: 5,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: "rgba(245, 158, 11, 0.4)",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 6,
+      elevation: 3,
+    },
+    locationPillText: {
+      fontSize: 11,
+      fontWeight: "600",
+      color: "#92400e",
+    },
+
+    /* Map Surface */
+    mapContainer: {
+      flex: 1,
+      position: "relative",
+    },
+    map: {
+      flex: 1,
+    },
+    mapDisabled: {
+      opacity: 0.85,
+    },
+    loadingOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: colors.bg,
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 10,
+    },
+    loadingText: {
+      marginTop: 10,
+      fontSize: 13,
+      color: colors.text3,
+      fontWeight: "500",
+    },
+
+    /* Floating Right Action Controls */
+    floatingControls: {
+      position: "absolute",
+      right: 14,
+      bottom: 145,
+      zIndex: 25,
+      gap: 8,
+    },
+    controlFab: {
+      width: 40,
+      height: 40,
+      borderRadius: 10,
+      backgroundColor: "rgba(255, 255, 255, 0.95)",
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: "#0f172a",
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.12,
+      shadowRadius: 6,
+      elevation: 4,
+    },
+
+    /* Compact Bottom Feed Panel */
+    bottomFeedPanel: {
+      position: "absolute",
+      bottom: 12,
+      left: 12,
+      right: 12,
+      zIndex: 20,
+      backgroundColor: "rgba(255, 255, 255, 0.96)",
+      borderRadius: 14,
+      paddingHorizontal: 12,
+      paddingTop: 10,
+      paddingBottom: 10,
+      borderWidth: 1,
+      borderColor: "rgba(226, 232, 240, 0.9)",
+      shadowColor: "#0f172a",
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 10,
+      elevation: 6,
+    },
+    bottomFeedPanelDesktop: {
+      maxWidth: 600,
+      left: 20,
+      right: "auto",
+    },
+    bottomFeedPanelCollapsed: {
+      paddingBottom: 10,
+    },
+    feedHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 6,
+    },
+    feedHeaderLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+    },
+    feedTitle: {
+      fontSize: 12,
+      fontWeight: "700",
+      color: colors.text,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+    },
+    feedCountBadge: {
+      backgroundColor: colors.surface2,
+      paddingHorizontal: 6,
+      paddingVertical: 1,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    feedCountBadgeText: {
+      fontSize: 10,
+      fontWeight: "700",
+      color: colors.text2,
+    },
+    feedHeaderRight: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+    },
+    navArrowsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 2,
+    },
+    miniArrowBtn: {
+      width: 24,
+      height: 24,
+      borderRadius: 6,
+      backgroundColor: colors.surface2,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    miniArrowBtnDisabled: {
+      opacity: 0.4,
+    },
+    toggleCollapseBtn: {
+      padding: 4,
+    },
+
+    cardCarousel: {
+      marginTop: 4,
+    },
+    cardCarouselContent: {
+      gap: 10,
+      paddingRight: 6,
+    },
+    emptyCarouselCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingVertical: 14,
+      paddingHorizontal: 10,
+    },
+    emptyCarouselText: {
+      fontSize: 12,
+      color: colors.text3,
+    },
+
+    compactCard: {
+      width: 250,
+      backgroundColor: "#ffffff",
+      borderRadius: 10,
+      padding: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 3,
+      elevation: 2,
+    },
+    compactCardActive: {
+      borderColor: colors.primary,
+      borderWidth: 1.5,
+      backgroundColor: "rgba(37, 99, 235, 0.02)",
+    },
+    cardTopRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 6,
+    },
+    cardCategoryChip: {
+      backgroundColor: colors.surface2,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
+    },
+    cardCategoryText: {
+      fontSize: 10,
+      fontWeight: "700",
+      color: colors.text,
+      textTransform: "capitalize",
+    },
+    cardDistanceBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 3,
+    },
+    cardDistanceText: {
+      fontSize: 10,
+      fontWeight: "600",
+      color: colors.primary,
+    },
+    cardDesc: {
+      fontSize: 11,
+      color: colors.text2,
+      lineHeight: 15,
+      marginBottom: 8,
+    },
+    cardFooter: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingTop: 6,
+    },
+    cardStatusRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+    },
+    statusIndicatorDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+    },
+    cardStatusText: {
+      fontSize: 10,
+      fontWeight: "600",
+      color: colors.text2,
+    },
+    cardProtocolBadge: {},
+    cardProtocolText: {
+      fontSize: 9,
+      color: colors.text3,
+      fontWeight: "600",
+    },
+  });

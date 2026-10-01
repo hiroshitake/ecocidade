@@ -83,6 +83,7 @@ export default function MapScreen() {
   const [selectedReportIndex, setSelectedReportIndex] = useState<number>(0);
   // selectedReportId só é preenchido quando o usuário pede explicitamente para abrir os detalhes
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const [recenterRequest, setRecenterRequest] = useState(0);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [isFeedCollapsed, setIsFeedCollapsed] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -513,6 +514,7 @@ export default function MapScreen() {
             zones={formattedZones}
             userLocation={userLocation}
             selectedReportId={selectedReportId}
+            recenterRequest={recenterRequest}
           />
         )}
       </View>
@@ -521,8 +523,14 @@ export default function MapScreen() {
       <View style={styles.floatingControls}>
         <TouchableOpacity
           style={styles.controlFab}
-          onPress={() => {
-            loadData();
+          onPress={async () => {
+            const resolvedLocation = await resolveUserLocationWithFallback().catch(() => null);
+            if (resolvedLocation?.location) {
+              setUserLocation(resolvedLocation.location);
+              setLocationSource(resolvedLocation.source);
+              setLocationReason(resolvedLocation.reason);
+            }
+            setRecenterRequest((value) => value + 1);
             startLocationWatch();
           }}
           activeOpacity={0.8}

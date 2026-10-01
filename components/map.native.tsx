@@ -20,6 +20,7 @@ interface MapComponentProps {
   reports?: Report[];
   zones?: Zone[];
   userLocation?: { latitude: number; longitude: number } | null;
+  followUserLocation?: boolean;
   selectedLocation?: { latitude: number; longitude: number } | null;
   selectLocation?: boolean;
   onSelectLocation?: (location: { latitude: number; longitude: number }) => void;
@@ -35,6 +36,7 @@ export default function MapComponent({
   reports = [],
   zones = [],
   userLocation = null,
+  followUserLocation = true,
   selectedLocation = null,
   selectLocation = false,
   onSelectLocation,
@@ -52,6 +54,8 @@ export default function MapComponent({
     (report) => report.location?.latitude != null && report.location?.longitude != null,
   );
   const hasCenteredRef = useRef(false);
+  const previousUserLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
+  const previousSelectedLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
 
   const selectedLocationCoords = selectedLocation || userLocation;
 
@@ -79,7 +83,22 @@ export default function MapComponent({
   useEffect(() => {
     if (!selectedLocationCoords || !mapRef.current || !mapReady) return;
 
-    if (!hasCenteredRef.current) {
+    const selectedLocationChanged =
+      selectedLocation &&
+      (!previousSelectedLocationRef.current ||
+        selectedLocation.latitude !== previousSelectedLocationRef.current.latitude ||
+        selectedLocation.longitude !== previousSelectedLocationRef.current.longitude);
+    const userLocationChanged =
+      userLocation &&
+      (!previousUserLocationRef.current ||
+        userLocation.latitude !== previousUserLocationRef.current.latitude ||
+        userLocation.longitude !== previousUserLocationRef.current.longitude);
+
+    if (
+      !hasCenteredRef.current ||
+      selectedLocationChanged ||
+      (followUserLocation && !selectedLocation && userLocationChanged)
+    ) {
       mapRef.current.animateToRegion(
         {
           latitude: selectedLocationCoords.latitude,
@@ -91,6 +110,9 @@ export default function MapComponent({
       );
       hasCenteredRef.current = true;
     }
+
+    previousSelectedLocationRef.current = selectedLocation || null;
+    previousUserLocationRef.current = userLocation || null;
   }, [selectedLocationCoords, mapReady]);
 
   useEffect(() => {

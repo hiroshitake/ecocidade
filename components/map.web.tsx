@@ -203,7 +203,7 @@ export default function MapComponent({
       setSelectedReport(report);
       onSelectReport?.(report);
     }
-  }, [selectedReportId]);
+  }, [selectedReportId, reports]);
 
   useEffect(() => {
     if (!markerLayerRef.current || typeof window === "undefined") return;

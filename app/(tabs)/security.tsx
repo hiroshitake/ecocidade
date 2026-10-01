@@ -15,6 +15,7 @@ import {
   View,
 } from "react-native";
 import MapComponent from "../../components/map";
+import ImageCropper from "../../components/image-cropper";
 import { C, S } from "../../constants/theme";
 import { useAppTheme } from "../../context/theme-context";
 import { resolveUserLocationForSubmission } from "../../services/auth";
@@ -48,6 +49,7 @@ export default function SecurityScreen() {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [submittedReport, setSubmittedReport] = useState<any | null>(null);
+  const [cropPhotoUri, setCropPhotoUri] = useState<string | null>(null);
 
   const router = useRouter();
 
@@ -151,7 +153,7 @@ export default function SecurityScreen() {
           const reader = new FileReader();
           reader.onload = () => {
             if (typeof reader.result === "string") {
-              setPhotoUri(reader.result);
+              setCropPhotoUri(reader.result);
             }
           };
           reader.readAsDataURL(file);
@@ -399,6 +401,16 @@ export default function SecurityScreen() {
             </TouchableOpacity>
           </View>
         )}
+
+        <ImageCropper
+          visible={Boolean(cropPhotoUri)}
+          imageUri={cropPhotoUri}
+          onCancel={() => setCropPhotoUri(null)}
+          onConfirm={(croppedUri) => {
+            setPhotoUri(croppedUri);
+            setCropPhotoUri(null);
+          }}
+        />
 
         {/* ── BOTÕES ── */}
         <TouchableOpacity

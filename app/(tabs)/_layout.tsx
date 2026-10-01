@@ -1,6 +1,7 @@
 import { Tabs } from "expo-router";
 import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { HapticTab } from "../../components/haptic-tab";
 import { IconSymbol } from "../../components/ui/icon-symbol";
 import { useAppTheme } from "../../context/theme-context";
@@ -29,6 +30,7 @@ export default function TabLayout() {
           shadowOpacity: isDark ? 0.25 : 0.05,
           shadowRadius: 8,
           elevation: 4,
+          overflow: "visible",
         },
         tabBarLabelStyle: {
           fontSize: 11,
@@ -52,23 +54,32 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="new-report"
+        name="reports"
         options={{
-          title: "Nova Denúncia",
+          title: "Minhas Denúncias",
           tabBarIcon: ({ color }) => (
-            <View style={[styles.tabIconWrap, styles.actionIcon]}>
-              <IconSymbol size={24} name="plus.circle.fill" color={color} />
+            <View style={styles.tabIconWrap}>
+              <IconSymbol size={22} name="list.bullet" color={color} />
             </View>
           ),
         }}
       />
       <Tabs.Screen
-        name="reports"
+        name="new-report"
         options={{
-          title: "Denúncias",
-          tabBarIcon: ({ color }) => (
-            <View style={styles.tabIconWrap}>
-              <IconSymbol size={22} name="list.bullet" color={color} />
+          title: "Nova Denúncia",
+          tabBarLabel: () => null,
+          tabBarIcon: () => (
+            <View
+              style={[
+                styles.raisedButton,
+                {
+                  backgroundColor: "#0f52ba",
+                  borderColor: colors.surface,
+                },
+              ]}
+            >
+              <Ionicons name="add" size={30} color="#ffffff" />
             </View>
           ),
         }}
@@ -106,7 +117,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  actionIcon: {
-    transform: [{ scale: 1.05 }],
+  raisedButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+    top: -14,
+    borderWidth: 3,
+    shadowColor: "#0f52ba",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 8,
   },
 });

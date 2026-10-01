@@ -86,6 +86,16 @@ export default function MapScreen() {
   const [recenterRequest, setRecenterRequest] = useState(0);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [isFeedCollapsed, setIsFeedCollapsed] = useState(false);
+
+  const toggleFeedCollapse = () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {}
+    if (Platform.OS !== "web") {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    }
+    setIsFeedCollapsed((prev) => !prev);
+  };
   const scrollViewRef = useRef<ScrollView>(null);
 
   const loadData = useCallback(async () => {
@@ -577,7 +587,7 @@ export default function MapScreen() {
         <View style={styles.feedHeader}>
           <TouchableOpacity
             style={styles.feedHeaderLeft}
-            onPress={() => setIsFeedCollapsed(!isFeedCollapsed)}
+            onPress={toggleFeedCollapse}
             activeOpacity={0.7}
           >
             <ThemedText style={styles.feedTitle}>
@@ -633,7 +643,7 @@ export default function MapScreen() {
 
             <TouchableOpacity
               style={styles.toggleCollapseBtn}
-              onPress={() => setIsFeedCollapsed(!isFeedCollapsed)}
+              onPress={toggleFeedCollapse}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Ionicons

@@ -1,10 +1,62 @@
 import { Tabs } from "expo-router";
-import React from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import React, { useRef } from "react";
+import { Animated, Platform, StyleSheet, TouchableWithoutFeedback, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { HapticTab } from "../../components/haptic-tab";
 import { IconSymbol } from "../../components/ui/icon-symbol";
 import { useAppTheme } from "../../context/theme-context";
+
+function RaisedNewReportTabButton(props: any) {
+  const { isDark, colors } = useAppTheme();
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.88,
+      useNativeDriver: true,
+      friction: 5,
+      tension: 100,
+    }).start();
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch {}
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      friction: 4,
+      tension: 80,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  return (
+    <TouchableWithoutFeedback
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      onPress={props.onPress}
+      accessibilityRole="button"
+      accessibilityLabel="Nova Denúncia"
+    >
+      <View style={styles.raisedButtonOuterWrap}>
+        <Animated.View
+          style={[
+            styles.raisedButton,
+            {
+              backgroundColor: "#0f52ba",
+              borderColor: isDark ? "#111827" : colors.surface,
+              transform: [{ scale: scaleAnim }],
+            },
+          ]}
+        >
+          <Ionicons name="add" size={30} color="#ffffff" />
+        </Animated.View>
+      </View>
+    </TouchableWithoutFeedback>
+  );
+}
 
 export default function TabLayout() {
   const { isDark, colors } = useAppTheme();
@@ -77,19 +129,7 @@ export default function TabLayout() {
         options={{
           title: "Nova Denúncia",
           tabBarLabel: () => null,
-          tabBarIcon: () => (
-            <View
-              style={[
-                styles.raisedButton,
-                {
-                  backgroundColor: "#0f52ba",
-                  borderColor: isDark ? "#111827" : colors.surface,
-                },
-              ]}
-            >
-              <Ionicons name="add" size={30} color="#ffffff" />
-            </View>
-          ),
+          tabBarButton: (props) => <RaisedNewReportTabButton {...props} />,
         }}
       />
       <Tabs.Screen
@@ -122,6 +162,11 @@ const styles = StyleSheet.create({
   tabIconWrap: {
     width: 32,
     height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  raisedButtonOuterWrap: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
   },

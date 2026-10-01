@@ -15,7 +15,6 @@ import { ErrorState } from "../../components/ErrorState";
 import { C } from "../../constants/theme";
 import { useAppTheme } from "../../context/theme-context";
 import { useToast } from "../../context/toast-context";
-import { formatBirthDate } from "../../functions/masks";
 import {
   getCurrentUserAvatarUrl,
   getCurrentUserData,
@@ -26,10 +25,7 @@ interface UserData {
   id?: string;
   name?: string;
   email?: string;
-  birthdate?: string;
-  city?: string;
   avatar_path?: string | null;
-  createdAt?: Date | null;
 }
 
 const ProfileScreen: React.FC = () => {
@@ -105,32 +101,6 @@ const ProfileScreen: React.FC = () => {
         <Text style={styles.name}>{userData?.name || "Cidadão"}</Text>
         <Text style={styles.email}>{userData?.email || "Nenhum e-mail cadastrado"}</Text>
 
-        <View style={styles.card}>
-          <Text style={styles.sectionHeader}>DADOS DA CONTA</Text>
-
-          {userData?.birthdate ? (
-            <View style={styles.infoRow}>
-              <View style={styles.labelCol}>
-                <Ionicons name="calendar-outline" size={16} color={colors.text3} />
-                <Text style={styles.infoLabel}>Nascimento</Text>
-              </View>
-              <Text style={styles.infoValue}>{formatBirthDate(userData.birthdate)}</Text>
-            </View>
-          ) : null}
-
-          {userData?.createdAt ? (
-            <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
-              <View style={styles.labelCol}>
-                <Ionicons name="time-outline" size={16} color={colors.text3} />
-                <Text style={styles.infoLabel}>Membro desde</Text>
-              </View>
-              <Text style={styles.infoValue}>
-                {new Date(userData.createdAt).toLocaleDateString("pt-BR")}
-              </Text>
-            </View>
-          ) : null}
-        </View>
-
         <View style={styles.actionsWrap}>
           <TouchableOpacity style={styles.settingsBtn} onPress={() => router.push("/settings")}>
             <Ionicons name="settings-outline" size={18} color={colors.text} />
@@ -174,35 +144,6 @@ const makeStyles = (colors: typeof C) => StyleSheet.create({
   photoFallback: { width: 104, height: 104, borderRadius: 52, backgroundColor: colors.primary, justifyContent: "center", alignItems: "center" },
   name: { fontSize: 22, fontWeight: "700", color: colors.text, marginBottom: 4, letterSpacing: -0.3 },
   email: { fontSize: 14, color: colors.text2, marginBottom: 28 },
-  card: {
-    width: "100%",
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginBottom: 20,
-  },
-  sectionHeader: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: colors.text3,
-    letterSpacing: 0.8,
-    marginBottom: 12,
-    marginTop: 4,
-  },
-  infoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  labelCol: { flexDirection: "row", alignItems: "center", gap: 8 },
-  infoLabel: { fontSize: 14, color: colors.text2 },
-  infoValue: { fontSize: 14, fontWeight: "600", color: colors.text },
   actionsWrap: { width: "100%", gap: 10 },
   settingsBtn: {
     width: "100%",

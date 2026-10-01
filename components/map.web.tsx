@@ -193,13 +193,17 @@ export default function MapComponent({
   }, []);
 
   useEffect(() => {
-    if (!selectedReportId) return;
+    if (!selectedReportId) {
+      setSelectedReport(null);
+      return;
+    }
+
     const report = reports.find((item) => String(item.id) === String(selectedReportId));
     if (report) {
       setSelectedReport(report);
       onSelectReport?.(report);
     }
-  }, [selectedReportId, reports]);
+  }, [selectedReportId]);
 
   useEffect(() => {
     if (!markerLayerRef.current || typeof window === "undefined") return;

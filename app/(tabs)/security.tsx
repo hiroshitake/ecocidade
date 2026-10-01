@@ -49,6 +49,7 @@ export default function SecurityScreen() {
   } | null>(null);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [locationReady, setLocationReady] = useState(false);
   const [submittedReport, setSubmittedReport] = useState<any | null>(null);
   const [cropPhotoUri, setCropPhotoUri] = useState<string | null>(null);
   const [photoOptionsVisible, setPhotoOptionsVisible] = useState(false);
@@ -70,10 +71,12 @@ export default function SecurityScreen() {
         setUserLocation(result.location);
         setSelectedLocation((prev) => prev ?? result.location);
         setLocationError(null);
+        setLocationReady(true);
       } else {
         setLocationError(
           "Não foi possível obter sua localização GPS. Verifique o GPS e tente novamente.",
         );
+        setLocationReady(false);
       }
     })();
   }, []);
@@ -91,6 +94,14 @@ export default function SecurityScreen() {
       return;
     }
     const locationToSubmit = selectedLocation ?? userLocation;
+
+    if (!locationToSubmit) {
+      Alert.alert(
+        "Localização não definida",
+        "Escolha um ponto no mapa ou aguarde sua localização atual ser encontrada antes de enviar a denúncia.",
+      );
+      return;
+    }
 
     if (!locationToSubmit) {
       Alert.alert(
@@ -374,6 +385,12 @@ export default function SecurityScreen() {
             onSelectLocation={setSelectedLocation}
           />
         </View>
+        <View style={styles.locationStatusCard}>
+          <Ionicons name={selectedLocation ? "location" : "location-outline"} size={18} color={selectedLocation ? C.eco : C.warning} />
+          <Text style={styles.locationStatusText}>
+            {selectedLocation ? "Localização definida. Você pode mover o ponto no mapa se necessário." : "Localização não definida. Escolha um ponto no mapa para continuar."}
+          </Text>
+        </View>
 
         {/* ── DESCRIÇÃO ── */}
         <Text style={[styles.label, { marginTop: 16 }]}>DESCRIÇÃO</Text>
@@ -597,6 +614,9 @@ const makeStyles = (colors: typeof C) => StyleSheet.create({
     textAlign: "center",
     color: colors.text2,
   },
+
+  locationStatusCard: { flexDirection: "row", alignItems: "center", gap: 8, padding: 10, marginTop: 8, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  locationStatusText: { flex: 1, fontSize: 12, lineHeight: 17, color: colors.text2 },
 
   miniMapWrap: { borderRadius: 12, overflow: "hidden" },
   miniMap: { height: 180 },

@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { ThemedText } from '../../components/themed-text';
 import { ThemedView } from '../../components/themed-view';
 import { C, S } from '../../constants/theme';
@@ -46,6 +46,8 @@ const normalizeStatus = (status?: string) => {
 export default function AdminDashboard() {
   const { colors } = useAppTheme();
   const styles = makeStyles(colors);
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 1024;
   const [stats, setStats] = useState<ReportStats>({
     total: 0,
     pending: 0,
@@ -164,7 +166,7 @@ export default function AdminDashboard() {
   };
 
   return (
-    <ThemedView style={styles.container}>
+    <ThemedView style={styles.container}><View style={styles.innerContainer}>
       <View style={styles.header}>
         <View>
           <ThemedText style={styles.headerTitle}>Dashboard Admin</ThemedText>
@@ -339,7 +341,7 @@ export default function AdminDashboard() {
 
         <View style={{ height: 20 }} />
       </ScrollView>
-    </ThemedView>
+    </View></ThemedView>
   );
 }
 

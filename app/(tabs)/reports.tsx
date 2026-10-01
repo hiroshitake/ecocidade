@@ -9,6 +9,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { C, S } from "../../constants/theme";
 import { useAppTheme } from "../../context/theme-context";
@@ -60,6 +61,8 @@ const normalizeStatus = (status?: string) => {
 export default function ReportsScreen() {
   const { colors } = useAppTheme();
   const styles = makeStyles(colors);
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
   const [activeTab, setActiveTab] = useState("Todas");
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState<any | null>(null);
@@ -366,7 +369,7 @@ export default function ReportsScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
-    </View>
+    </View></View>
   );
 }
 

@@ -13,6 +13,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
 import MapComponent from "../../components/map";
 import ImageCropper from "../../components/image-cropper";
@@ -43,6 +44,8 @@ const CATEGORIES = [
 export default function NewReportScreen() {
   const { colors } = useAppTheme();
   const styles = makeStyles(colors);
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [photoUri, setPhotoUri] = useState<string | null>(null);

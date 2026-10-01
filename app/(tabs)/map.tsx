@@ -4,6 +4,7 @@ import React, { useCallback, useRef, useState } from "react";
 import { router } from "expo-router";
 import {
   ActivityIndicator,
+  useWindowDimensions,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -61,6 +62,8 @@ function formatDistance(distKm: number | null) {
 export default function MapScreen() {
   const { colors } = useAppTheme();
   const styles = makeStyles(colors);
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
   const [selectedCategory, setSelectedCategory] = useState("Todas");
   const [reports, setReports] = useState<any[]>([]);
   const [zones, setZones] = useState<any[]>([]);

@@ -14,6 +14,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
 import MapComponent from "../../components/map";
 import ImageCropper from "../../components/image-cropper";
@@ -36,6 +37,8 @@ const SEC_CATS = [
 export default function SecurityScreen() {
   const { colors } = useAppTheme();
   const styles = makeStyles(colors);
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);

@@ -72,6 +72,9 @@ export async function signInWithGoogle() {
     options: {
       redirectTo,
       skipBrowserRedirect: Platform.OS !== "web",
+      queryParams: {
+        prompt: "select_account",
+      },
     },
   });
 

@@ -108,7 +108,7 @@ export default function MapComponent({
       setSelectedReport(report);
       onSelectReport?.(report);
     }
-  }, [selectedReportId]);
+  }, [selectedReportId, reports]);
 
   useEffect(() => {
     const animation = Animated.loop(

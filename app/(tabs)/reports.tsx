@@ -3,7 +3,9 @@ import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,6 +13,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import * as Haptics from "expo-haptics";
 import { C } from "../../constants/theme";
 import { useAppTheme } from "../../context/theme-context";
 import { getMyReports } from "../../services/reports";
@@ -70,6 +73,79 @@ const CATEGORY_MAP: Record<string, { label: string; icon: keyof typeof Ionicons.
   tumulto: { label: "Aglomeração / Tumulto", icon: "people-outline" },
   perigo: { label: "Risco estrutural", icon: "warning-outline" },
 };
+
+const NATIVE_DRIVER = Platform.OS !== "web";
+
+function AnimatedTicketCard({
+  children,
+  style,
+  onPress,
+  index,
+}: {
+  children: React.ReactNode;
+  style: any;
+  onPress: () => void;
+  index: number;
+}) {
+  const entryAnim = React.useRef(new Animated.Value(0)).current;
+  const pressAnim = React.useRef(new Animated.Value(1)).current;
+
+  React.useEffect(() => {
+    Animated.timing(entryAnim, {
+      toValue: 1,
+      duration: 320,
+      delay: Math.min(index, 6) * 60,
+      useNativeDriver: NATIVE_DRIVER,
+    }).start();
+  }, [entryAnim]);
+
+  const handlePressIn = () => {
+    Animated.spring(pressAnim, {
+      toValue: 0.97,
+      useNativeDriver: NATIVE_DRIVER,
+      friction: 6,
+      tension: 120,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(pressAnim, {
+      toValue: 1,
+      useNativeDriver: NATIVE_DRIVER,
+      friction: 5,
+      tension: 100,
+    }).start();
+  };
+
+  return (
+    <Animated.View
+      style={[
+        style,
+        {
+          opacity: entryAnim,
+          transform: [
+            {
+              translateY: entryAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [18, 0],
+              }),
+            },
+            { scale: pressAnim },
+          ],
+        },
+      ]}
+    >
+      <TouchableOpacity
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={0.85}
+      >
+        {children}
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
 
 export default function ReportsScreen() {
   const { colors } = useAppTheme();
@@ -167,6 +243,9 @@ export default function ReportsScreen() {
   }, [mappedReports]);
 
   const handleSelectReport = (item: any) => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {}
     setSelectedReport(item);
     if (!isDesktop) {
       setModalOpen(true);
@@ -426,17 +505,17 @@ export default function ReportsScreen() {
                   </Text>
                 </View>
               ) : (
-                filteredReports.map((item) => {
+                filteredReports.map((item, itemIndex) => {
                   const isSelected = currentSelection?.id === item.id;
                   return (
-                    <TouchableOpacity
+                    <AnimatedTicketCard
                       key={item.id}
+                      index={itemIndex}
                       style={[
                         styles.ticketCard,
                         isSelected && isDesktop && styles.ticketCardSelected,
                       ]}
                       onPress={() => handleSelectReport(item)}
-                      activeOpacity={0.85}
                     >
                       <View style={styles.ticketHeader}>
                         <View style={styles.ticketCategoryPill}>
@@ -468,7 +547,7 @@ export default function ReportsScreen() {
                           <Text style={styles.ticketDate}>{item.date}</Text>
                         </View>
                       </View>
-                    </TouchableOpacity>
+                    </AnimatedTicketCard>
                   );
                 })
               )}

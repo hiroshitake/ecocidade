@@ -13,6 +13,7 @@ import {
 import { C, S } from "../../constants/theme";
 import { useAppTheme } from "../../context/theme-context";
 import { getMyReports } from "../../services/reports";
+import ReportRetentionTimer from "../../components/report-retention-timer";
 
 const TABS = ["Todas", "Aguardando", "Em processo", "Concluídas"];
 
@@ -317,6 +318,13 @@ export default function ReportsScreen() {
                     {selectedReport.updatedAt}
                   </Text>
                 </View>
+              ) : null}
+
+              {selectedReport?.label === "Concluída" ? (
+                <ReportRetentionTimer
+                  resolvedAt={selectedReport?.resolved_at}
+                  audience="user"
+                />
               ) : null}
 
               <TouchableOpacity

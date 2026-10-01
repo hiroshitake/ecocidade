@@ -670,7 +670,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   mainCardDesktop: {
-    maxWidth: 960,
+    maxWidth: 920, width: "100%", alignSelf: "center",
     flexDirection: "row",
     borderRadius: 20,
     borderWidth: 1,

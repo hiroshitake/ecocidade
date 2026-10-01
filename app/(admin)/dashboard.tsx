@@ -23,6 +23,12 @@ interface ReportStats {
   completed: number;
   byCategory: { [key: string]: number };
   byMonth: { [key: string]: number };
+  recent30: number;
+  recent30Resolved: number;
+  securityTotal: number;
+  securityOpen: number;
+  avgResolutionDays: number | null;
+  oldestPendingDays: number | null;
 }
 
 const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -47,14 +53,33 @@ export default function AdminDashboard() {
     completed: 0,
     byCategory: {},
     byMonth: {},
+    recent30: 0,
+    recent30Resolved: 0,
+    securityTotal: 0,
+    securityOpen: 0,
+    avgResolutionDays: null,
+    oldestPendingDays: null,
+    recent30: 0,
+    recent30Resolved: 0,
+    securityTotal: 0,
+    securityOpen: 0,
+    avgResolutionDays: null,
+    oldestPendingDays: null;
   });
   const [loading, setLoading] = useState(true);
+  // Additional operational metrics are calculated from the same city-scoped dataset. 
   const router = useRouter();
 
   const loadStats = useCallback(async () => {
     try {
       setLoading(true);
       const reports = (await getAdminReports()) as any[];
+
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000);
+      const currentYear = now.getFullYear();
+      let resolutionTotalDays = 0;
+      let resolutionCount = 0;
 
       const newStats: ReportStats = {
         total: reports.length,
@@ -76,7 +101,31 @@ export default function AdminDashboard() {
         else if (status === 'in_progress') newStats.inProgress++;
         else if (status === 'resolved') newStats.completed++;
 
-        const cat = report.category || 'outro';
+        const cat = String(report.category || 'outro').trim().toLowerCase();
+        const createdAt = report.created_at ? new Date(report.created_at) : null;
+        const resolvedAt = report.resolved_at ? new Date(report.resolved_at) : null;
+        if (createdAt && !Number.isNaN(createdAt.getTime())) {
+          if (createdAt >= thirtyDaysAgo) {
+            newStats.recent30++;
+            if (status === 'resolved') newStats.recent30Resolved++;
+          }
+          if (createdAt.getFullYear() === currentYear) {
+            const month = MONTHS[createdAt.getMonth()];
+            if (month) newStats.byMonth[month]++;
+          }
+          if (status === 'pending') {
+            const pendingDays = Math.max(0, (now.getTime() - createdAt.getTime()) / 86400000);
+            newStats.oldestPendingDays = newStats.oldestPendingDays === null ? pendingDays : Math.max(newStats.oldestPendingDays, pendingDays);
+          }
+        }
+        if (cat === 'seguranca') {
+          newStats.securityTotal++;
+          if (status !== 'resolved') newStats.securityOpen++;
+        }
+        if (status === 'resolved' && createdAt && resolvedAt && !Number.isNaN(createdAt.getTime()) && !Number.isNaN(resolvedAt.getTime()) && resolvedAt >= createdAt) {
+          resolutionTotalDays += (resolvedAt.getTime() - createdAt.getTime()) / 86400000;
+          resolutionCount++;
+        }
         newStats.byCategory[cat] = (newStats.byCategory[cat] || 0) + 1;
 
         // Supabase retorna created_at (snake_case), não createdAt.
@@ -89,6 +138,7 @@ export default function AdminDashboard() {
         }
       });
 
+      newStats.avgResolutionDays = resolutionCount > 0 ? resolutionTotalDays / resolutionCount : null;
       setStats(newStats);
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error);
@@ -167,6 +217,56 @@ export default function AdminDashboard() {
               {stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0}%
             </ThemedText>
           </View>
+        </View>
+
+        <View style={styles.insightGrid}>
+          <View style={styles.insightCard}>
+            <MaterialCommunityIcons name="calendar-month-outline" size={22} color={colors.primary} />
+            <ThemedText style={styles.insightValue}>{stats.recent30}</ThemedText>
+            <ThemedText style={styles.insightLabel}>recebidas nos últimos 30 dias</ThemedText>
+          </View>
+          <View style={styles.insightCard}>
+            <MaterialCommunityIcons name="timer-outline" size={22} color={colors.warning} />
+            <ThemedText style={styles.insightValue}>{stats.avgResolutionDays === null ? '—' : stats.avgResolutionDays < 1 ? Math.round(stats.avgResolutionDays * 24) + 'h' : stats.avgResolutionDays.toFixed(1) + 'd'}</ThemedText>
+            <ThemedText style={styles.insightLabel}>tempo médio até conclusão</ThemedText>
+          </View>
+        </View>
+
+        <View style={styles.resolutionRate}>
+          <View style={styles.sectionHeaderRow}>
+            <View><ThemedText style={styles.sectionTitle}>Taxa de resolução</ThemedText><ThemedText style={styles.sectionHint}>Todo o histórico disponível</ThemedText></View>
+            <ThemedText style={styles.rateText}>{stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0}%</ThemedText>
+          </View>
+          <View style={styles.rateBar}><View style={[styles.rateProgress, { width: (stats.total > 0 ? (stats.completed / stats.total) * 100 : 0) + '%' }]} /></View>
+          <ThemedText style={styles.rateFooterText}>{stats.completed} concluídas de {stats.total} · {stats.recent30 > 0 ? Math.round((stats.recent30Resolved / stats.recent30) * 100) + '% resolvidas nos últimos 30 dias' : 'sem dados recentes'}</ThemedText>
+        </View>
+
+        <View style={styles.attentionCard}>
+          <MaterialCommunityIcons name="alert-circle-outline" size={24} color={colors.warning} />
+          <View style={styles.attentionContent}>
+            <ThemedText style={styles.attentionTitle}>Itens que exigem atenção</ThemedText>
+            <ThemedText style={styles.attentionText}>{stats.pending + stats.inProgress + stats.securityOpen === 0 ? 'Não há denúncias abertas no momento.' : (stats.pending + stats.inProgress) + ' denúncia(s) em aberto e ' + stats.securityOpen + ' ocorrência(s) de segurança não concluída(s).'}</ThemedText>
+            {stats.oldestPendingDays !== null ? <ThemedText style={styles.attentionMeta}>Aguardando há mais tempo: {stats.oldestPendingDays < 1 ? 'menos de 1 dia' : Math.floor(stats.oldestPendingDays) + ' dia(s)'}</ThemedText> : null}
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}><View><ThemedText style={styles.sectionTitle}>Evolução das denúncias</ThemedText><ThemedText style={styles.sectionHint}>Entradas por mês em {new Date().getFullYear()}</ThemedText></View></View>
+          <View style={styles.monthChart}>
+            {MONTHS.map(month => { const count = stats.byMonth[month] || 0; const maxMonth = Math.max(...Object.values(stats.byMonth), 1); return <View key={month} style={styles.monthColumn}><ThemedText style={styles.monthValue}>{count}</ThemedText><View style={styles.monthTrack}><View style={[styles.monthBar, { height: count === 0 ? 4 : Math.max(8, count / maxMonth * 108) }]} /></View><ThemedText style={styles.monthLabel}>{month}</ThemedText></View>; })}
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}><View><ThemedText style={styles.sectionTitle}>Resumo de segurança</ThemedText><ThemedText style={styles.sectionHint}>Dentro da cidade do administrador</ThemedText></View><MaterialCommunityIcons name="shield-alert-outline" size={22} color={colors.danger} /></View>
+          <View style={styles.securitySummary}>
+            <View style={styles.securityMetric}><ThemedText style={styles.securityValue}>{stats.securityTotal}</ThemedText><ThemedText style={styles.securityLabel}>total</ThemedText></View>
+            <View style={styles.securityDivider} />
+            <View style={styles.securityMetric}><ThemedText style={[styles.securityValue, { color: colors.warning }]}>{stats.securityOpen}</ThemedText><ThemedText style={styles.securityLabel}>em aberto</ThemedText></View>
+            <View style={styles.securityDivider} />
+            <View style={styles.securityMetric}><ThemedText style={[styles.securityValue, { color: colors.eco }]}>{stats.securityTotal - stats.securityOpen}</ThemedText><ThemedText style={styles.securityLabel}>concluídas</ThemedText></View>
+          </View>
+          <TouchableOpacity style={styles.secondaryAction} onPress={() => router.push('/(admin)/security-analysis')}><ThemedText style={styles.secondaryActionText}>Abrir análise detalhada</ThemedText><MaterialCommunityIcons name="arrow-right" size={18} color={colors.primary} /></TouchableOpacity>
         </View>
 
         <View style={styles.section}>
@@ -259,7 +359,8 @@ const makeStyles = (colors: typeof C) => StyleSheet.create({
   statValue: { fontSize: 32, fontWeight: '800', color: colors.text, marginTop: 8 },
   statLabel: { fontSize: 12, color: colors.text2, marginTop: 6, textAlign: 'center' },
   section: { marginBottom: 24 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 },
+  insightGrid: { flexDirection: 'row', gap: 12, marginBottom: 16 }, insightCard: { flex: 1, minHeight: 105, padding: 14, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }, insightValue: { fontSize: 23, fontWeight: '800', color: colors.text, marginTop: 8 }, insightLabel: { fontSize: 11, color: colors.text3, marginTop: 3, lineHeight: 16 }, sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }, sectionHint: { fontSize: 11, color: colors.text3, marginTop: 3 }, rateFooterText: { fontSize: 10, color: colors.text3, marginTop: 8 }, attentionCard: { flexDirection: 'row', padding: 15, borderRadius: 14, backgroundColor: colors.warningLight, borderWidth: 1, borderColor: colors.warning + '35', marginBottom: 24 }, attentionContent: { flex: 1, marginLeft: 12 }, attentionTitle: { fontSize: 14, fontWeight: '800', color: colors.text }, attentionText: { fontSize: 12, color: colors.text2, lineHeight: 18, marginTop: 4 }, attentionMeta: { fontSize: 10, color: colors.text3, marginTop: 5 }, monthChart: { height: 175, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingTop: 10 }, monthColumn: { flex: 1, alignItems: 'center', height: '100%', justifyContent: 'flex-end' }, monthValue: { fontSize: 9, color: colors.text3, marginBottom: 4 }, monthTrack: { height: 112, width: 14, justifyContent: 'flex-end', backgroundColor: colors.surface2, borderRadius: 7, overflow: 'hidden' }, monthBar: { width: '100%', backgroundColor: colors.primary, borderRadius: 7 }, monthLabel: { fontSize: 9, color: colors.text2, marginTop: 5 }, securitySummary: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 14, paddingVertical: 17 }, securityMetric: { flex: 1, alignItems: 'center' }, securityValue: { fontSize: 23, fontWeight: '800', color: colors.text }, securityLabel: { fontSize: 10, color: colors.text3, marginTop: 3 }, securityDivider: { width: 1, height: 35, backgroundColor: colors.border }, secondaryAction: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, padding: 11, marginTop: 8 }, secondaryActionText: { fontSize: 12, fontWeight: '800', color: colors.primary },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 0 },
   resolutionRate: { backgroundColor: colors.surface, borderRadius: 12, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: colors.border },
   rateContainer: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   rateBar: { flex: 1, height: 8, backgroundColor: colors.border, borderRadius: 4, overflow: 'hidden' },

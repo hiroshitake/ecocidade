@@ -8,6 +8,7 @@ export type ThemeMode = "system" | "light" | "dark";
 type ThemeContextValue = {
   mode: ThemeMode;
   isDark: boolean;
+  isReady: boolean;
   setMode: (mode: ThemeMode) => void;
   toggleDarkMode: () => void;
   colors: typeof Colors.light;
@@ -15,7 +16,7 @@ type ThemeContextValue = {
 
 const STORAGE_KEY = "@ecocidade/theme-mode";
 
-const getStoredModeSync = (): ThemeMode => {
+const getStoredModeSync = (): ThemeMode | null => {
   if (typeof window !== "undefined" && window.localStorage) {
     try {
       const stored = window.localStorage.getItem(STORAGE_KEY);
@@ -24,7 +25,7 @@ const getStoredModeSync = (): ThemeMode => {
       }
     } catch {}
   }
-  return "system";
+  return null;
 };
 
 const getSystemSchemeSync = (): "light" | "dark" => {
@@ -42,16 +43,34 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const nativeScheme = useNativeColorScheme();
-  const [mode, setModeState] = useState<ThemeMode>(getStoredModeSync);
+  const initialStored = getStoredModeSync();
+  const [mode, setModeState] = useState<ThemeMode>(initialStored ?? "system");
+  const [isReady, setIsReady] = useState<boolean>(initialStored !== null);
 
   useEffect(() => {
+    let mounted = true;
     AsyncStorage.getItem(STORAGE_KEY)
       .then((value) => {
+        if (!mounted) return;
         if (value === "light" || value === "dark" || value === "system") {
           setModeState(value);
+        } else {
+          setModeState("system");
         }
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (!mounted) return;
+        setModeState("system");
+      })
+      .finally(() => {
+        if (mounted) {
+          setIsReady(true);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const setMode = (nextMode: ThemeMode) => {
@@ -72,12 +91,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     () => ({
       mode,
       isDark,
+      isReady,
       setMode,
       toggleDarkMode: () => setMode(isDark ? "light" : "dark"),
       colors,
     }),
-    [mode, isDark, colors],
+    [mode, isDark, isReady, colors],
   );
+
+  if (!isReady) {
+    return null;
+  }
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

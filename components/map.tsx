@@ -33,6 +33,7 @@ interface MapComponentProps {
   onSelectLocation?: (location: { latitude: number; longitude: number }) => void;
   onSelectReport?: (report: Report) => void;
   selectedReportId?: string | null;
+  onCloseSelectedReport?: () => void;
   recenterRequest?: number;
   onZoneClick?: (zone: Zone) => void;
 }

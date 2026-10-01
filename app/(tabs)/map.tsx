@@ -88,6 +88,7 @@ export default function MapScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
 
   const loadData = useCallback(async () => {
+    setSelectedReportId(null);
     try {
       setLoading(true);
 
@@ -426,6 +427,7 @@ export default function MapScreen() {
               onChangeText={(text) => {
                 setSearchQuery(text);
                 setSelectedReportIndex(0);
+                setSelectedReportId(null);
               }}
             />
             {searchQuery.length > 0 && (
@@ -455,6 +457,7 @@ export default function MapScreen() {
                 onPress={() => {
                   setSelectedCategory(cat.id);
                   setSelectedReportIndex(0);
+                  setSelectedReportId(null);
                 }}
                 activeOpacity={0.8}
               >

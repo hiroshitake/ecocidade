@@ -11,7 +11,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-import { C, S } from "../../constants/theme";
+import { C } from "../../constants/theme";
 import { useAppTheme } from "../../context/theme-context";
 import { getMyReports } from "../../services/reports";
 import ReportRetentionTimer from "../../components/report-retention-timer";
@@ -19,50 +19,64 @@ import ReportRetentionTimer from "../../components/report-retention-timer";
 const TABS = ["Todas", "Aguardando", "Em processo", "Concluídas"];
 
 const normalizeStatus = (status?: string) => {
-  const value = String(status || "")
-    .trim()
-    .toLowerCase();
+  const value = String(status || "").trim().toLowerCase();
 
   if (["pending", "aguardando"].includes(value)) {
     return {
       label: "Aguardando",
-      color: C.warning,
-      bg: C.warningLight,
+      color: "#f59e0b",
+      bg: "rgba(245, 158, 11, 0.12)",
+      step: 1,
     };
   }
 
-  if (
-    ["investigating", "in_progress", "processo", "em processo"].includes(value)
-  ) {
+  if (["investigating", "in_progress", "processo", "em processo"].includes(value)) {
     return {
       label: "Em processo",
-      color: C.primary,
-      bg: C.primaryLight,
+      color: "#2563eb",
+      bg: "rgba(37, 99, 235, 0.12)",
+      step: 2,
     };
   }
 
-  if (
-    ["resolved", "concluida", "concluída", "completed", "done"].includes(value)
-  ) {
+  if (["resolved", "concluida", "concluída", "completed", "done"].includes(value)) {
     return {
       label: "Concluída",
-      color: C.eco,
-      bg: C.ecoLight,
+      color: "#10b981",
+      bg: "rgba(16, 185, 129, 0.12)",
+      step: 4,
     };
   }
 
   return {
     label: "Aguardando",
-    color: C.warning,
-    bg: C.warningLight,
+    color: "#f59e0b",
+    bg: "rgba(245, 158, 11, 0.12)",
+    step: 1,
   };
+};
+
+const CATEGORY_MAP: Record<string, { label: string; icon: keyof typeof Ionicons.glyphMap }> = {
+  buraco: { label: "Buraco na via", icon: "construct-outline" },
+  poste: { label: "Iluminação pública", icon: "bulb-outline" },
+  vazamento: { label: "Vazamento d'água", icon: "water-outline" },
+  bueiro: { label: "Bueiro / Drenagem", icon: "git-network-outline" },
+  mato: { label: "Mato alto / Praça", icon: "leaf-outline" },
+  calcada: { label: "Calçada / Acessibilidade", icon: "walk-outline" },
+  lixo: { label: "Descarte irregular", icon: "trash-outline" },
+  sinalizacao: { label: "Sinalização de trânsito", icon: "alert-circle-outline" },
+  seguranca: { label: "Segurança urbana", icon: "shield-checkmark-outline" },
+  crime: { label: "Ocorrência / Crime", icon: "shield-outline" },
+  tumulto: { label: "Aglomeração / Tumulto", icon: "people-outline" },
+  perigo: { label: "Risco estrutural", icon: "warning-outline" },
 };
 
 export default function ReportsScreen() {
   const { colors } = useAppTheme();
   const styles = makeStyles(colors);
   const { width } = useWindowDimensions();
-  const isDesktop = width >= 768;
+  const isDesktop = width >= 900;
+
   const [activeTab, setActiveTab] = useState("Todas");
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState<any | null>(null);
@@ -71,491 +85,991 @@ export default function ReportsScreen() {
   const [loadError, setLoadError] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    const loadReports = async () => {
-      try {
-        setLoadError(false);
-        const data = await getMyReports();
-        setReports(data || []);
-      } catch (error) {
-        console.error("Erro ao carregar relatórios:", error);
-        setLoadError(true);
-      } finally {
-        setLoading(false);
+  const fetchReports = async () => {
+    try {
+      setLoadError(false);
+      setLoading(true);
+      const data = await getMyReports();
+      setReports(data || []);
+      if (isDesktop && data && data.length > 0 && !selectedReport) {
+        setSelectedReport(data[0]);
       }
-    };
+    } catch (error) {
+      console.error("Erro ao carregar relatórios:", error);
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    loadReports();
+  useEffect(() => {
+    fetchReports();
   }, []);
 
   const mappedReports = useMemo(
     () =>
-      reports.map((item) => ({
-        ...item,
-        id: item.id,
-        icon: "construct" as const,
-        iconBg: C.primaryLight,
-        iconColor: C.primary,
-        title: item.title || item.category || "Denúncia enviada",
-        description: item.description || "Sem descrição cadastrada.",
-        category: item.category || "Outros",
-        date: item.created_at
-          ? new Date(item.created_at).toLocaleDateString("pt-BR")
-          : "Agora",
-        updatedAt: item.updated_at
-          ? new Date(item.updated_at).toLocaleDateString("pt-BR")
-          : null,
-        protocol: `#${String(item.id).slice(0, 8).toUpperCase()}`,
-        ...normalizeStatus(item.status),
-      })),
+      reports.map((item) => {
+        const catKey = String(item.category || "").toLowerCase();
+        const catInfo = CATEGORY_MAP[catKey] || {
+          label: item.category || "Cívica Geral",
+          icon: "document-text-outline" as keyof typeof Ionicons.glyphMap,
+        };
+        const statusMeta = normalizeStatus(item.status);
+
+        return {
+          ...item,
+          id: item.id,
+          categoryLabel: catInfo.label,
+          categoryIcon: catInfo.icon,
+          title: item.title || catInfo.label,
+          description: item.description || "Sem descrição cadastrada.",
+          category: item.category || "Geral",
+          date: item.created_at
+            ? new Date(item.created_at).toLocaleDateString("pt-BR", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              })
+            : "Data recente",
+          updatedAt: item.updated_at
+            ? new Date(item.updated_at).toLocaleDateString("pt-BR", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : null,
+          protocol: `#ECO-${String(item.id).slice(0, 6).toUpperCase()}`,
+          ...statusMeta,
+        };
+      }),
     [reports],
   );
 
-  const filteredReports = mappedReports.filter((item) => {
-    if (activeTab === "Todas") return true;
-    if (activeTab === "Aguardando") return item.label === "Aguardando";
-    if (activeTab === "Em processo") return item.label === "Em processo";
-    if (activeTab === "Concluídas") return item.label === "Concluída";
-    return true;
-  });
+  const filteredReports = useMemo(() => {
+    return mappedReports.filter((item) => {
+      if (activeTab === "Todas") return true;
+      if (activeTab === "Aguardando") return item.label === "Aguardando";
+      if (activeTab === "Em processo") return item.label === "Em processo";
+      if (activeTab === "Concluídas") return item.label === "Concluída";
+      return true;
+    });
+  }, [mappedReports, activeTab]);
 
-  const stats = {
-    total: mappedReports.length,
-    pending: mappedReports.filter((item) => item.label === "Aguardando").length,
-    investigating: mappedReports.filter((item) => item.label === "Em processo")
-      .length,
-    resolved: mappedReports.filter((item) => item.label === "Concluída").length,
-  };
+  const stats = useMemo(() => {
+    return {
+      total: mappedReports.length,
+      pending: mappedReports.filter((item) => item.label === "Aguardando").length,
+      inProgress: mappedReports.filter((item) => item.label === "Em processo").length,
+      resolved: mappedReports.filter((item) => item.label === "Concluída").length,
+    };
+  }, [mappedReports]);
 
-  const openReportDetails = (item: any) => {
+  const handleSelectReport = (item: any) => {
     setSelectedReport(item);
-    setModalOpen(true);
+    if (!isDesktop) {
+      setModalOpen(true);
+    }
   };
 
   const closeReportDetails = () => {
-    setSelectedReport(null);
+    if (!isDesktop) {
+      setSelectedReport(null);
+    }
     setModalOpen(false);
+  };
+
+  const currentSelection = selectedReport || (isDesktop && filteredReports.length > 0 ? filteredReports[0] : null);
+
+  const renderDetailCard = (report: any, inModal = false) => {
+    if (!report) {
+      return (
+        <View style={styles.emptyDetailContainer}>
+          <Ionicons name="document-text-outline" size={48} color={colors.text3} />
+          <Text style={styles.emptyDetailTitle}>Nenhuma solicitação selecionada</Text>
+          <Text style={styles.emptyDetailText}>
+            Clique em qualquer solicitação da lista para visualizar os detalhes completos, histórico e prazos de resolução.
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={[styles.detailCard, inModal && styles.detailCardInModal]}>
+        <View style={styles.detailHeader}>
+          <View style={styles.detailProtocolBadge}>
+            <Ionicons name="shield-checkmark" size={14} color={colors.primary} />
+            <Text style={styles.detailProtocolText}>{report.protocol}</Text>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: report.bg }]}>
+            <View style={[styles.statusDot, { backgroundColor: report.color }]} />
+            <Text style={[styles.statusText, { color: report.color }]}>
+              {report.label}
+            </Text>
+          </View>
+        </View>
+
+        <Text style={styles.detailTitle}>{report.title}</Text>
+
+        <View style={styles.detailMetaRow}>
+          <View style={styles.detailMetaItem}>
+            <Ionicons name={report.categoryIcon} size={15} color={colors.text2} />
+            <Text style={styles.detailMetaText}>{report.categoryLabel}</Text>
+          </View>
+          <View style={styles.detailMetaDivider} />
+          <View style={styles.detailMetaItem}>
+            <Ionicons name="calendar-outline" size={15} color={colors.text2} />
+            <Text style={styles.detailMetaText}>{report.date}</Text>
+          </View>
+        </View>
+
+        {/* Civic Tracker / Step progress */}
+        <View style={styles.trackerContainer}>
+          <Text style={styles.trackerTitle}>Fluxo de Resolução</Text>
+          <View style={styles.stepTrack}>
+            <View style={[styles.stepItem, report.step >= 1 && styles.stepItemActive]}>
+              <View style={[styles.stepCircle, report.step >= 1 && styles.stepCircleActive]}>
+                <Ionicons name={report.step > 1 ? "checkmark" : "create-outline"} size={13} color="#fff" />
+              </View>
+              <Text style={styles.stepLabel}>Registrado</Text>
+            </View>
+
+            <View style={[styles.stepLine, report.step >= 2 && styles.stepLineActive]} />
+
+            <View style={[styles.stepItem, report.step >= 2 && styles.stepItemActive]}>
+              <View style={[styles.stepCircle, report.step >= 2 && styles.stepCircleActive]}>
+                <Ionicons name={report.step > 2 ? "checkmark" : "search-outline"} size={13} color="#fff" />
+              </View>
+              <Text style={styles.stepLabel}>Análise</Text>
+            </View>
+
+            <View style={[styles.stepLine, report.step >= 4 && styles.stepLineActive]} />
+
+            <View style={[styles.stepItem, report.step >= 4 && styles.stepItemActive]}>
+              <View style={[styles.stepCircle, report.step >= 4 && styles.stepCircleActive]}>
+                <Ionicons name="checkmark-done" size={13} color="#fff" />
+              </View>
+              <Text style={styles.stepLabel}>Concluído</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.sectionBlock}>
+          <Text style={styles.sectionTitle}>Descrição da Ocorrência</Text>
+          <View style={styles.descriptionBox}>
+            <Text style={styles.descriptionText}>{report.description}</Text>
+          </View>
+        </View>
+
+        {report.address && (
+          <View style={styles.sectionBlock}>
+            <Text style={styles.sectionTitle}>Localização Informada</Text>
+            <View style={styles.addressBox}>
+              <Ionicons name="location-outline" size={18} color={colors.primary} />
+              <Text style={styles.addressText}>{report.address}</Text>
+            </View>
+          </View>
+        )}
+
+        {report.updatedAt && (
+          <View style={styles.updateCard}>
+            <Ionicons name="time-outline" size={16} color={colors.text3} />
+            <Text style={styles.updateCardText}>
+              Última atualização registrada pelo município em {report.updatedAt}
+            </Text>
+          </View>
+        )}
+
+        {report.label === "Concluída" && (
+          <View style={styles.retentionBox}>
+            <ReportRetentionTimer resolvedAt={report.resolved_at} audience="user" />
+          </View>
+        )}
+
+        {inModal && (
+          <TouchableOpacity style={styles.btnSecondary} onPress={closeReportDetails}>
+            <Text style={styles.btnSecondaryText}>Fechar</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
   };
 
   return (
     <View style={styles.root}>
+      {/* Top Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.push("/map")}>
-          <Ionicons name="arrow-back" size={24} color={C.text2} />
+        <View style={styles.headerLeft}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.push("/map")}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={20} color={colors.text} />
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.headerTitle}>Minhas Solicitações</Text>
+            <Text style={styles.headerSubtitle}>Acompanhe suas notificações cívicas</Text>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={styles.newReportBtn}
+          onPress={() => router.push("/new-report")}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="add" size={18} color="#fff" />
+          <Text style={styles.newReportBtnText}>Nova Notificação</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Minhas Solicitações</Text>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>
-            {Math.max(stats.total - stats.resolved, 0)} ativas
-          </Text>
+      </View>
+
+      <View style={styles.container}>
+        {/* Metric Cards Banner */}
+        <View style={styles.statsGrid}>
+          <View style={styles.statCard}>
+            <View style={styles.statIconBadge}>
+              <Ionicons name="layers-outline" size={18} color={colors.text} />
+            </View>
+            <View>
+              <Text style={styles.statNumber}>{stats.total}</Text>
+              <Text style={styles.statCaption}>Total Enviadas</Text>
+            </View>
+          </View>
+
+          <View style={styles.statCard}>
+            <View style={[styles.statIconBadge, { backgroundColor: "rgba(245, 158, 11, 0.15)" }]}>
+              <Ionicons name="time-outline" size={18} color="#f59e0b" />
+            </View>
+            <View>
+              <Text style={[styles.statNumber, { color: "#f59e0b" }]}>{stats.pending}</Text>
+              <Text style={styles.statCaption}>Aguardando</Text>
+            </View>
+          </View>
+
+          <View style={styles.statCard}>
+            <View style={[styles.statIconBadge, { backgroundColor: "rgba(37, 99, 235, 0.15)" }]}>
+              <Ionicons name="sync-outline" size={18} color="#2563eb" />
+            </View>
+            <View>
+              <Text style={[styles.statNumber, { color: "#2563eb" }]}>{stats.inProgress}</Text>
+              <Text style={styles.statCaption}>Em Processo</Text>
+            </View>
+          </View>
+
+          <View style={styles.statCard}>
+            <View style={[styles.statIconBadge, { backgroundColor: "rgba(16, 185, 129, 0.15)" }]}>
+              <Ionicons name="checkmark-done" size={18} color="#10b981" />
+            </View>
+            <View>
+              <Text style={[styles.statNumber, { color: "#10b981" }]}>{stats.resolved}</Text>
+              <Text style={styles.statCaption}>Concluídas</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Filter Segmented Bar */}
+        <View style={styles.filterBar}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+            {TABS.map((tab) => {
+              const active = activeTab === tab;
+              return (
+                <TouchableOpacity
+                  key={tab}
+                  style={[styles.filterChip, active && styles.filterChipActive]}
+                  onPress={() => setActiveTab(tab)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
+                    {tab}
+                  </Text>
+                  {tab === "Todas" && (
+                    <View style={[styles.filterCount, active && styles.filterCountActive]}>
+                      <Text style={[styles.filterCountText, active && styles.filterCountTextActive]}>
+                        {stats.total}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Main Content Area (Split in desktop, single column in mobile) */}
+        <View style={styles.contentRow}>
+          {/* List Column */}
+          <View style={[styles.listColumn, isDesktop && styles.listColumnDesktop]}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollList}>
+              {loading ? (
+                <View style={styles.stateFeedback}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                  <Text style={styles.stateFeedbackText}>Buscando suas solicitações...</Text>
+                </View>
+              ) : loadError ? (
+                <View style={styles.stateFeedback}>
+                  <Ionicons name="alert-circle-outline" size={44} color="#ef4444" />
+                  <Text style={styles.errorTitle}>Não foi possível carregar as denúncias</Text>
+                  <Text style={styles.errorSubtitle}>Verifique sua conexão e tente novamente.</Text>
+                  <TouchableOpacity style={styles.retryBtn} onPress={fetchReports}>
+                    <Text style={styles.retryBtnText}>Recarregar</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : filteredReports.length === 0 ? (
+                <View style={styles.stateFeedback}>
+                  <Ionicons name="file-tray-outline" size={48} color={colors.text3} />
+                  <Text style={styles.emptyTitle}>Nenhuma solicitação encontrada</Text>
+                  <Text style={styles.emptySubtitle}>
+                    {activeTab === "Todas"
+                      ? "Você ainda não registrou nenhuma denúncia no município."
+                      : `Nenhuma ocorrência com o status "${activeTab}".`}
+                  </Text>
+                </View>
+              ) : (
+                filteredReports.map((item) => {
+                  const isSelected = currentSelection?.id === item.id;
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[
+                        styles.ticketCard,
+                        isSelected && isDesktop && styles.ticketCardSelected,
+                      ]}
+                      onPress={() => handleSelectReport(item)}
+                      activeOpacity={0.85}
+                    >
+                      <View style={styles.ticketHeader}>
+                        <View style={styles.ticketCategoryPill}>
+                          <Ionicons name={item.categoryIcon} size={14} color={colors.primary} />
+                          <Text style={styles.ticketCategoryText}>{item.categoryLabel}</Text>
+                        </View>
+                        <View style={[styles.ticketStatusChip, { backgroundColor: item.bg }]}>
+                          <View style={[styles.ticketStatusDot, { backgroundColor: item.color }]} />
+                          <Text style={[styles.ticketStatusText, { color: item.color }]}>
+                            {item.label}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <Text style={styles.ticketTitle} numberOfLines={1}>
+                        {item.title}
+                      </Text>
+                      <Text style={styles.ticketDescription} numberOfLines={2}>
+                        {item.description}
+                      </Text>
+
+                      <View style={styles.ticketFooter}>
+                        <View style={styles.ticketMetaItem}>
+                          <Ionicons name="finger-print-outline" size={13} color={colors.text3} />
+                          <Text style={styles.ticketProtocol}>{item.protocol}</Text>
+                        </View>
+                        <View style={styles.ticketMetaItem}>
+                          <Ionicons name="time-outline" size={13} color={colors.text3} />
+                          <Text style={styles.ticketDate}>{item.date}</Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </ScrollView>
+          </View>
+
+          {/* Desktop Right Inspector Pane */}
+          {isDesktop && (
+            <View style={styles.inspectorColumn}>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.inspectorScroll}>
+                {renderDetailCard(currentSelection)}
+              </ScrollView>
+            </View>
+          )}
         </View>
       </View>
 
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={{ paddingBottom: 100 }}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNum}>{stats.total}</Text>
-            <Text style={styles.statLabel}>Total enviadas</Text>
-          </View>
-          <View
-            style={[
-              styles.statCard,
-              { backgroundColor: C.ecoLight, borderColor: C.eco },
-            ]}
-          >
-            <Text style={[styles.statNum, { color: C.eco }]}>
-              {stats.resolved}
-            </Text>
-            <Text style={styles.statLabel}>Concluídas</Text>
-          </View>
-        </View>
-
-        <View style={styles.tabBarWrap}>
-          <View style={styles.tabBar}>
-            {TABS.map((t) => (
-              <TouchableOpacity
-                key={t}
-                style={[styles.tabBtn, activeTab === t && styles.tabBtnActive]}
-                onPress={() => setActiveTab(t)}
-              >
-                <Text
-                  style={[
-                    styles.tabBtnText,
-                    activeTab === t && styles.tabBtnTextActive,
-                  ]}
-                  numberOfLines={1}
-                >
-                  {t}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.card}>
-          {loading ? (
-            <View style={{ padding: 24, alignItems: "center" }}>
-              <ActivityIndicator color={C.primary} />
-            </View>
-          ) : loadError ? (
-            <View style={{ padding: 24, alignItems: "center" }}>
-              <Ionicons name="cloud-offline-outline" size={38} color={C.text3} />
-              <Text style={{ color: C.text, fontWeight: "700", marginTop: 10, textAlign: "center" }}>
-                Não foi possível carregar suas denúncias
-              </Text>
-              <Text style={{ color: C.text3, textAlign: "center", marginTop: 6 }}>
-                Verifique sua conexão e tente novamente.
-              </Text>
-              <TouchableOpacity
-                style={styles.btnOutline}
-                onPress={() => {
-                  setLoading(true);
-                  setLoadError(false);
-                  getMyReports()
-                    .then((data) => setReports(data || []))
-                    .catch((error) => {
-                      console.error("Erro ao carregar relatórios:", error);
-                      setLoadError(true);
-                    })
-                    .finally(() => setLoading(false));
-                }}
-              >
-                <Text style={styles.btnOutlineText}>Tentar novamente</Text>
-              </TouchableOpacity>
-            </View>
-          ) : filteredReports.length === 0 ? (
-            <View style={{ padding: 24, alignItems: "center" }}>
-              <Text style={{ color: C.text3 }}>
-                Nenhuma denúncia encontrada neste filtro.
-              </Text>
-            </View>
-          ) : (
-            filteredReports.map((item, i) => (
-              <TouchableOpacity
-                key={item.id}
-                style={[
-                  styles.reportItem,
-                  i < filteredReports.length - 1 && styles.reportBorder,
-                ]}
-                onPress={() => openReportDetails(item)}
-              >
-                <View
-                  style={[styles.reportIcon, { backgroundColor: item.iconBg }]}
-                >
-                  <Ionicons name={item.icon} size={22} color={item.iconColor} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.reportTitle}>{item.title}</Text>
-                  <Text style={styles.reportSub}>
-                    Enviada {item.date} · {item.protocol}
-                  </Text>
-                </View>
-                <View style={{ alignItems: "flex-end", gap: 6 }}>
-                  <View
-                    style={[styles.statusBadge, { backgroundColor: item.bg }]}
-                  >
-                    <Text style={[styles.statusText, { color: item.color }]}>
-                      {item.label}
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={16} color={C.text3} />
-                </View>
-              </TouchableOpacity>
-            ))
-          )}
-        </View>
-
-        <View style={{ padding: 16 }}>
-          <TouchableOpacity
-            style={styles.btnPrimary}
-            onPress={() => router.push("/new-report")}
-          >
-            <Ionicons name="add" size={20} color="white" />
-            <Text style={styles.btnPrimaryText}>Nova denúncia</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-
-      <Modal
-        visible={modalOpen && !!selectedReport}
-        transparent
-        animationType="slide"
-        onRequestClose={closeReportDetails}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={closeReportDetails}
+      {/* Mobile Details Modal */}
+      {!isDesktop && (
+        <Modal
+          visible={modalOpen && !!selectedReport}
+          transparent
+          animationType="slide"
+          onRequestClose={closeReportDetails}
         >
-          <View style={styles.modalSheet}>
-            <View style={styles.modalHandle} />
-            <View style={styles.modalContent}>
-              <View style={styles.modalTitleRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.modalTitle}>
-                    {selectedReport?.title || "Denúncia"}
-                  </Text>
-                  <Text style={styles.modalProto}>
-                    {selectedReport?.protocol || "Protocolo"}
-                  </Text>
-                </View>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    { backgroundColor: selectedReport?.bg || C.primaryLight },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.statusText,
-                      { color: selectedReport?.color || C.primary },
-                    ]}
-                  >
-                    {selectedReport?.label || "Aguardando"}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.descBox}>
-                <Text style={styles.descLabel}>Descrição</Text>
-                <Text style={styles.descText}>
-                  {selectedReport?.description ||
-                    "Sem descrição cadastrada para esta denúncia."}
-                </Text>
-              </View>
-
-              <View style={styles.datesRow}>
-                <View style={styles.dateCard}>
-                  <Text style={styles.dateLabel}>Enviada em</Text>
-                  <Text style={styles.dateValue}>
-                    {selectedReport?.date || "Data indisponível"}
-                  </Text>
-                </View>
-                <View style={styles.dateCard}>
-                  <Text style={styles.dateLabel}>Categoria</Text>
-                  <Text style={styles.dateValue}>
-                    {selectedReport?.category || "Outros"}
-                  </Text>
-                </View>
-              </View>
-
-              {selectedReport?.updatedAt ? (
-                <View style={styles.dateCardWide}>
-                  <Text style={styles.dateLabel}>Última atualização</Text>
-                  <Text style={styles.dateValue}>
-                    {selectedReport.updatedAt}
-                  </Text>
-                </View>
-              ) : null}
-
-              {selectedReport?.label === "Concluída" ? (
-                <ReportRetentionTimer
-                  resolvedAt={selectedReport?.resolved_at}
-                  audience="user"
-                />
-              ) : null}
-
-              <TouchableOpacity
-                style={styles.btnOutline}
-                onPress={closeReportDetails}
-              >
-                <Text style={styles.btnOutlineText}>Fechar</Text>
-              </TouchableOpacity>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalSheet}>
+              <View style={styles.modalHandle} />
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
+                {renderDetailCard(selectedReport, true)}
+              </ScrollView>
             </View>
           </View>
-        </TouchableOpacity>
-      </Modal>
+        </Modal>
+      )}
     </View>
   );
 }
 
-const makeStyles = (colors: typeof C) => StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+const makeStyles = (colors: typeof C) =>
+  StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: colors.bg,
+    },
+    container: {
+      flex: 1,
+      maxWidth: 1200,
+      width: "100%",
+      alignSelf: "center",
+      paddingHorizontal: 16,
+      paddingTop: 16,
+    },
+    header: {
+      backgroundColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 20,
+      paddingVertical: 14,
+    },
+    headerLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+    backButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 8,
+      backgroundColor: colors.surface2,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    headerTitle: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: colors.text,
+      letterSpacing: -0.3,
+    },
+    headerSubtitle: {
+      fontSize: 12,
+      color: colors.text3,
+      marginTop: 2,
+    },
+    newReportBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: colors.primary,
+      paddingHorizontal: 16,
+      paddingVertical: 9,
+      borderRadius: 8,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+    },
+    newReportBtnText: {
+      color: "#fff",
+      fontSize: 13,
+      fontWeight: "600",
+    },
 
-  header: {
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 18,
-    height: 56,
-  },
-  headerTitle: { fontSize: 16, fontWeight: "700", color: colors.text, letterSpacing: -0.2 },
-  badge: {
-    backgroundColor: colors.surface2,
-    borderRadius: 12,
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  badgeText: { fontSize: 11, fontWeight: "600", color: colors.text2 },
+    statsGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 12,
+      marginBottom: 16,
+    },
+    statCard: {
+      flex: 1,
+      minWidth: 140,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      padding: 14,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+    statIconBadge: {
+      width: 40,
+      height: 40,
+      borderRadius: 10,
+      backgroundColor: colors.surface2,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    statNumber: {
+      fontSize: 20,
+      fontWeight: "800",
+      color: colors.text,
+      letterSpacing: -0.5,
+    },
+    statCaption: {
+      fontSize: 11,
+      fontWeight: "500",
+      color: colors.text3,
+      marginTop: 2,
+    },
 
-  scroll: { flex: 1 },
+    filterBar: {
+      marginBottom: 16,
+    },
+    filterScroll: {
+      gap: 8,
+    },
+    filterChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 20,
+    },
+    filterChipActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    filterChipText: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: colors.text2,
+    },
+    filterChipTextActive: {
+      color: "#fff",
+    },
+    filterCount: {
+      paddingHorizontal: 6,
+      paddingVertical: 1,
+      borderRadius: 10,
+      backgroundColor: colors.surface2,
+    },
+    filterCountActive: {
+      backgroundColor: "rgba(255, 255, 255, 0.25)",
+    },
+    filterCountText: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: colors.text2,
+    },
+    filterCountTextActive: {
+      color: "#fff",
+    },
 
-  statsRow: { flexDirection: "row", gap: 8, padding: 16 },
-  statCard: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    padding: 12,
-  },
-  statNum: { fontSize: 24, fontWeight: "700", color: colors.text, letterSpacing: -0.5 },
-  statLabel: { fontSize: 11, color: colors.text3, fontWeight: "500", marginTop: 2 },
+    contentRow: {
+      flex: 1,
+      flexDirection: "row",
+      gap: 20,
+    },
+    listColumn: {
+      flex: 1,
+    },
+    listColumnDesktop: {
+      maxWidth: 480,
+    },
+    inspectorColumn: {
+      flex: 1.2,
+    },
+    scrollList: {
+      paddingBottom: 40,
+      gap: 12,
+    },
+    inspectorScroll: {
+      paddingBottom: 40,
+    },
 
-  tabBarWrap: { paddingHorizontal: 16, marginBottom: 12 },
-  tabBar: {
-    flexDirection: "row",
-    backgroundColor: colors.surface2,
-    borderRadius: 8,
-    padding: 3,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  tabBtn: {
-    flex: 1,
-    paddingVertical: 7,
-    borderRadius: 6,
-    alignItems: "center",
-  },
-  tabBtnActive: { backgroundColor: colors.surface },
-  tabBtnText: { fontSize: 11, fontWeight: "500", color: colors.text3 },
-  tabBtnTextActive: { color: colors.primary, fontWeight: "600" },
+    ticketCard: {
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      padding: 16,
+    },
+    ticketCardSelected: {
+      borderColor: colors.primary,
+      backgroundColor: "rgba(37, 99, 235, 0.04)",
+      borderWidth: 1.5,
+    },
+    ticketHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 10,
+    },
+    ticketCategoryPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: colors.surface2,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 6,
+    },
+    ticketCategoryText: {
+      fontSize: 11,
+      fontWeight: "600",
+      color: colors.text,
+    },
+    ticketStatusChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 12,
+    },
+    ticketStatusDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+    },
+    ticketStatusText: {
+      fontSize: 11,
+      fontWeight: "700",
+    },
+    ticketTitle: {
+      fontSize: 15,
+      fontWeight: "700",
+      color: colors.text,
+      marginBottom: 6,
+      letterSpacing: -0.2,
+    },
+    ticketDescription: {
+      fontSize: 13,
+      color: colors.text2,
+      lineHeight: 18,
+      marginBottom: 12,
+    },
+    ticketFooter: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingTop: 10,
+    },
+    ticketMetaItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+    },
+    ticketProtocol: {
+      fontSize: 11,
+      fontWeight: "600",
+      color: colors.text3,
+    },
+    ticketDate: {
+      fontSize: 11,
+      color: colors.text3,
+    },
 
-  card: {
-    marginHorizontal: 16,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    overflow: "hidden",
-  },
-  reportItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    padding: 14,
-  },
-  reportBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
-  reportIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  reportTitle: { fontSize: 14, fontWeight: "600", color: colors.text },
-  reportSub: { fontSize: 12, color: colors.text3, marginTop: 2 },
-  statusBadge: { borderRadius: 6, paddingVertical: 3, paddingHorizontal: 8 },
-  statusText: { fontSize: 11, fontWeight: "600" },
+    /* Detail / Inspector */
+    detailCard: {
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 14,
+      padding: 22,
+    },
+    detailCardInModal: {
+      borderWidth: 0,
+      padding: 0,
+    },
+    detailHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 14,
+    },
+    detailProtocolBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: colors.surface2,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    detailProtocolText: {
+      fontSize: 12,
+      fontWeight: "700",
+      color: colors.text,
+    },
+    statusBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 14,
+    },
+    statusDot: {
+      width: 7,
+      height: 7,
+      borderRadius: 3.5,
+    },
+    statusText: {
+      fontSize: 12,
+      fontWeight: "700",
+    },
+    detailTitle: {
+      fontSize: 20,
+      fontWeight: "800",
+      color: colors.text,
+      letterSpacing: -0.4,
+      marginBottom: 10,
+    },
+    detailMetaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      marginBottom: 20,
+    },
+    detailMetaItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+    },
+    detailMetaDivider: {
+      width: 4,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: colors.border,
+    },
+    detailMetaText: {
+      fontSize: 12,
+      fontWeight: "500",
+      color: colors.text2,
+    },
 
-  btnPrimary: {
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    paddingVertical: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  btnPrimaryText: { color: "white", fontSize: 14, fontWeight: "600" },
+    /* Step progress */
+    trackerContainer: {
+      backgroundColor: colors.surface2,
+      borderRadius: 12,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: 20,
+    },
+    trackerTitle: {
+      fontSize: 12,
+      fontWeight: "700",
+      color: colors.text2,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+      marginBottom: 16,
+    },
+    stepTrack: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    stepItem: {
+      alignItems: "center",
+      width: 75,
+    },
+    stepItemActive: {},
+    stepCircle: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 6,
+    },
+    stepCircleActive: {
+      backgroundColor: colors.primary,
+    },
+    stepLine: {
+      flex: 1,
+      height: 2,
+      backgroundColor: colors.border,
+      marginTop: -16,
+    },
+    stepLineActive: {
+      backgroundColor: colors.primary,
+    },
+    stepLabel: {
+      fontSize: 11,
+      fontWeight: "600",
+      color: colors.text3,
+      textAlign: "center",
+    },
 
-  // Modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(15,23,42,0.6)",
-    justifyContent: "flex-end",
-  },
-  modalSheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    maxHeight: "90%",
-  },
-  modalHandle: {
-    width: 32,
-    height: 4,
-    backgroundColor: colors.border2,
-    borderRadius: 2,
-    alignSelf: "center",
-    marginTop: 10,
-  },
-  modalContent: { padding: 18, paddingBottom: 36 },
-  modalTitleRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    marginBottom: 14,
-  },
-  modalTitle: { fontSize: 17, fontWeight: "700", color: colors.text },
-  modalProto: { fontSize: 11, color: colors.text3, marginTop: 2 },
-  descBox: {
-    backgroundColor: colors.surface2,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  descLabel: { fontSize: 11, color: colors.text3, marginBottom: 4 },
-  descText: { fontSize: 13, color: colors.text, lineHeight: 18 },
-  datesRow: { flexDirection: "row", gap: 8, marginBottom: 14 },
-  dateCard: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    padding: 10,
-  },
-  dateLabel: { fontSize: 11, color: colors.text3 },
-  dateValue: { fontSize: 12, fontWeight: "600", color: colors.text, marginTop: 2 },
-  dateCardWide: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 14,
-  },
-  timelineTitle: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: colors.text,
-    marginBottom: 8,
-  },
-  timelineItem: {
-    flexDirection: "row",
-    gap: 10,
-    alignItems: "flex-start",
-    marginBottom: 10,
-  },
-  timelineDot: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    flexShrink: 0,
-  },
-  timelineEvent: { fontSize: 12, fontWeight: "600", color: colors.text },
-  timelineSub: { fontSize: 11, color: colors.text3 },
-  btnOutline: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: "center",
-    marginTop: 4,
-  },
-  btnOutlineText: { color: colors.text, fontSize: 14, fontWeight: "600" },
-});
+    sectionBlock: {
+      marginBottom: 18,
+    },
+    sectionTitle: {
+      fontSize: 12,
+      fontWeight: "700",
+      color: colors.text3,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+      marginBottom: 8,
+    },
+    descriptionBox: {
+      backgroundColor: colors.surface2,
+      padding: 14,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    descriptionText: {
+      fontSize: 14,
+      color: colors.text,
+      lineHeight: 21,
+    },
+    addressBox: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      backgroundColor: colors.surface2,
+      padding: 14,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    addressText: {
+      fontSize: 13,
+      color: colors.text,
+      flex: 1,
+    },
+    updateCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      padding: 12,
+      borderRadius: 8,
+      backgroundColor: colors.surface2,
+      marginBottom: 16,
+    },
+    updateCardText: {
+      fontSize: 12,
+      color: colors.text3,
+      flex: 1,
+    },
+    retentionBox: {
+      marginBottom: 16,
+    },
+    btnSecondary: {
+      marginTop: 8,
+      backgroundColor: colors.surface2,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingVertical: 12,
+      borderRadius: 8,
+      alignItems: "center",
+    },
+    btnSecondaryText: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: colors.text,
+    },
+
+    emptyDetailContainer: {
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 14,
+      padding: 40,
+      alignItems: "center",
+      justifyContent: "center",
+      minHeight: 300,
+    },
+    emptyDetailTitle: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: colors.text,
+      marginTop: 14,
+      marginBottom: 6,
+    },
+    emptyDetailText: {
+      fontSize: 13,
+      color: colors.text3,
+      textAlign: "center",
+      lineHeight: 18,
+      maxWidth: 320,
+    },
+
+    stateFeedback: {
+      paddingVertical: 48,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    stateFeedbackText: {
+      fontSize: 13,
+      color: colors.text3,
+      marginTop: 12,
+    },
+    errorTitle: {
+      fontSize: 15,
+      fontWeight: "700",
+      color: colors.text,
+      marginTop: 12,
+    },
+    errorSubtitle: {
+      fontSize: 12,
+      color: colors.text3,
+      marginTop: 4,
+      marginBottom: 16,
+    },
+    retryBtn: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 8,
+    },
+    retryBtnText: {
+      color: "#fff",
+      fontSize: 12,
+      fontWeight: "600",
+    },
+    emptyTitle: {
+      fontSize: 15,
+      fontWeight: "700",
+      color: colors.text,
+      marginTop: 12,
+    },
+    emptySubtitle: {
+      fontSize: 12,
+      color: colors.text3,
+      marginTop: 4,
+      textAlign: "center",
+    },
+
+    /* Modal */
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      justifyContent: "flex-end",
+    },
+    modalSheet: {
+      backgroundColor: colors.surface,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      maxHeight: "85%",
+      paddingHorizontal: 20,
+      paddingBottom: 28,
+    },
+    modalHandle: {
+      width: 40,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: colors.border,
+      alignSelf: "center",
+      marginVertical: 12,
+    },
+    modalScroll: {
+      paddingVertical: 10,
+    },
+  });

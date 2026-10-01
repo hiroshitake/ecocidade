@@ -369,7 +369,7 @@ export default function ReportsScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
-    </View></View>
+    </View>
   );
 }
 

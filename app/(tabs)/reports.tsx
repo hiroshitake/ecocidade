@@ -387,19 +387,24 @@ export default function ReportsScreen() {
           >
             <Ionicons name="arrow-back" size={20} color={colors.text} />
           </TouchableOpacity>
-          <View>
-            <Text style={styles.headerTitle}>Minhas Solicitações</Text>
-            <Text style={styles.headerSubtitle}>Acompanhe suas notificações cívicas</Text>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle} numberOfLines={1}>Minhas Solicitações</Text>
+            <Text style={styles.headerSubtitle} numberOfLines={1}>Acompanhe suas denúncias</Text>
           </View>
         </View>
 
         <TouchableOpacity
           style={styles.newReportBtn}
-          onPress={() => router.push("/new-report")}
+          onPress={() => {
+            try {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            } catch {}
+            router.push("/new-report");
+          }}
           activeOpacity={0.85}
         >
           <Ionicons name="add" size={18} color="#fff" />
-          <Text style={styles.newReportBtnText}>Nova Notificação</Text>
+          <Text style={styles.newReportBtnText}>Nova denúncia</Text>
         </TouchableOpacity>
       </View>
 
@@ -608,13 +613,20 @@ const makeStyles = (colors: typeof C) =>
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      paddingHorizontal: 20,
-      paddingVertical: 14,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      gap: 10,
     },
     headerLeft: {
+      flex: 1,
+      minWidth: 0,
       flexDirection: "row",
       alignItems: "center",
-      gap: 12,
+      gap: 10,
+    },
+    headerTextContainer: {
+      flex: 1,
+      minWidth: 0,
     },
     backButton: {
       width: 36,
@@ -638,12 +650,13 @@ const makeStyles = (colors: typeof C) =>
       marginTop: 2,
     },
     newReportBtn: {
+      flexShrink: 0,
       flexDirection: "row",
       alignItems: "center",
-      gap: 6,
+      gap: 5,
       backgroundColor: colors.primary,
-      paddingHorizontal: 16,
-      paddingVertical: 9,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
       borderRadius: 8,
       shadowColor: colors.primary,
       shadowOffset: { width: 0, height: 2 },

@@ -21,6 +21,7 @@ export interface MapReport {
   description?: string;
   status?: string;
   resolved_at?: string | null;
+  distanceKm?: number | null;
   image_url?: string | null;
   created_at?: string | null;
   reporter?: {
@@ -264,6 +265,20 @@ export default function ReportMapModal({ report, onClose }: ReportMapModalProps)
               </ThemedText>
             </View>
 
+            {report?.distanceKm != null ? (
+              <View style={styles.distanceCard}>
+                <Ionicons name="navigate-outline" size={20} color={C.primary} />
+                <View style={styles.distanceCopy}>
+                  <ThemedText style={styles.label}>Distância</ThemedText>
+                  <ThemedText style={styles.distanceValue}>
+                    {report.distanceKm < 1
+                      ? `${Math.round(report.distanceKm * 1000)} m de você`
+                      : `${report.distanceKm.toFixed(1)} km de você`}
+                  </ThemedText>
+                </View>
+              </View>
+            ) : null}
+
             <View style={styles.infoGrid}>
               <View style={styles.infoCardSmall}>
                 <Ionicons name="time-outline" size={19} color={C.primary} />
@@ -487,6 +502,19 @@ const styles = StyleSheet.create({
   infoHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
   sectionTitle: { fontSize: 14, fontWeight: "800", color: C.text },
   description: { marginTop: 9, fontSize: 13, lineHeight: 19, color: C.text2 },
+  distanceCard: {
+    minHeight: 64,
+    borderRadius: 14,
+    backgroundColor: C.surface2,
+    borderWidth: 1,
+    borderColor: C.border,
+    padding: 13,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  distanceCopy: { flex: 1 },
+  distanceValue: { marginTop: 3, fontSize: 14, fontWeight: "800", color: C.text },
   infoGrid: { flexDirection: "row", gap: 10 },
   infoCardSmall: {
     flex: 1,

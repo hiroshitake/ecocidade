@@ -563,38 +563,6 @@ export async function createReportImageUrl(path: string) {
   return data.signedUrl;
 }
 
-export async function updateSupabaseReportStatus(
-  reportId: string,
-  status: string,
-) {
-  if (!supabase) {
-    throw new Error("Supabase não configurado.");
-  }
-
-  const { data, error } = await supabase
-    .from("reports")
-    .update({
-      status,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", reportId)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-export async function deleteSupabaseReport(reportId: string) {
-  if (!supabase) {
-    throw new Error("Supabase não configurado.");
-  }
-
-  const { error } = await supabase.from("reports").delete().eq("id", reportId);
-  if (error) throw error;
-  return { id: reportId };
-}
-
 export async function createSupabaseDangerZone(
   payload: Record<string, unknown>,
 ) {

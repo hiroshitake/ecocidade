@@ -5,7 +5,7 @@ import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ThemedText } from '../themed-text';
 import { C } from '../../constants/theme';
 import { useAppTheme } from '../../context/theme-context';
-import { logout } from '../../services/auth';
+import { logout, getCurrentUserData } from '../../services/auth';
 
 interface AdminSidebarProps {
   collapsed: boolean;
@@ -20,6 +20,13 @@ export default function AdminSidebar({
 }: AdminSidebarProps) {
   const { colors } = useAppTheme();
   const router = useRouter();
+  const [adminUser, setAdminUser] = React.useState<{ name?: string; city?: string } | null>(null);
+
+  React.useEffect(() => {
+    getCurrentUserData().then(user => {
+      if (user) setAdminUser(user);
+    }).catch(console.error);
+  }, []);
   const styles = makeStyles(colors, collapsed);
 
   const handleLogout = async () => {
@@ -145,8 +152,12 @@ export default function AdminSidebar({
           </View>
           {!collapsed && (
             <View style={{ flex: 1 }}>
-              <ThemedText style={styles.adminName} numberOfLines={1}>Administrador</ThemedText>
-              <ThemedText style={styles.adminRole} numberOfLines={1}>Prefeitura Municipal</ThemedText>
+              <ThemedText style={styles.adminName} numberOfLines={1}>
+                {adminUser?.name || 'Administrador'}
+              </ThemedText>
+              <ThemedText style={styles.adminRole} numberOfLines={1}>
+                Admin da Prefeitura de {adminUser?.city || 'sua cidade'}
+              </ThemedText>
             </View>
           )}
         </View>

@@ -20,7 +20,7 @@ interface Report {
 const STATUS_OPTIONS = [
   { id: 'pending', label: 'Aguardando', icon: 'clock-alert-outline', color: C.warning },
   { id: 'in_progress', label: 'Em Processo', icon: 'progress-clock', color: C.primary },
-  { id: 'resolved', label: 'Concluída', icon: 'check-circle-outline', color: C.eco },
+  { id: 'resolved', label: 'Concluída', icon: 'check-circle-outline', color: colors.eco },
 ];
 
 const normalizeStatus = (status?: string) => {
@@ -34,6 +34,7 @@ const normalizeStatus = (status?: string) => {
 export default function ManageReportsFiltered({ security = false }: { security?: boolean }) {
   const { colors } = useAppTheme();
   const styles = makeStyles(colors);
+  const STATUS_OPTIONS = useMemo(() => getStatusOptions(colors), [colors]);
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
@@ -260,8 +261,8 @@ export default function ManageReportsFiltered({ security = false }: { security?:
   return (
     <ThemedView style={styles.container}>
       <View style={styles.header}>
-        <View style={[styles.headerIcon, { backgroundColor: security ? C.danger : C.primary }]}>
-          <MaterialCommunityIcons name={security ? 'shield-alert' : 'city-variant-outline'} size={22} color={C.white} />
+        <View style={[styles.headerIcon, { backgroundColor: security ? colors.danger : colors.primary }]}>
+          <MaterialCommunityIcons name={security ? 'shield-alert' : 'city-variant-outline'} size={22} color={colors.white} />
         </View>
         <View style={styles.headerText}><ThemedText style={styles.title}>{title}</ThemedText><ThemedText style={styles.subtitle}>{subtitle}</ThemedText></View>
         <View style={styles.countBadge}><ThemedText style={styles.countText}>{reports.length}</ThemedText></View>
@@ -285,9 +286,9 @@ export default function ManageReportsFiltered({ security = false }: { security?:
               accessibilityState={{ selected: active }}
             >
               {option ? <MaterialCommunityIcons name={option.icon as any} size={16} color={active ? option.color : C.text3} /> : null}
-              <ThemedText style={[styles.filterText, active && { color: option?.color || C.primary }]}>{filter.label}</ThemedText>
-              <View style={[styles.filterCount, active && { backgroundColor: (option?.color || C.primary) + '18' }]}>
-                <ThemedText style={[styles.filterCountText, active && { color: option?.color || C.primary }]}>{filter.count}</ThemedText>
+              <ThemedText style={[styles.filterText, active && { color: option?.color || colors.primary }]}>{filter.label}</ThemedText>
+              <View style={[styles.filterCount, active && { backgroundColor: (option?.color || colors.primary) + '18' }]}>
+                <ThemedText style={[styles.filterCountText, active && { color: option?.color || colors.primary }]}>{filter.count}</ThemedText>
               </View>
             </TouchableOpacity>
           );
@@ -301,18 +302,18 @@ export default function ManageReportsFiltered({ security = false }: { security?:
             <View style={styles.cardTop}>
               <View style={styles.cardInfo}>
                 <View style={styles.categoryRow}>
-                  <ThemedText style={[styles.category, security && { color: C.danger }]}>{security ? 'SEGURANÇA' : (item.category || 'SEM CATEGORIA').toUpperCase()}</ThemedText>
+                  <ThemedText style={[styles.category, security && { color: colors.danger }]}>{security ? 'SEGURANÇA' : (item.category || 'SEM CATEGORIA').toUpperCase()}</ThemedText>
                   {item.hidden_from_public ? <View style={styles.hiddenBadge}><ThemedText style={styles.hiddenBadgeText}>OCULTA</ThemedText></View> : null}
                 </View>
                 <ThemedText style={styles.address} numberOfLines={1}>{item.location?.address || 'Localização desconhecida'}</ThemedText>
               </View>
               {normalizeStatus(item.status) !== 'resolved' ? (
                 <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.deleteButton}>
-                  <MaterialCommunityIcons name="trash-can-outline" size={21} color={C.danger} />
+                  <MaterialCommunityIcons name="trash-can-outline" size={21} color={colors.danger} />
                 </TouchableOpacity>
               ) : (
                 <View style={styles.deleteButton}>
-                  <MaterialCommunityIcons name="lock-outline" size={19} color={C.text3} />
+                  <MaterialCommunityIcons name="lock-outline" size={19} color={colors.text3} />
                 </View>
               )}
             </View>
@@ -320,7 +321,7 @@ export default function ManageReportsFiltered({ security = false }: { security?:
             <View style={styles.cardBottom}><ThemedText style={styles.date}>{formatDate(item.created_at)}</ThemedText><View style={[styles.statusBadge, { backgroundColor: statusColor(item.status) + '20' }]}><ThemedText style={[styles.statusText, { color: statusColor(item.status) }]}>{statusLabel(item.status)}</ThemedText></View></View>
           </TouchableOpacity>
         )}
-        ListEmptyComponent={<View style={styles.empty}><MaterialCommunityIcons name={security ? 'shield-check-outline' : 'check-circle-outline'} size={48} color={C.text3} /><ThemedText style={styles.emptyTitle}>{statusFilter === 'all' ? 'Nenhuma denúncia encontrada' : `Nenhuma denúncia ${STATUS_OPTIONS.find(option => option.id === statusFilter)?.label.toLowerCase() || 'neste status'}`}</ThemedText><ThemedText style={styles.emptyText}>{statusFilter === 'all' ? 'Novas ocorrências aparecerão aqui.' : 'Altere o filtro para visualizar outras denúncias.'}</ThemedText></View>}
+        ListEmptyComponent={<View style={styles.empty}><MaterialCommunityIcons name={security ? 'shield-check-outline' : 'check-circle-outline'} size={48} color={colors.text3} /><ThemedText style={styles.emptyTitle}>{statusFilter === 'all' ? 'Nenhuma denúncia encontrada' : `Nenhuma denúncia ${STATUS_OPTIONS.find(option => option.id === statusFilter)?.label.toLowerCase() || 'neste status'}`}</ThemedText><ThemedText style={styles.emptyText}>{statusFilter === 'all' ? 'Novas ocorrências aparecerão aqui.' : 'Altere o filtro para visualizar outras denúncias.'}</ThemedText></View>}
       />
 
       <Modal visible={!!selectedReport} transparent animationType="fade" onRequestClose={() => setSelectedReport(null)}>
@@ -330,7 +331,7 @@ export default function ManageReportsFiltered({ security = false }: { security?:
             <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalBody} showsVerticalScrollIndicator={true}>
               <View style={styles.reporterRow}>
                 <View style={styles.avatar}>
-                  {selectedReport.reporter?.avatar_url ? <Image source={{ uri: selectedReport.reporter.avatar_url }} style={styles.avatarImage} resizeMode="cover" /> : <MaterialCommunityIcons name="account-circle-outline" size={29} color={C.text3} />}
+                  {selectedReport.reporter?.avatar_url ? <Image source={{ uri: selectedReport.reporter.avatar_url }} style={styles.avatarImage} resizeMode="cover" /> : <MaterialCommunityIcons name="account-circle-outline" size={29} color={colors.text3} />}
                 </View>
                 <View style={styles.reporterCopy}>
                   <ThemedText style={styles.label}>Denunciante</ThemedText>
@@ -348,11 +349,11 @@ export default function ManageReportsFiltered({ security = false }: { security?:
                 >
                   <Image source={{ uri: selectedReport.image_url }} style={styles.photoImage} resizeMode="contain" />
                   <View style={styles.expandHint}>
-                    <MaterialCommunityIcons name="fullscreen" size={17} color={C.white} />
+                    <MaterialCommunityIcons name="fullscreen" size={17} color={colors.white} />
                     <ThemedText style={styles.expandHintText}>Ver em tela cheia</ThemedText>
                   </View>
                 </TouchableOpacity>
-              ) : <View style={styles.photo}><MaterialCommunityIcons name="image-off-outline" size={34} color={C.text3} /><ThemedText style={styles.emptyText}>Sem foto</ThemedText></View>}
+              ) : <View style={styles.photo}><MaterialCommunityIcons name="image-off-outline" size={34} color={colors.text3} /><ThemedText style={styles.emptyText}>Sem foto</ThemedText></View>}
               <View style={styles.detail}><ThemedText style={styles.label}>Descrição</ThemedText><ThemedText style={styles.value}>{selectedReport.description || 'Sem descrição'}</ThemedText></View>
               <View style={styles.detail}><ThemedText style={styles.label}>Localização</ThemedText><ThemedText style={styles.value}>{selectedReport.location?.address || 'Localização desconhecida'}</ThemedText></View>
               <View style={styles.detail}><ThemedText style={styles.label}>Data e hora</ThemedText><ThemedText style={styles.value}>{formatDate(selectedReport.created_at)}</ThemedText></View>
@@ -362,7 +363,7 @@ export default function ManageReportsFiltered({ security = false }: { security?:
                 <>
                   <ReportRetentionTimer resolvedAt={selectedReport.resolved_at} audience="admin" />
                   <View style={styles.lockedNotice}>
-                  <MaterialCommunityIcons name="lock-outline" size={20} color={C.eco} />
+                  <MaterialCommunityIcons name="lock-outline" size={20} color={colors.eco} />
                   <View style={styles.lockedNoticeCopy}>
                     <ThemedText style={styles.lockedNoticeTitle}>Denúncia concluída</ThemedText>
                     <ThemedText style={styles.lockedNoticeText}>Esta denúncia não pode mais ser alterada, ocultada ou excluída manualmente. Ela seguirá o prazo automático de retenção do sistema.</ThemedText>
@@ -374,11 +375,11 @@ export default function ManageReportsFiltered({ security = false }: { security?:
                   <ThemedText style={styles.label}>Alterar status</ThemedText>
                   {STATUS_OPTIONS.map(option => <TouchableOpacity key={option.id} style={[styles.statusOption, normalizeStatus(selectedReport.status) === option.id && { borderColor: option.color, backgroundColor: option.color + '12' }]} onPress={() => handleStatusChange(option.id)}><MaterialCommunityIcons name={option.icon as any} size={19} color={option.color} /><ThemedText style={[styles.statusOptionText, normalizeStatus(selectedReport.status) === option.id && { color: option.color }]}>{option.label}</ThemedText></TouchableOpacity>)}
                   <TouchableOpacity style={[styles.visibilityButton, selectedReport.hidden_from_public && styles.showButton]} onPress={() => handleVisibilityChange(selectedReport)}>
-                    <MaterialCommunityIcons name={selectedReport.hidden_from_public ? 'eye-outline' : 'eye-off-outline'} size={19} color={selectedReport.hidden_from_public ? C.eco : C.danger} />
-                    <ThemedText style={[styles.visibilityButtonText, { color: selectedReport.hidden_from_public ? C.eco : C.danger }]}>{selectedReport.hidden_from_public ? 'Mostrar para usuários' : 'Ocultar para usuários'}</ThemedText>
+                    <MaterialCommunityIcons name={selectedReport.hidden_from_public ? 'eye-outline' : 'eye-off-outline'} size={19} color={selectedReport.hidden_from_public ? colors.eco : colors.danger} />
+                    <ThemedText style={[styles.visibilityButtonText, { color: selectedReport.hidden_from_public ? colors.eco : colors.danger }]}>{selectedReport.hidden_from_public ? 'Mostrar para usuários' : 'Ocultar para usuários'}</ThemedText>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.permanentDeleteButton} onPress={() => handleDelete(selectedReport.id)}>
-                    <MaterialCommunityIcons name="trash-can-outline" size={19} color={C.danger} />
+                    <MaterialCommunityIcons name="trash-can-outline" size={19} color={colors.danger} />
                     <ThemedText style={styles.permanentDeleteText}>Excluir permanentemente</ThemedText>
                   </TouchableOpacity>
                 </>
@@ -392,7 +393,7 @@ export default function ManageReportsFiltered({ security = false }: { security?:
       <Modal visible={fullscreenImage} transparent animationType="fade" onRequestClose={() => setFullscreenImage(false)}>
         <View style={styles.fullscreenOverlay}>
           <TouchableOpacity style={styles.fullscreenClose} onPress={() => setFullscreenImage(false)} accessibilityRole="button" accessibilityLabel="Fechar foto em tela cheia">
-            <MaterialCommunityIcons name="close" size={27} color={C.white} />
+            <MaterialCommunityIcons name="close" size={27} color={colors.white} />
           </TouchableOpacity>
           {selectedReport?.image_url ? <Image source={{ uri: selectedReport.image_url }} style={styles.fullscreenImage} resizeMode="contain" /> : null}
         </View>
@@ -403,10 +404,10 @@ export default function ManageReportsFiltered({ security = false }: { security?:
 
 const makeStyles = (colors: typeof C) =>
   StyleSheet.create({
-  container: { flex: 1 }, header: { flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface },
+  container: { flex: 1, backgroundColor: colors.bg }, header: { flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface },
   headerIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' }, headerText: { flex: 1, marginLeft: 12 }, title: { fontSize: 20, fontWeight: '800', color: colors.text }, subtitle: { fontSize: 11, color: colors.text3, marginTop: 2 }, countBadge: { minWidth: 34, height: 34, borderRadius: 17, backgroundColor: colors.surface2, alignItems: 'center', justifyContent: 'center' }, countText: { fontWeight: '800', color: colors.text },
   filterBar: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, gap: 7, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface, flexWrap: 'wrap' }, filterButton: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface2 }, filterButtonActive: { borderColor: colors.primary + '55', backgroundColor: colors.primary + '0A' }, filterText: { fontSize: 11, fontWeight: '800', color: colors.text2 }, filterCount: { minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 5, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface }, filterCountText: { fontSize: 10, fontWeight: '900', color: colors.text3 },
-  list: { padding: 16, gap: 12 }, card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 16 }, securityCard: { borderColor: colors.danger + '55' }, hiddenCard: { opacity: 0.72 }, cardTop: { flexDirection: 'row', alignItems: 'flex-start' }, cardInfo: { flex: 1 }, categoryRow: { flexDirection: 'row', alignItems: 'center', gap: 8 }, category: { fontSize: 11, fontWeight: '900', color: colors.primary, letterSpacing: 0.7 }, hiddenBadge: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 999, backgroundColor: colors.danger + '18' }, hiddenBadgeText: { fontSize: 8, fontWeight: '900', color: colors.danger }, address: { fontSize: 13, color: colors.text2, marginTop: 4 }, deleteButton: { padding: 2, marginLeft: 8 }, description: { fontSize: 14, color: colors.text, marginTop: 14, lineHeight: 20 }, cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }, date: { fontSize: 11, color: colors.text3 }, statusBadge: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999 }, statusText: { fontSize: 10, fontWeight: '800' }, empty: { alignItems: 'center', padding: 48 }, emptyTitle: { fontSize: 16, fontWeight: '700', color: colors.text, marginTop: 12 }, emptyText: { fontSize: 12, color: colors.text3, marginTop: 4, textAlign: 'center' },
+  list: { padding: 16, gap: 12, backgroundColor: colors.bg }, card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 16 }, securityCard: { borderColor: colors.danger + '55' }, hiddenCard: { opacity: 0.72 }, cardTop: { flexDirection: 'row', alignItems: 'flex-start' }, cardInfo: { flex: 1 }, categoryRow: { flexDirection: 'row', alignItems: 'center', gap: 8 }, category: { fontSize: 11, fontWeight: '900', color: colors.primary, letterSpacing: 0.7 }, hiddenBadge: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 999, backgroundColor: colors.danger + '18' }, hiddenBadgeText: { fontSize: 8, fontWeight: '900', color: colors.danger }, address: { fontSize: 13, color: colors.text2, marginTop: 4 }, deleteButton: { padding: 2, marginLeft: 8 }, description: { fontSize: 14, color: colors.text, marginTop: 14, lineHeight: 20 }, cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }, date: { fontSize: 11, color: colors.text3 }, statusBadge: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999 }, statusText: { fontSize: 10, fontWeight: '800' }, empty: { alignItems: 'center', padding: 48 }, emptyTitle: { fontSize: 16, fontWeight: '700', color: colors.text, marginTop: 12 }, emptyText: { fontSize: 12, color: colors.text3, marginTop: 4, textAlign: 'center' },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 16 },
   fullscreenOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.94)', alignItems: 'center', justifyContent: 'center', padding: 18 },
   fullscreenImage: { width: '100%', height: '100%' },

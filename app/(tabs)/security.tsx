@@ -176,6 +176,7 @@ export default function SecurityScreen() {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
+        aspect: [4, 3],
         quality: 0.7,
       });
 
@@ -191,10 +192,26 @@ export default function SecurityScreen() {
   const handleTakePhoto = async () => {
     try {
       if (Platform.OS === "web") {
-        Alert.alert(
-          "Funcionalidade não disponível",
-          "Tirar foto não é suportado no web. Use a galeria.",
-        );
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/*";
+        input.setAttribute("capture", "environment");
+        input.style.display = "none";
+
+        input.onchange = async (event: Event) => {
+          const file = (event.target as HTMLInputElement).files?.[0];
+          if (!file) return;
+
+          const reader = new FileReader();
+          reader.onload = () => {
+            if (typeof reader.result === "string") {
+              setCropPhotoUri(reader.result);
+            }
+          };
+          reader.readAsDataURL(file);
+        };
+
+        input.click();
         return;
       }
 
@@ -210,6 +227,7 @@ export default function SecurityScreen() {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
+        aspect: [4, 3],
         quality: 0.7,
       });
 

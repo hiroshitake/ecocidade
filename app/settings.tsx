@@ -7,7 +7,7 @@ import { ConfirmationModal } from "../components/ConfirmationModal";
 import { C, S } from "../constants/theme";
 import { useAppTheme, type ThemeMode } from "../context/theme-context";
 import { useToast } from "../context/toast-context";
-import { changeUserPassword, deleteUserAccount, deleteUserAvatar, getCurrentUserData, getCurrentUserAvatarUrl, updateUserProfile, uploadUserAvatar } from "../services/auth";
+import { changeUserPassword, deleteUserAccount, deleteUserAvatar, getCurrentUserData, getCurrentUserAvatarUrl, logout, updateUserProfile, uploadUserAvatar } from "../services/auth";
 
 export default function SettingsScreen() {
   const toast = useToast();
@@ -27,7 +27,7 @@ export default function SettingsScreen() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
-  const [securityOpen, setSecurityOpen] = useState(false);
+  const [securityOpen, setSecurityOpen] = useState(false);\n  const [logoutOpen, setLogoutOpen] = useState(false);\n  const [loggingOut, setLoggingOut] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -92,6 +92,19 @@ export default function SettingsScreen() {
     finally { setDeleting(false); }
   };
 
+  const confirmLogout = async () => {
+    try {
+      setLoggingOut(true);
+      await logout();
+      setLogoutOpen(false);
+      router.replace("/login");
+    } catch {
+      toast.addToast("Não foi possível sair da conta.", "error");
+    } finally {
+      setLoggingOut(false);
+    }
+  };
+
   if (loading) return <View style={styles.loading}><ActivityIndicator size="large" color={C.primary} /></View>;
 
   return (
@@ -152,6 +165,19 @@ export default function SettingsScreen() {
               </View>
             )}
           </View>
+
+          <TouchableOpacity style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => setLogoutOpen(true)} activeOpacity={0.8}>
+            <View style={styles.rowHeader}>
+              <View style={[styles.iconBox, { backgroundColor: C.danger + "12" }]}>
+                <Ionicons name="log-out-outline" size={21} color={C.danger} />
+              </View>
+              <View style={styles.rowText}>
+                <Text style={[styles.rowTitle, { color: colors.text }]}>Sair da conta</Text>
+                <Text style={[styles.rowDescription, { color: colors.text2 }]}>Encerrar sua sessão neste dispositivo</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.text3} />
+            </View>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.group}>
@@ -186,20 +212,7 @@ export default function SettingsScreen() {
             </View>
           </View>
 
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={styles.rowHeader}>
-              <View style={[styles.iconBox, { backgroundColor: colors.surface2 }]}>
-                <Ionicons name="notifications-outline" size={21} color={colors.text2} />
-              </View>
-              <View style={styles.rowText}>
-                <Text style={[styles.rowTitle, { color: colors.text }]}>Notificações</Text>
-                <Text style={[styles.rowDescription, { color: colors.text2 }]}>Atualizações de denúncias e avisos da prefeitura</Text>
-              </View>
-              <View style={styles.comingSoon}><Text style={styles.comingSoonText}>Em breve</Text></View>
-            </View>
-          </View>
-
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <TouchableOpacity style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push("/location-settings")} activeOpacity={0.8}>
             <View style={styles.rowHeader}>
               <View style={[styles.iconBox, { backgroundColor: colors.surface2 }]}>
                 <Ionicons name="location-outline" size={21} color={colors.text2} />
@@ -208,9 +221,9 @@ export default function SettingsScreen() {
                 <Text style={[styles.rowTitle, { color: colors.text }]}>Localização</Text>
                 <Text style={[styles.rowDescription, { color: colors.text2 }]}>Permissões e uso da sua localização</Text>
               </View>
-              <View style={styles.comingSoon}><Text style={styles.comingSoonText}>Em breve</Text></View>
+              <Ionicons name="chevron-forward" size={20} color={colors.text3} />
             </View>
-          </View>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.group}>
@@ -289,6 +302,7 @@ export default function SettingsScreen() {
       </ScrollView>
 
       <ConfirmationModal title="Excluir conta?" description="Sua conta e seus dados pessoais serão removidos. Suas denúncias não serão apagadas: elas permanecerão no sistema para preservar o histórico e auxiliar a prefeitura. Essa ação não pode ser desfeita." confirmText={deleting ? "Excluindo..." : "Excluir minha conta"} cancelText="Cancelar" visible={deleteOpen} destructive onDismiss={() => setDeleteOpen(false)} onConfirm={confirmDelete} />
+      <ConfirmationModal title="Sair da conta?" description="Sua sessão será encerrada neste dispositivo. Seus dados permanecerão salvos." confirmText={loggingOut ? "Saindo..." : "Sair"} cancelText="Cancelar" visible={logoutOpen} onDismiss={() => setLogoutOpen(false)} onConfirm={confirmLogout} />
     </View>
   );
 }

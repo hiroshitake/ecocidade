@@ -172,139 +172,46 @@ export default function AdminDashboard() {
     }
   };
 
-  const navItems = [
-    {
-      id: 'dashboard',
-      label: 'Visão Geral',
-      icon: 'view-dashboard-outline' as const,
-      active: true,
-      onPress: () => {},
-    },
-    {
-      id: 'zeladoria',
-      label: 'Gestão de Zeladoria',
-      icon: 'city-variant-outline' as const,
-      active: false,
-      onPress: () => router.push('/(admin)/manage-zeladoria'),
-    },
-    {
-      id: 'seguranca',
-      label: 'Gestão de Segurança',
-      icon: 'shield-alert-outline' as const,
-      active: false,
-      onPress: () => router.push('/(admin)/manage-seguranca'),
-    },
-    {
-      id: 'analise',
-      label: 'Análise de Ocorrências',
-      icon: 'chart-timeline-variant' as const,
-      active: false,
-      onPress: () => router.push('/(admin)/security-analysis'),
-    },
-    {
-      id: 'zonas',
-      label: 'Áreas de Risco',
-      icon: 'alert-octagon-outline' as const,
-      active: false,
-      onPress: () => router.push('/(admin)/danger-zones'),
-    },
-  ];
-
   return (
     <ThemedView style={styles.container}>
       {isDesktop ? (
-        // Layout Desktop com Sidebar Lateral
-        <View style={styles.desktopLayout}>
-          {/* Barra de Navegação Lateral (Sidebar) */}
-          <View style={styles.sidebar}>
-            <View style={styles.sidebarHeader}>
-              <View style={styles.sidebarBrand}>
-                <View style={styles.brandBadge}>
-                  <MaterialCommunityIcons name="shield-crown" size={24} color="#ffffff" />
-                </View>
-                <View>
-                  <ThemedText style={styles.sidebarTitle}>ECOcidade</ThemedText>
-                  <ThemedText style={styles.sidebarSubtitle}>Painel Governamental</ThemedText>
-                </View>
-              </View>
+        // Painel Principal Desktop
+        <View style={styles.desktopContainer}>
+          <View style={styles.topBar}>
+            <View>
+              <ThemedText style={styles.topBarTitle}>Dashboard Geral</ThemedText>
+              <ThemedText style={styles.topBarSubtitle}>
+                Monitoramento em tempo real de chamados, zeladoria e segurança
+              </ThemedText>
             </View>
-
-            <View style={styles.navMenu}>
-              <ThemedText style={styles.navSectionLabel}>MENU PRINCIPAL</ThemedText>
-              {navItems.map((item) => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[styles.navItem, item.active && styles.navItemActive]}
-                  onPress={item.onPress}
-                  activeOpacity={0.7}
-                >
-                  <MaterialCommunityIcons
-                    name={item.icon}
-                    size={20}
-                    color={item.active ? colors.primary : colors.text2}
-                  />
-                  <ThemedText style={[styles.navItemText, item.active && styles.navItemTextActive]}>
-                    {item.label}
-                  </ThemedText>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <View style={styles.sidebarFooter}>
-              <View style={styles.adminInfo}>
-                <View style={styles.adminAvatar}>
-                  <MaterialCommunityIcons name="account-tie" size={20} color={colors.primary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <ThemedText style={styles.adminName}>Administrador</ThemedText>
-                  <ThemedText style={styles.adminRole}>Prefeitura Municipal</ThemedText>
-                </View>
-              </View>
-              <TouchableOpacity style={styles.sidebarLogoutBtn} onPress={handleLogout}>
-                <MaterialCommunityIcons name="logout-variant" size={18} color={colors.danger} />
-                <ThemedText style={styles.sidebarLogoutText}>Encerrar Sessão</ThemedText>
+            <View style={styles.topBarActions}>
+              <TouchableOpacity
+                style={styles.refreshBtn}
+                onPress={loadStats}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons name="refresh" size={18} color={colors.primary} />
+                    <ThemedText style={styles.refreshBtnText}>Atualizar</ThemedText>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* Área Principal com Rolagem Independente */}
-          <View style={styles.mainArea}>
-            <View style={styles.topBar}>
-              <View>
-                <ThemedText style={styles.topBarTitle}>Dashboard Geral</ThemedText>
-                <ThemedText style={styles.topBarSubtitle}>
-                  Monitoramento em tempo real de chamados, zeladoria e segurança
-                </ThemedText>
-              </View>
-              <View style={styles.topBarActions}>
-                <TouchableOpacity
-                  style={styles.refreshBtn}
-                  onPress={loadStats}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <ActivityIndicator size="small" color={colors.primary} />
-                  ) : (
-                    <>
-                      <MaterialCommunityIcons name="refresh" size={18} color={colors.primary} />
-                      <ThemedText style={styles.refreshBtnText}>Atualizar</ThemedText>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <ScrollView
-              style={styles.desktopScrollView}
-              contentContainerStyle={styles.desktopScrollContent}
-              showsVerticalScrollIndicator={true}
-            >
-              {renderDashboardContent(stats, colors, styles, router, loading)}
-            </ScrollView>
-          </View>
+          <ScrollView
+            style={styles.desktopScrollView}
+            contentContainerStyle={styles.desktopScrollContent}
+            showsVerticalScrollIndicator={true}
+          >
+            {renderDashboardContent(stats, colors, styles, router)}
+          </ScrollView>
         </View>
       ) : (
-        // Layout Mobile com Rolagem Fluida
+        // Layout Mobile
         <View style={styles.mobileLayout}>
           <View style={styles.mobileHeader}>
             <View>
@@ -321,7 +228,7 @@ export default function AdminDashboard() {
             contentContainerStyle={styles.mobileScrollContent}
             showsVerticalScrollIndicator={false}
           >
-            {renderDashboardContent(stats, colors, styles, router, loading)}
+            {renderDashboardContent(stats, colors, styles, router)}
           </ScrollView>
         </View>
       )}
@@ -333,8 +240,7 @@ function renderDashboardContent(
   stats: ReportStats,
   colors: typeof C,
   styles: any,
-  router: any,
-  loading: boolean
+  router: any
 ) {
   return (
     <>
@@ -520,64 +426,6 @@ function renderDashboardContent(
             ))}
         </View>
       </View>
-
-      {/* Ações Administrativas */}
-      <View style={styles.section}>
-        <ThemedText style={styles.sectionTitle}>Ações Administrativas</ThemedText>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => router.push('/(admin)/manage-zeladoria')}
-        >
-          <MaterialCommunityIcons name="city-variant-outline" size={24} color={colors.primary} />
-          <View style={styles.actionContent}>
-            <ThemedText style={styles.actionTitle}>Gerenciar Zeladoria</ThemedText>
-            <ThemedText style={styles.actionDesc}>
-              Alterar status e visualizar denúncias de zeladoria
-            </ThemedText>
-          </View>
-          <MaterialCommunityIcons name="chevron-right" size={24} color={colors.text3} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => router.push('/(admin)/manage-seguranca')}
-        >
-          <MaterialCommunityIcons name="shield-alert" size={24} color={colors.danger} />
-          <View style={styles.actionContent}>
-            <ThemedText style={styles.actionTitle}>Gerenciar Segurança</ThemedText>
-            <ThemedText style={styles.actionDesc}>
-              Alterar status e visualizar denúncias de segurança
-            </ThemedText>
-          </View>
-          <MaterialCommunityIcons name="chevron-right" size={24} color={colors.text3} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => router.push('/(admin)/security-analysis')}
-        >
-          <MaterialCommunityIcons name="security" size={24} color={colors.eco} />
-          <View style={styles.actionContent}>
-            <ThemedText style={styles.actionTitle}>Análise de Segurança</ThemedText>
-            <ThemedText style={styles.actionDesc}>
-              Visualizar mapa das ocorrências e histórico semanal
-            </ThemedText>
-          </View>
-          <MaterialCommunityIcons name="chevron-right" size={24} color={colors.text3} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => router.push('/(admin)/danger-zones')}
-        >
-          <MaterialCommunityIcons name="alert-octagon" size={24} color={colors.danger} />
-          <View style={styles.actionContent}>
-            <ThemedText style={styles.actionTitle}>Áreas de Perigo</ThemedText>
-            <ThemedText style={styles.actionDesc}>Criar e gerenciar zonas perigosas</ThemedText>
-          </View>
-          <MaterialCommunityIcons name="chevron-right" size={24} color={colors.text3} />
-        </TouchableOpacity>
-      </View>
     </>
   );
 }
@@ -589,142 +437,18 @@ const makeStyles = (colors: typeof C) =>
       height: Platform.OS === 'web' ? ('100vh' as any) : '100%',
       backgroundColor: colors.bg,
     },
-    // Desktop layout
-    desktopLayout: {
-      flex: 1,
-      flexDirection: 'row',
-      height: '100%',
-    },
-    sidebar: {
-      width: 270,
-      backgroundColor: colors.surface,
-      borderRightWidth: 1,
-      borderRightColor: colors.border,
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'space-between',
-    },
-    sidebarHeader: {
-      padding: 24,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-    },
-    sidebarBrand: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-    },
-    brandBadge: {
-      width: 40,
-      height: 40,
-      borderRadius: 10,
-      backgroundColor: colors.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    sidebarTitle: {
-      fontSize: 18,
-      fontWeight: '800',
-      color: colors.text,
-      letterSpacing: -0.3,
-    },
-    sidebarSubtitle: {
-      fontSize: 11,
-      color: colors.text3,
-      fontWeight: '600',
-    },
-    navMenu: {
-      flex: 1,
-      paddingHorizontal: 14,
-      paddingTop: 20,
-    },
-    navSectionLabel: {
-      fontSize: 10,
-      fontWeight: '800',
-      color: colors.text3,
-      letterSpacing: 0.8,
-      marginBottom: 10,
-      paddingHorizontal: 12,
-    },
-    navItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      paddingVertical: 12,
-      paddingHorizontal: 14,
-      borderRadius: 10,
-      marginBottom: 4,
-    },
-    navItemActive: {
-      backgroundColor: colors.primaryLight,
-    },
-    navItemText: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: colors.text2,
-    },
-    navItemTextActive: {
-      color: colors.primary,
-      fontWeight: '700',
-    },
-    sidebarFooter: {
-      padding: 16,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-      backgroundColor: colors.surface,
-    },
-    adminInfo: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-      marginBottom: 14,
-    },
-    adminAvatar: {
-      width: 34,
-      height: 34,
-      borderRadius: 17,
-      backgroundColor: colors.primaryLight,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    adminName: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: colors.text,
-    },
-    adminRole: {
-      fontSize: 11,
-      color: colors.text3,
-    },
-    sidebarLogoutBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-      paddingVertical: 10,
-      borderRadius: 8,
-      backgroundColor: colors.bg,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    sidebarLogoutText: {
-      fontSize: 12,
-      fontWeight: '700',
-      color: colors.danger,
-    },
-    // Main Area Desktop
-    mainArea: {
+    desktopContainer: {
       flex: 1,
       height: '100%',
-      backgroundColor: colors.bg,
       display: 'flex',
       flexDirection: 'column',
+      backgroundColor: colors.bg,
     },
     topBar: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: 28,
+      paddingHorizontal: 32,
       paddingVertical: 18,
       backgroundColor: colors.surface,
       borderBottomWidth: 1,
@@ -765,14 +489,13 @@ const makeStyles = (colors: typeof C) =>
       flex: 1,
     },
     desktopScrollContent: {
-      paddingHorizontal: 28,
+      paddingHorizontal: 32,
       paddingTop: 24,
       paddingBottom: 60,
-      maxWidth: 1180,
       width: '100%',
+      maxWidth: 1400,
       alignSelf: 'center',
     },
-    // Mobile layout
     mobileLayout: {
       flex: 1,
       height: '100%',
@@ -915,7 +638,6 @@ const makeStyles = (colors: typeof C) =>
       borderWidth: 1,
       borderColor: colors.border,
     },
-    rateContainer: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     rateBar: { flex: 1, height: 8, backgroundColor: colors.border, borderRadius: 4, overflow: 'hidden' },
     rateProgress: { height: '100%', backgroundColor: colors.eco, borderRadius: 4 },
     rateText: { fontSize: 16, fontWeight: '700', color: colors.eco, minWidth: 40 },
@@ -945,17 +667,4 @@ const makeStyles = (colors: typeof C) =>
       paddingVertical: 4,
       borderRadius: 6,
     },
-    actionButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.surface,
-      borderRadius: 12,
-      padding: 14,
-      marginBottom: 10,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    actionContent: { flex: 1, marginLeft: 12 },
-    actionTitle: { fontSize: 14, fontWeight: '700', color: colors.text, marginBottom: 2 },
-    actionDesc: { fontSize: 12, color: colors.text3 },
   });

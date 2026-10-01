@@ -15,12 +15,34 @@ type ThemeContextValue = {
 
 const STORAGE_KEY = "@ecocidade/theme-mode";
 
+const getStoredModeSync = (): ThemeMode => {
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      const stored = window.localStorage.getItem(STORAGE_KEY);
+      if (stored === "light" || stored === "dark" || stored === "system") {
+        return stored;
+      }
+    } catch {}
+  }
+  return "system";
+};
+
+const getSystemSchemeSync = (): "light" | "dark" => {
+  if (typeof window !== "undefined" && window.matchMedia) {
+    try {
+      if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+        return "dark";
+      }
+    } catch {}
+  }
+  return Appearance.getColorScheme() ?? "light";
+};
+
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const nativeScheme = useNativeColorScheme();
-  const systemScheme = nativeScheme ?? Appearance.getColorScheme();
-  const [mode, setModeState] = useState<ThemeMode>("system");
+  const [mode, setModeState] = useState<ThemeMode>(getStoredModeSync);
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY)
@@ -34,9 +56,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const setMode = (nextMode: ThemeMode) => {
     setModeState(nextMode);
+    if (typeof window !== "undefined" && window.localStorage) {
+      try {
+        window.localStorage.setItem(STORAGE_KEY, nextMode);
+      } catch {}
+    }
     AsyncStorage.setItem(STORAGE_KEY, nextMode).catch(() => undefined);
   };
 
+  const systemScheme = nativeScheme ?? getSystemSchemeSync();
   const isDark = mode === "dark" || (mode === "system" && systemScheme === "dark");
   const colors = isDark ? Colors.dark : Colors.light;
 
@@ -63,5 +91,5 @@ export function useAppTheme() {
 }
 
 export function getThemeScheme(mode: ThemeMode, systemScheme: "light" | "dark" | null | undefined) {
-  return mode === "system" ? (systemScheme ?? Appearance.getColorScheme() ?? "light") : mode;
+  return mode === "system" ? (systemScheme ?? getSystemSchemeSync()) : mode;
 }

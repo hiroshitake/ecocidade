@@ -60,6 +60,7 @@ export default function MapComponent({
   const previousUserLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
   const previousSelectedLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
   const onSelectLocationRef = useRef(onSelectLocation);
+  const reportsRef = useRef(reports);
 
   useEffect(() => {
     onSelectLocationRef.current = onSelectLocation;
@@ -200,17 +201,21 @@ export default function MapComponent({
   }, []);
 
   useEffect(() => {
+    reportsRef.current = reports;
+  }, [reports]);
+
+  useEffect(() => {
     if (!selectedReportId) {
       setSelectedReport(null);
       return;
     }
 
-    const report = reports.find((item) => String(item.id) === String(selectedReportId));
+    const report = reportsRef.current.find((item) => String(item.id) === String(selectedReportId));
     if (report) {
       setSelectedReport(report);
       onSelectReport?.(report);
     }
-  }, [selectedReportId, reports]);
+  }, [selectedReportId]);
 
   useEffect(() => {
     if (!markerLayerRef.current || typeof window === "undefined") return;

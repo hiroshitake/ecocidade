@@ -13,12 +13,14 @@ import { ThemedText } from "./themed-text";
 import { C } from "../constants/theme";
 import { useAppTheme } from "../context/theme-context";
 import { createReportImageUrl, createSupabaseAvatarUrl } from "../services/supabase";
+import ReportRetentionTimer from "./report-retention-timer";
 
 export interface MapReport {
   id: string;
   category?: string;
   description?: string;
   status?: string;
+  resolved_at?: string | null;
   image_url?: string | null;
   created_at?: string | null;
   reporter?: {
@@ -247,6 +249,10 @@ export default function ReportMapModal({ report, onClose }: ReportMapModalProps)
                 </ThemedText>
               </View>
             </View>
+
+            {String(report?.status || "").toLowerCase() === "resolved" ? (
+              <ReportRetentionTimer resolvedAt={report?.resolved_at} audience="user" />
+            ) : null}
 
             <View style={styles.infoCard}>
               <View style={styles.infoHeader}>

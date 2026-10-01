@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -35,7 +35,7 @@ interface Report {
 }
 
 // Valores canônicos usados no banco; os rótulos continuam em português na interface.
-const STATUS_OPTIONS = [
+const getStatusOptions = (colors: typeof C) => [
   { id: 'pending', label: 'Aguardando', icon: 'clock-alert-outline', color: colors.warning },
   { id: 'in_progress', label: 'Em Processo', icon: 'progress-clock', color: colors.primary },
   { id: 'resolved', label: 'Concluída', icon: 'check-circle-outline', color: colors.eco },
@@ -52,6 +52,8 @@ const normalizeStatus = (status?: string) => {
 };
 
 export default function ManageReportsScreen() {
+  const { colors } = useAppTheme();
+  const STATUS_OPTIONS = useMemo(() => getStatusOptions(colors), [colors]);
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);

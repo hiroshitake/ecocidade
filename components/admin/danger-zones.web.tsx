@@ -143,7 +143,7 @@ export default function DangerZonesWeb() {
                 onPress={() => setSeverity(option.value as 'baixa' | 'media' | 'alta')}
                 style={[
                   styles.severityButton,
-                  severity === option.value && { backgroundColor: getSeverityColor(option.value) },
+                  severity === option.value && { backgroundColor: getSeverityColor(option.value, colors) },
                 ]}
               >
                 <ThemedText style={[styles.severityButtonText, severity === option.value && { color: '#fff' }]}>

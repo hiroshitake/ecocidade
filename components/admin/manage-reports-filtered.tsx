@@ -17,9 +17,9 @@ interface Report {
   location?: { latitude?: number; longitude?: number; address?: string }; created_at?: string; resolved_at?: string | null;
 }
 
-const STATUS_OPTIONS = [
-  { id: 'pending', label: 'Aguardando', icon: 'clock-alert-outline', color: C.warning },
-  { id: 'in_progress', label: 'Em Processo', icon: 'progress-clock', color: C.primary },
+const getStatusOptions = (colors: typeof C) => [
+  { id: 'pending', label: 'Aguardando', icon: 'clock-alert-outline', color: colors.warning },
+  { id: 'in_progress', label: 'Em Processo', icon: 'progress-clock', color: colors.primary },
   { id: 'resolved', label: 'Concluída', icon: 'check-circle-outline', color: colors.eco },
 ];
 

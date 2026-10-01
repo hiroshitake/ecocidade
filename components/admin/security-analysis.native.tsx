@@ -40,9 +40,9 @@ const WEEKDAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 const startOfWeek = (date: Date) => { const d = new Date(date); d.setHours(0, 0, 0, 0); const day = d.getDay(); d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day)); return d; };
 
 export default function SecurityAnalysisNative() {
-  const router = useRouter(); const [reports, setReports] = useState<any[]>([]); const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const router = useRouter(); const [reports, setReports] = useState<any[]>([]); const [loadError, setLoadError] = useState(false); const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   useEffect(() => {
-    getAdminReports().then(all => setReports((all || []).filter((r: any) => String(r.category || '').toLowerCase() === SECURITY_CATEGORY))).catch(console.error);
+    getAdminReports().then(all => setReports((all || []).filter((r: any) => String(r.category || '').toLowerCase() === SECURITY_CATEGORY))).catch(error => { console.error(error); setLoadError(true); });
     resolveUserLocationWithFallback().then(resolved => setUserLocation(resolved.location)).catch(console.error);
   }, []);
 
@@ -135,12 +135,12 @@ export default function SecurityAnalysisNative() {
 
   return <ThemedView style={styles.container}>
     <View style={styles.header}><TouchableOpacity onPress={() => router.back()}><MaterialCommunityIcons name="chevron-left" size={24} color={C.primary} /></TouchableOpacity><ThemedText style={styles.title}>Análise de Segurança</ThemedText><View style={{ width: 24 }} /></View>
-    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    {loadError ? <View style={styles.errorState}><ThemedText style={styles.errorTitle}>Não foi possível carregar a análise de segurança</ThemedText><ThemedText style={styles.errorText}>Verifique sua conexão e tente novamente.</ThemedText><TouchableOpacity style={styles.retryButton} onPress={() => router.replace("/(admin)/security-analysis")}><ThemedText style={styles.retryText}>Tentar novamente</ThemedText></TouchableOpacity></View> : <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.metric}><MaterialCommunityIcons name="shield-alert" size={34} color={C.danger} /><View><ThemedText style={styles.metricValue}>{reports.length}</ThemedText><ThemedText style={styles.metricLabel}>denúncias de segurança</ThemedText></View></View>
       <View style={styles.card}><View style={styles.sectionHead}><ThemedText style={styles.sectionTitle}>Mapa de ocorrências</ThemedText><ThemedText style={styles.sectionHint}>Somente segurança</ThemedText></View><View style={styles.map}><MapComponent reports={reports} userLocation={userLocation} /></View></View>
       <View style={styles.card}><ThemedText style={styles.sectionTitle}>Denúncias nesta semana</ThemedText><ThemedText style={styles.sectionHint}>{weekTotal} ocorrência(s) de segunda a domingo</ThemedText><View style={styles.chart}>{weekly.map(item => <View key={item.day} style={styles.barColumn}><ThemedText style={styles.barValue}>{item.count}</ThemedText><View style={[styles.bar, { height: Math.max(8, item.count / max * 110) }]} /><ThemedText style={styles.day}>{item.day}</ThemedText></View>)}</View></View>
       <View style={styles.card}><ThemedText style={styles.sectionTitle}>Áreas com mais denúncias</ThemedText><ThemedText style={styles.sectionHint}>Concentrações de ocorrências em um raio aproximado de 500 m</ThemedText>{geolocatedReportsCount < reports.length ? <ThemedText style={styles.locationNote}>{reports.length - geolocatedReportsCount} ocorrência(s) sem coordenadas não entram neste cálculo.</ThemedText> : null}{areas.length === 0 ? <ThemedText style={styles.empty}>Nenhuma ocorrência com localização válida.</ThemedText> : areas.map((area, index) => <View key={area.id} style={styles.area}><View style={styles.rank}><ThemedText style={styles.rankText}>{index + 1}</ThemedText></View><View style={{ flex: 1 }}><ThemedText style={styles.areaName}>{area.name}</ThemedText><ThemedText style={styles.areaCount}>{area.count} denúncia(s) · centro aproximado {area.latitude.toFixed(4)}, {area.longitude.toFixed(4)}</ThemedText></View></View>)}</View>
-    </ScrollView>
+    </ScrollView>}
   </ThemedView>;
 }
 

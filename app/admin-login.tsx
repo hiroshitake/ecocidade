@@ -153,12 +153,6 @@ export default function AdminLoginScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.demoContainer}>
-            <ThemedText style={styles.demoLabel}>Credenciais de Teste:</ThemedText>
-            <ThemedText style={styles.demoText}>E-mail: admin@ecocidade.com</ThemedText>
-            <ThemedText style={styles.demoText}>Senha: a senha cadastrada no Supabase</ThemedText>
-          </View>
-
           {/* Footer */}
           <View style={styles.footer}>
             <MaterialCommunityIcons name="lock-check" size={24} color={C.primaryLight} />
@@ -249,26 +243,6 @@ const styles = StyleSheet.create({
     color: C.white,
     fontSize: 16,
     fontWeight: '700',
-  },
-  demoContainer: {
-    backgroundColor: C.surface2,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 24,
-    borderLeftWidth: 4,
-    borderLeftColor: C.eco,
-  },
-  demoLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: C.text,
-    marginBottom: 8,
-  },
-  demoText: {
-    fontSize: 13,
-    color: C.text2,
-    marginBottom: 4,
-    fontFamily: 'monospace',
   },
   footer: {
     alignItems: 'center',

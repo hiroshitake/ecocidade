@@ -128,6 +128,21 @@ export function isSupabaseConfigured() {
   return Boolean(supabaseUrl && supabaseAnonKey && supabase);
 }
 
+export async function resetPasswordForEmail(email: string) {
+  if (!supabase) throw new Error("Supabase não configurado.");
+  const redirectTo = `${appSiteUrl}/reset-password`;
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+    redirectTo,
+  });
+  if (error) throw error;
+}
+
+export async function updateSupabasePassword(newPassword: string) {
+  if (!supabase) throw new Error("Supabase não configurado.");
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw error;
+}
+
 export async function signInWithSupabase(email: string, password: string) {
   if (!supabase) {
     throw new Error("Supabase não configurado.");

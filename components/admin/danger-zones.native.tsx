@@ -12,7 +12,8 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { C } from '../../constants/theme';
+import { useAppTheme } from '../../context/theme-context';
+import { useAppTheme } from '../../context/theme-context';
 import { createDangerZone, deleteDangerZone, getAdminDangerZones } from '../../services/reports';
 import { ThemedText } from '../themed-text';
 import { ThemedView } from '../themed-view';
@@ -65,13 +66,13 @@ export default function DangerZonesScreen() {
   const getSeverityColor = (sev: string) => {
     switch (sev) {
       case 'baixa':
-        return C.eco;
+        return colors.eco;
       case 'media':
-        return C.warning;
+        return colors.warning;
       case 'alta':
-        return C.danger;
+        return colors.danger;
       default:
-        return C.text3;
+        return colors.text3;
     }
   };
 
@@ -164,7 +165,7 @@ export default function DangerZonesScreen() {
         <ThemedText style={styles.zoneRadius}>Raio: {item.radius}m</ThemedText>
       </View>
       <TouchableOpacity onPress={() => handleDeleteZone(item.id)}>
-        <MaterialCommunityIcons name="delete-outline" size={20} color={C.danger} />
+        <MaterialCommunityIcons name="delete-outline" size={20} color={colors.danger} />
       </TouchableOpacity>
     </View>
   );
@@ -174,7 +175,7 @@ export default function DangerZonesScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <MaterialCommunityIcons name="chevron-left" size={24} color={C.primary} />
+          <MaterialCommunityIcons name="chevron-left" size={24} color={colors.primary} />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Áreas de Perigo</ThemedText>
         <View style={styles.headerPlaceholder} />
@@ -200,8 +201,8 @@ export default function DangerZonesScreen() {
                 <Circle
                   center={{ latitude: zone.latitude, longitude: zone.longitude }}
                   radius={zone.radius}
-                  strokeColor={getSeverityColor(zone.severity)}
-                  fillColor={getSeverityColor(zone.severity) + '30'}
+                  strokeColor={getSeverityColor(zone.severity, colors)}
+                  fillColor={getSeverityColor(zone.severity, colors) + '30'}
                   strokeWidth={2}
                 />
                 <Marker
@@ -212,7 +213,7 @@ export default function DangerZonesScreen() {
                   <View
                     style={[
                       styles.markerIcon,
-                      { backgroundColor: getSeverityColor(zone.severity) },
+                      { backgroundColor: getSeverityColor(zone.severity, colors) },
                     ]}
                   >
                     <MaterialCommunityIcons name="alert-octagon" size={20} color="#fff" />
@@ -226,20 +227,20 @@ export default function DangerZonesScreen() {
               <Marker
                 coordinate={selectedLocation}
                 title="Nova Área"
-                pinColor={C.primary}
+                pinColor={colors.primary}
               />
             )}
           </MapView>
 
           {/* Info Badge */}
           <View style={styles.infoBadge}>
-            <MaterialCommunityIcons name="information" size={18} color={C.primary} />
+            <MaterialCommunityIcons name="information" size={18} color={colors.primary} />
             <ThemedText style={styles.infoBadgeText}>Clique no mapa para criar uma área</ThemedText>
           </View>
         </>
       ) : (
         <View style={styles.mapPlaceholder}>
-          <MaterialCommunityIcons name="alert-circle-outline" size={48} color={C.text3} />
+          <MaterialCommunityIcons name="alert-circle-outline" size={48} color={colors.text3} />
           <ThemedText style={styles.mapPlaceholderText}>Mapa disponível apenas em mobile</ThemedText>
         </View>
       )}
@@ -256,7 +257,7 @@ export default function DangerZonesScreen() {
           scrollEnabled={false}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <MaterialCommunityIcons name="map-search" size={40} color={C.text3} />
+              <MaterialCommunityIcons name="map-search" size={40} color={colors.text3} />
               <ThemedText style={styles.emptyText}>Nenhuma área de perigo registrada</ThemedText>
             </View>
           }
@@ -270,7 +271,7 @@ export default function DangerZonesScreen() {
             <View style={styles.modalHeader}>
               <ThemedText style={styles.modalTitle}>Nova Área de Perigo</ThemedText>
               <TouchableOpacity onPress={resetForm}>
-                <MaterialCommunityIcons name="close" size={24} color={C.text} />
+                <MaterialCommunityIcons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
 
@@ -281,7 +282,7 @@ export default function DangerZonesScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Ex: Rua das Flores"
-                placeholderTextColor={C.text3}
+                placeholderTextColor={colors.text3}
                 value={zoneName}
                 onChangeText={setZoneName}
               />
@@ -291,7 +292,7 @@ export default function DangerZonesScreen() {
               <TextInput
                 style={[styles.input, styles.textArea]}
                 placeholder="Descreva o perigo ou tipo de crime..."
-                placeholderTextColor={C.text3}
+                placeholderTextColor={colors.text3}
                 value={description}
                 onChangeText={setDescription}
                 multiline
@@ -330,7 +331,7 @@ export default function DangerZonesScreen() {
                   style={styles.radiusBtn}
                   onPress={() => setRadius(Math.max(100, radius - 100))}
                 >
-                  <MaterialCommunityIcons name="minus" size={20} color={C.text} />
+                  <MaterialCommunityIcons name="minus" size={20} color={colors.text} />
                 </TouchableOpacity>
                 <TextInput
                   style={styles.radiusInput}
@@ -345,7 +346,7 @@ export default function DangerZonesScreen() {
                   style={styles.radiusBtn}
                   onPress={() => setRadius(radius + 100)}
                 >
-                  <MaterialCommunityIcons name="plus" size={20} color={C.text} />
+                  <MaterialCommunityIcons name="plus" size={20} color={colors.text} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -367,7 +368,8 @@ export default function DangerZonesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: any) =>
+  StyleSheet.create({
   markerIcon: {
     width: 28,
     height: 28,
@@ -384,14 +386,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: C.surface,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: C.border,
+    borderBottomColor: colors.border,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: C.text,
+    color: colors.text,
   },
   headerPlaceholder: {
     width: 24,
@@ -404,7 +406,7 @@ const styles = StyleSheet.create({
     top: 60,
     left: 16,
     right: 16,
-    backgroundColor: C.primaryLight,
+    backgroundColor: colors.primaryLight,
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 12,
@@ -416,27 +418,27 @@ const styles = StyleSheet.create({
   infoBadgeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: C.primary,
+    color: colors.primary,
   },
   zonesList: {
     maxHeight: 220,
-    backgroundColor: C.surface,
+    backgroundColor: colors.surface,
     borderTopWidth: 1,
-    borderTopColor: C.border,
+    borderTopColor: colors.border,
     paddingHorizontal: 12,
     paddingVertical: 12,
   },
   zonesTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: C.text,
+    color: colors.text,
     marginBottom: 10,
   },
   zoneItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: C.surface2,
+    backgroundColor: colors.surface2,
     borderRadius: 10,
     padding: 12,
     marginBottom: 8,
@@ -454,7 +456,7 @@ const styles = StyleSheet.create({
   zoneName: {
     fontSize: 13,
     fontWeight: '700',
-    color: C.text,
+    color: colors.text,
   },
   severityBadge: {
     paddingVertical: 2,
@@ -467,12 +469,12 @@ const styles = StyleSheet.create({
   },
   zoneDescription: {
     fontSize: 11,
-    color: C.text2,
+    color: colors.text2,
     marginBottom: 4,
   },
   zoneRadius: {
     fontSize: 10,
-    color: C.text3,
+    color: colors.text3,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -482,7 +484,7 @@ const styles = StyleSheet.create({
   emptyText: {
     marginTop: 8,
     fontSize: 12,
-    color: C.text3,
+    color: colors.text3,
   },
   modalOverlay: {
     flex: 1,
@@ -490,7 +492,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: C.surface,
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '80%',
@@ -503,12 +505,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: C.border,
+    borderBottomColor: colors.border,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: C.text,
+    color: colors.text,
   },
   form: {
     paddingHorizontal: 20,
@@ -517,19 +519,19 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '700',
-    color: C.text,
+    color: colors.text,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: C.surface2,
+    backgroundColor: colors.surface2,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     marginBottom: 16,
     fontSize: 13,
-    color: C.text,
+    color: colors.text,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
   },
   textArea: {
     minHeight: 80,
@@ -546,10 +548,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 2,
     alignItems: 'center',
-    backgroundColor: C.surface2,
+    backgroundColor: colors.surface2,
   },
   severityOptionSelected: {
-    backgroundColor: C.primaryLight,
+    backgroundColor: colors.primaryLight,
   },
   severityOptionText: {
     fontSize: 11,
@@ -565,22 +567,22 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 10,
-    backgroundColor: C.surface2,
+    backgroundColor: colors.surface2,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
   },
   radiusInput: {
     flex: 1,
-    backgroundColor: C.surface2,
+    backgroundColor: colors.surface2,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
     fontSize: 13,
-    color: C.text,
+    color: colors.text,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
     textAlign: 'center',
   },
   modalActions: {
@@ -591,20 +593,20 @@ const styles = StyleSheet.create({
   },
   cancelBtn: {
     flex: 1,
-    backgroundColor: C.surface2,
+    backgroundColor: colors.surface2,
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
   },
   cancelBtnText: {
     fontWeight: '700',
-    color: C.text,
+    color: colors.text,
   },
   createBtn: {
     flex: 1,
-    backgroundColor: C.danger,
+    backgroundColor: colors.danger,
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',
@@ -618,15 +620,15 @@ const styles = StyleSheet.create({
   },
   mapPlaceholder: {
     height: 300,
-    backgroundColor: C.surface2,
+    backgroundColor: colors.surface2,
     alignItems: 'center',
     justifyContent: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: C.border,
+    borderBottomColor: colors.border,
     gap: 8,
   },
   mapPlaceholderText: {
     fontSize: 13,
-    color: C.text2,
+    color: colors.text2,
   },
 });

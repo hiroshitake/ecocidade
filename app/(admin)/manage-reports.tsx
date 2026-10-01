@@ -15,6 +15,7 @@ import {
 import { ThemedText } from '../../components/themed-text';
 import { ThemedView } from '../../components/themed-view';
 import { C } from '../../constants/theme';
+import { useAppTheme } from '../../context/theme-context';
 import { deleteReport, getAdminReports, updateReportStatus } from '../../services/reports';
 import { createReportImageUrl } from '../../services/supabase';
 
@@ -35,9 +36,9 @@ interface Report {
 
 // Valores canônicos usados no banco; os rótulos continuam em português na interface.
 const STATUS_OPTIONS = [
-  { id: 'pending', label: 'Aguardando', icon: 'clock-alert-outline', color: C.warning },
-  { id: 'in_progress', label: 'Em Processo', icon: 'progress-clock', color: C.primary },
-  { id: 'resolved', label: 'Concluída', icon: 'check-circle-outline', color: C.eco },
+  { id: 'pending', label: 'Aguardando', icon: 'clock-alert-outline', color: colors.warning },
+  { id: 'in_progress', label: 'Em Processo', icon: 'progress-clock', color: colors.primary },
+  { id: 'resolved', label: 'Concluída', icon: 'check-circle-outline', color: colors.eco },
 ];
 
 const normalizeStatus = (status?: string) => {
@@ -56,6 +57,8 @@ export default function ManageReportsScreen() {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const router = useRouter();
+  const { colors, isDark } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const loadReports = useCallback(async () => {
     try {
@@ -144,7 +147,7 @@ export default function ManageReportsScreen() {
 
   const getStatusColor = (status?: string) => {
     const normalized = normalizeStatus(status);
-    return STATUS_OPTIONS.find(s => s.id === normalized)?.color || C.text3;
+    return STATUS_OPTIONS.find(s => s.id === normalized)?.color || colors.text3;
   };
 
   const getStatusLabel = (status?: string) => {
@@ -187,7 +190,7 @@ export default function ManageReportsScreen() {
             </ThemedText>
           </View>
           <TouchableOpacity onPress={() => handleDeleteReport(item.id)} style={styles.deleteButton}>
-            <MaterialCommunityIcons name="trash-can-outline" size={22} color={C.danger} />
+            <MaterialCommunityIcons name="trash-can-outline" size={22} color={colors.danger} />
           </TouchableOpacity>
         </View>
       </View>
@@ -198,7 +201,7 @@ export default function ManageReportsScreen() {
 
       <View style={styles.reportFooter}>
         <ThemedText style={styles.reportDate}>{formatDate(item.created_at)}</ThemedText>
-        <MaterialCommunityIcons name="chevron-right" size={20} color={C.text3} />
+        <MaterialCommunityIcons name="chevron-right" size={20} color={colors.text3} />
       </View>
     </TouchableOpacity>
   );
@@ -207,7 +210,7 @@ export default function ManageReportsScreen() {
     <ThemedView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <MaterialCommunityIcons name="chevron-left" size={24} color={C.primary} />
+          <MaterialCommunityIcons name="chevron-left" size={24} color={colors.primary} />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Gerenciar Denúncias</ThemedText>
         <View style={styles.headerPlaceholder} />
@@ -222,7 +225,7 @@ export default function ManageReportsScreen() {
         refreshing={loading}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <MaterialCommunityIcons name="inbox-multiple" size={48} color={C.text3} />
+            <MaterialCommunityIcons name="inbox-multiple" size={48} color={colors.text3} />
             <ThemedText style={styles.emptyText}>Nenhuma denúncia encontrada</ThemedText>
           </View>
         }
@@ -241,7 +244,7 @@ export default function ManageReportsScreen() {
                     </ThemedText>
                   </View>
                   <TouchableOpacity onPress={() => setShowStatusModal(false)} style={styles.modalCloseButton}>
-                    <MaterialCommunityIcons name="close" size={22} color={C.text2} />
+                    <MaterialCommunityIcons name="close" size={22} color={colors.text2} />
                   </TouchableOpacity>
                 </View>
 
@@ -258,7 +261,7 @@ export default function ManageReportsScreen() {
                       />
                     ) : (
                       <View style={styles.noPhotoBox}>
-                        <MaterialCommunityIcons name="image-off-outline" size={34} color={C.text3} />
+                        <MaterialCommunityIcons name="image-off-outline" size={34} color={colors.text3} />
                         <ThemedText style={styles.noPhotoText}>Sem foto</ThemedText>
                       </View>
                     )}
@@ -377,7 +380,8 @@ export default function ManageReportsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: any) =>
+  StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -388,12 +392,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: C.border,
+    borderBottomColor: colors.border,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: C.text,
+    color: colors.text,
   },
   headerPlaceholder: {
     width: 24,
@@ -403,11 +407,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   reportCard: {
-    backgroundColor: C.surface,
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
   },
   reportHeader: {
     flexDirection: 'row',
@@ -420,12 +424,12 @@ const styles = StyleSheet.create({
   reportCategory: {
     fontSize: 12,
     fontWeight: '800',
-    color: C.primary,
+    color: colors.primary,
     letterSpacing: 0.5,
   },
   reportAddress: {
     fontSize: 13,
-    color: C.text2,
+    color: colors.text2,
     marginTop: 4,
   },
   reportActions: {
@@ -446,7 +450,7 @@ const styles = StyleSheet.create({
   },
   reportDescription: {
     fontSize: 14,
-    color: C.text,
+    color: colors.text,
     marginTop: 14,
     lineHeight: 20,
   },
@@ -454,14 +458,14 @@ const styles = StyleSheet.create({
     marginTop: 14,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: C.border,
+    borderTopColor: colors.border,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   reportDate: {
     fontSize: 12,
-    color: C.text3,
+    color: colors.text3,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -470,7 +474,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   emptyText: {
-    color: C.text3,
+    color: colors.text3,
     fontSize: 14,
   },
   modalOverlay: {
@@ -484,11 +488,11 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '88%',
     maxWidth: 920,
-    backgroundColor: C.surface,
+    backgroundColor: colors.surface,
     borderRadius: 18,
     padding: 22,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
     overflow: 'hidden',
   },
   modalHeader: {
@@ -503,14 +507,14 @@ const styles = StyleSheet.create({
   modalEyebrow: {
     fontSize: 10,
     fontWeight: '800',
-    color: C.text3,
+    color: colors.text3,
     letterSpacing: 1,
     marginBottom: 3,
   },
   modalTitle: {
     fontSize: 21,
     fontWeight: '800',
-    color: C.text,
+    color: colors.text,
   },
   modalCloseButton: {
     width: 38,
@@ -518,13 +522,13 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: C.background,
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
   },
   modalDivider: {
     height: 1,
-    backgroundColor: C.border,
+    backgroundColor: colors.border,
     marginTop: 16,
     marginBottom: 18,
     flexShrink: 0,
@@ -544,7 +548,7 @@ const styles = StyleSheet.create({
     height: 240,
     borderRadius: 14,
     marginTop: 8,
-    backgroundColor: C.background,
+    backgroundColor: colors.background,
   },
   noPhotoBox: {
     width: '100%',
@@ -552,15 +556,15 @@ const styles = StyleSheet.create({
     marginTop: 8,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: C.border,
-    backgroundColor: C.background,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
   },
   noPhotoText: {
     fontSize: 13,
-    color: C.text3,
+    color: colors.text3,
     fontWeight: '600',
   },
   infoColumn: {
@@ -580,13 +584,13 @@ const styles = StyleSheet.create({
     padding: 13,
     borderRadius: 11,
     borderWidth: 1,
-    borderColor: C.border,
-    backgroundColor: C.background,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
   },
   detailLabel: {
     fontSize: 10,
     fontWeight: '800',
-    color: C.text3,
+    color: colors.text3,
     textTransform: 'uppercase',
     letterSpacing: 0.7,
     marginBottom: 5,
@@ -594,19 +598,19 @@ const styles = StyleSheet.create({
   detailValue: {
     fontSize: 14,
     lineHeight: 20,
-    color: C.text,
+    color: colors.text,
   },
   detailSecondary: {
     fontSize: 11,
-    color: C.text3,
+    color: colors.text3,
     marginTop: 5,
   },
   currentStatusCard: {
     padding: 13,
     borderRadius: 11,
     borderWidth: 1,
-    borderColor: C.border,
-    backgroundColor: C.background,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -630,7 +634,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 44,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
     borderRadius: 10,
     paddingHorizontal: 10,
     flexDirection: 'row',
@@ -641,13 +645,13 @@ const styles = StyleSheet.create({
   statusOptionText: {
     fontSize: 12,
     fontWeight: '700',
-    color: C.text,
+    color: colors.text,
   },
   modalFooter: {
     marginTop: 14,
     paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: C.border,
+    borderTopColor: colors.border,
     alignItems: 'flex-end',
     flexShrink: 0,
   },
@@ -658,7 +662,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: C.primary,
+    backgroundColor: colors.primary,
   },
   closeButtonText: {
     color: 'white',

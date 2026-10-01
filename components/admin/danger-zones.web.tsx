@@ -1,8 +1,9 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-import { C } from '../../constants/theme';
+import { useAppTheme } from '../../context/theme-context';
+import { useAppTheme } from '../../context/theme-context';
 import { createDangerZone, deleteDangerZone, getAdminDangerZones } from '../../services/reports';
 import MapComponent from '../map.web';
 import { ThemedText } from '../themed-text';
@@ -14,19 +15,21 @@ const SEVERITY_OPTIONS = [
   { label: 'Alta', value: 'alta' },
 ];
 
-const getSeverityColor = (severity: string) => {
+const getSeverityColor = (severity: string, colors: any) => {
   switch (severity) {
     case 'alta':
-      return C.danger;
+      return colors.danger;
     case 'media':
-      return C.warning;
+      return colors.warning;
     default:
-      return C.eco;
+      return colors.eco;
   }
 };
 
 export default function DangerZonesWeb() {
   const router = useRouter();
+  const { colors, isDark } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [dangerZones, setDangerZones] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -94,7 +97,7 @@ export default function DangerZonesWeb() {
     <ThemedView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <MaterialCommunityIcons name="chevron-left" size={24} color={C.primary} />
+          <MaterialCommunityIcons name="chevron-left" size={24} color={colors.primary} />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Areas de Perigo</ThemedText>
         <View style={styles.headerPlaceholder} />
@@ -113,7 +116,7 @@ export default function DangerZonesWeb() {
         </View>
 
         <View style={styles.infoCard}>
-          <MaterialCommunityIcons name="information" size={18} color={C.primary} />
+          <MaterialCommunityIcons name="information" size={18} color={colors.primary} />
           <ThemedText style={styles.infoText}>Clique no mapa para escolher a localizacao da nova zona.</ThemedText>
         </View>
 
@@ -123,14 +126,14 @@ export default function DangerZonesWeb() {
             value={zoneName}
             onChangeText={setZoneName}
             placeholder="Nome da zona"
-            placeholderTextColor={C.text2}
+            placeholderTextColor={colors.text2}
             style={styles.input}
           />
           <TextInput
             value={description}
             onChangeText={setDescription}
             placeholder="Descricao"
-            placeholderTextColor={C.text2}
+            placeholderTextColor={colors.text2}
             style={[styles.input, styles.textArea]}
             multiline
           />
@@ -152,11 +155,11 @@ export default function DangerZonesWeb() {
           }</View>
           <View style={styles.radiusRow}>
             <TouchableOpacity onPress={() => setRadius((r) => Math.max(100, r - 100))} style={styles.radiusButton}>
-              <MaterialCommunityIcons name="minus" size={18} color={C.text} />
+              <MaterialCommunityIcons name="minus" size={18} color={colors.text} />
             </TouchableOpacity>
             <ThemedText style={styles.radiusValue}>{radius}m</ThemedText>
             <TouchableOpacity onPress={() => setRadius((r) => Math.min(2000, r + 100))} style={styles.radiusButton}>
-              <MaterialCommunityIcons name="plus" size={18} color={C.text} />
+              <MaterialCommunityIcons name="plus" size={18} color={colors.text} />
             </TouchableOpacity>
           </View>
 
@@ -178,7 +181,7 @@ export default function DangerZonesWeb() {
                   <ThemedText style={styles.zoneMeta}>Raio: {zone.radius}m - Severidade: {zone.severity}</ThemedText>
                 </View>
                 <TouchableOpacity onPress={() => handleDeleteZone(zone.id)}>
-                  <MaterialCommunityIcons name="delete-outline" size={22} color={C.danger} />
+                  <MaterialCommunityIcons name="delete-outline" size={22} color={colors.danger} />
                 </TouchableOpacity>
               </View>
             ))
@@ -189,32 +192,33 @@ export default function DangerZonesWeb() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: any) =>
+  StyleSheet.create({
   container: { flex: 1, padding: 20 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: C.text },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.text },
   headerPlaceholder: { width: 24 },
   content: { flex: 1 },
-  mapWrapper: { height: 420, borderRadius: 18, overflow: 'hidden', marginBottom: 18, backgroundColor: C.surface2 },
+  mapWrapper: { height: 420, borderRadius: 18, overflow: 'hidden', marginBottom: 18, backgroundColor: colors.surface2 },
   map: { width: '100%', height: '100%' },
-  infoCard: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 16, backgroundColor: C.surface, marginBottom: 18 },
-  infoText: { marginLeft: 10, color: C.text2, fontSize: 13, lineHeight: 18 },
-  formCard: { padding: 18, borderRadius: 18, backgroundColor: C.surface2, marginBottom: 18 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: C.text, marginBottom: 12 },
-  input: { backgroundColor: C.surface, borderRadius: 12, padding: 12, marginBottom: 12, color: C.text, borderWidth: 1, borderColor: C.border },
+  infoCard: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 16, backgroundColor: colors.surface, marginBottom: 18 },
+  infoText: { marginLeft: 10, color: colors.text2, fontSize: 13, lineHeight: 18 },
+  formCard: { padding: 18, borderRadius: 18, backgroundColor: colors.surface2, marginBottom: 18 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 },
+  input: { backgroundColor: colors.surface, borderRadius: 12, padding: 12, marginBottom: 12, color: colors.text, borderWidth: 1, borderColor: colors.border },
   textArea: { minHeight: 80, textAlignVertical: 'top' },
   row: { flexDirection: 'row', gap: 10, marginBottom: 14 },
-  severityButton: { flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.border },
-  severityButtonText: { color: C.text, fontWeight: '700' },
+  severityButton: { flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
+  severityButtonText: { color: colors.text, fontWeight: '700' },
   radiusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
-  radiusButton: { width: 44, height: 44, borderRadius: 12, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.border },
-  radiusValue: { fontSize: 14, color: C.text, fontWeight: '700' },
-  createButton: { backgroundColor: C.primary, borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
+  radiusButton: { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
+  radiusValue: { fontSize: 14, color: colors.text, fontWeight: '700' },
+  createButton: { backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
   createButtonText: { color: '#fff', fontWeight: '700' },
-  zonesList: { padding: 18, borderRadius: 18, backgroundColor: C.surface2, marginBottom: 18 },
-  emptyText: { color: C.text2, fontSize: 13 },
-  zoneCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: C.border },
-  zoneTitle: { fontSize: 14, fontWeight: '700', color: C.text },
-  zoneDescription: { fontSize: 12, color: C.text2, marginVertical: 4 },
-  zoneMeta: { fontSize: 11, color: C.text3 },
+  zonesList: { padding: 18, borderRadius: 18, backgroundColor: colors.surface2, marginBottom: 18 },
+  emptyText: { color: colors.text2, fontSize: 13 },
+  zoneCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
+  zoneTitle: { fontSize: 14, fontWeight: '700', color: colors.text },
+  zoneDescription: { fontSize: 12, color: colors.text2, marginVertical: 4 },
+  zoneMeta: { fontSize: 11, color: colors.text3 },
 });

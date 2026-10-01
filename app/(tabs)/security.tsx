@@ -50,6 +50,7 @@ export default function SecurityScreen() {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [locationReady, setLocationReady] = useState(false);
+  const [submitFeedback, setSubmitFeedback] = useState<{ type: "error" | "info"; title: string; message: string } | null>(null);
   const [submittedReport, setSubmittedReport] = useState<any | null>(null);
   const [cropPhotoUri, setCropPhotoUri] = useState<string | null>(null);
   const [photoOptionsVisible, setPhotoOptionsVisible] = useState(false);
@@ -82,33 +83,33 @@ export default function SecurityScreen() {
   }, []);
 
   const submit = async () => {
+    setSubmitFeedback(null);
+
     if (!selectedCat) {
-      Alert.alert("Atenção", "Selecione o tipo de ocorrência.");
+      setSubmitFeedback({
+        type: "error",
+        title: "Tipo de ocorrência não selecionado",
+        message: "Selecione uma das opções acima antes de enviar a denúncia.",
+      });
       return;
     }
     if (!description.trim()) {
-      Alert.alert(
-        "Descrição obrigatória",
-        "Descreva a situação para que as autoridades possam agir adequadamente.",
-      );
+      setSubmitFeedback({
+        type: "error",
+        title: "Descrição obrigatória",
+        message: "Descreva a situação para que os responsáveis possam analisar a ocorrência.",
+      });
       return;
     }
     const locationToSubmit = selectedLocation ?? userLocation;
 
     if (!locationToSubmit) {
-      Alert.alert(
-        "Localização não definida",
-        "Escolha um ponto no mapa ou aguarde sua localização atual ser encontrada antes de enviar a denúncia.",
-      );
-      return;
-    }
-
-    if (!locationToSubmit) {
-      Alert.alert(
-        "Localização obrigatória",
-        locationError ||
-          "Não foi possível obter sua localização GPS. Ative o GPS e tente novamente.",
-      );
+      setSubmitFeedback({
+        type: "error",
+        title: "Localização obrigatória",
+        message:
+          "Nenhum ponto foi selecionado. Toque no mapa para definir o local da ocorrência e tente enviar novamente.",
+      });
       return;
     }
 
@@ -138,6 +139,7 @@ export default function SecurityScreen() {
         });
       }
 
+      setSubmitFeedback(null);
       setSubmittedReport(createdReport);
     } catch (error: any) {
       let msg = error?.message || "Tente novamente mais tarde.";
@@ -145,7 +147,11 @@ export default function SecurityScreen() {
         msg =
           "Você está fora da área de cobertura da sua cidade. Denúncias de segurança devem ser feitas dentro dos limites da cidade cadastrada.";
       }
-      Alert.alert("Erro ao enviar denúncia", msg);
+      setSubmitFeedback({
+        type: "error",
+        title: "Não foi possível enviar a denúncia",
+        message: msg,
+      });
     } finally {
       setSubmitting(false);
     }
@@ -521,6 +527,26 @@ export default function SecurityScreen() {
         </Modal>
 
         {/* ── BOTÕES ── */}
+        {submitFeedback ? (
+          <View style={styles.submitFeedbackCard} accessibilityRole="alert">
+            <Ionicons
+              name={submitFeedback.type === "error" ? "alert-circle" : "information-circle"}
+              size={22}
+              color={C.danger}
+            />
+            <View style={styles.submitFeedbackCopy}>
+              <Text style={styles.submitFeedbackTitle}>{submitFeedback.title}</Text>
+              <Text style={styles.submitFeedbackMessage}>{submitFeedback.message}</Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setSubmitFeedback(null)}
+              accessibilityLabel="Fechar aviso"
+            >
+              <Ionicons name="close" size={20} color={C.text2} />
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
         <TouchableOpacity
           style={[
             styles.btnDanger,
@@ -723,6 +749,30 @@ const makeStyles = (colors: typeof C) => StyleSheet.create({
     ...S.shadow.danger,
   },
   btnDangerText: { color: "white", fontSize: 15, fontWeight: "700" },
+
+  submitFeedbackCard: {
+    marginTop: 16,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(217, 32, 32, 0.28)",
+    backgroundColor: "rgba(217, 32, 32, 0.08)",
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  submitFeedbackCopy: { flex: 1 },
+  submitFeedbackTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: C.danger,
+    marginBottom: 3,
+  },
+  submitFeedbackMessage: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: C.text2,
+  },
 
   emergencyNotice: {
     marginTop: 14,

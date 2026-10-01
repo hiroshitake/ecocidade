@@ -18,7 +18,8 @@ import {
     View,
 } from "react-native";
 import { InlineError } from "../components/InlineError";
-import { C, S } from "../constants/theme";
+import { useAppTheme } from "../context/theme-context";
+import { S } from "../constants/theme";
 import { useToast } from "../context/toast-context";
 import { formatBirthDate } from "../functions/masks";
 import { getCurrentUserData, signIn, signUp } from "../services/auth";
@@ -309,9 +310,10 @@ export default function LoginScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <StatusBar barStyle="light-content" />
-      <ScrollView style={styles.root} bounces={false}>
+      <ScrollView style={styles.root} contentContainerStyle={{ flexGrow: 1, justifyContent: Platform.OS === "web" ? "center" : "flex-start" }} bounces={false}>
+        <View style={styles.centerContainer}>
         <LinearGradient
-          colors={["#1a5fd4", "#0d3d96"]}
+          colors={isDark ? ["#0f172a", "#1e293b"] : ["#1e3a8a", "#0f172a"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 0.4, y: 1 }}
           style={styles.header}
@@ -610,13 +612,26 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
         </Animated.View>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.surface },
+const makeStyles = (C: any, isDark: boolean) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: C.bg },
+  centerContainer: {
+    width: "100%",
+    maxWidth: 460,
+    alignSelf: "center",
+    backgroundColor: C.surface,
+    borderWidth: Platform.OS === "web" ? 1 : 0,
+    borderColor: C.border,
+    borderRadius: Platform.OS === "web" ? 16 : 0,
+    marginVertical: Platform.OS === "web" ? 32 : 0,
+    overflow: "hidden",
+    ...(Platform.OS === "web" ? S.shadow.md : {}),
+  },
   header: {
     paddingTop: Platform.OS === "ios" ? 60 : 48,
     paddingBottom: 40,

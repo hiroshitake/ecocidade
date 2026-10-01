@@ -293,7 +293,7 @@ const makeStyles = (colors: typeof C) => StyleSheet.create({
   header: { backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, height: 60, ...S.shadow.sm },
   headerTitle: { fontSize: 17, fontWeight: "700", color: colors.text },
   scroll: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 100 },
+  scrollContent: { padding: 16, paddingBottom: 100, width: "100%", maxWidth: 680, alignSelf: "center" },
   stepRow: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
   stepLabels: { flexDirection: "row", justifyContent: "space-between", marginBottom: 20 },
   stepLabel: { fontSize: 11, fontWeight: "600", color: colors.text3, flex: 1, textAlign: "center" },

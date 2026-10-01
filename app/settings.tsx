@@ -27,7 +27,9 @@ export default function SettingsScreen() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
-  const [securityOpen, setSecurityOpen] = useState(false);\n  const [logoutOpen, setLogoutOpen] = useState(false);\n  const [loggingOut, setLoggingOut] = useState(false);
+  const [securityOpen, setSecurityOpen] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const load = async () => {
     setLoading(true);

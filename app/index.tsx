@@ -6,7 +6,7 @@ import { getSupabaseSessionUser, isSupabaseConfigured, supabase } from "../servi
 
 export default function Index() {
   const [checking, setChecking] = React.useState(true);
-  const [destination, setDestination] = React.useState<"/login" | "/map" | "/google-profile">("/login");
+  const [destination, setDestination] = React.useState<"/login" | "/map" | "/google-profile" | "/reset-password">("/login");
 
   useEffect(() => {
     let active = true;
@@ -16,9 +16,21 @@ export default function Index() {
         return;
       }
       try {
+        if (typeof window !== "undefined" && window.location.hash.includes("type=recovery")) {
+          setDestination("/reset-password");
+          setChecking(false);
+          return;
+        }
         const user = await getSupabaseSessionUser();
         if (!active) return;
         if (user) setDestination(user.city_id || user.city ? "/map" : "/google-profile");
+        const subscription = supabase.auth.onAuthStateChange((event) => {
+          if (event === "PASSWORD_RECOVERY" && active) {
+            setDestination("/reset-password");
+            setChecking(false);
+          }
+        });
+        return () => subscription.data.subscription.unsubscribe();
       } catch (error) {
         console.error("Erro ao verificar sessão inicial:", error);
       } finally {

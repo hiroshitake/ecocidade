@@ -7,6 +7,7 @@ import { deleteReport, getAdminReports, setReportPublicVisibility, updateReportS
 import { createReportImageUrl, createSupabaseAvatarUrl } from '../../services/supabase';
 import { ThemedText } from '../themed-text';
 import { ThemedView } from '../themed-view';
+import ReportRetentionTimer from '../report-retention-timer';
 
 interface Report {
   id: string; category?: string; description?: string; status?: string; image_url?: string | null;
@@ -315,13 +316,15 @@ export default function ManageReportsFiltered({ security = false }: { security?:
               <View style={styles.detail}><ThemedText style={styles.label}>Status</ThemedText><ThemedText style={[styles.value, { color: statusColor(selectedReport.status) }]}>{statusLabel(selectedReport.status)}</ThemedText></View>
               <View style={styles.detail}><ThemedText style={styles.label}>Visibilidade</ThemedText><ThemedText style={[styles.value, { color: selectedReport.hidden_from_public ? C.danger : C.eco }]}>{selectedReport.hidden_from_public ? 'Oculta para usuários' : 'Visível conforme as regras públicas'}</ThemedText></View>
               {normalizeStatus(selectedReport.status) === 'resolved' ? (
-                <View style={styles.lockedNotice}>
+                <>
+                  <ReportRetentionTimer resolvedAt={selectedReport.resolved_at} audience="admin" />
+                  <View style={styles.lockedNotice}>
                   <MaterialCommunityIcons name="lock-outline" size={20} color={C.eco} />
                   <View style={styles.lockedNoticeCopy}>
                     <ThemedText style={styles.lockedNoticeTitle}>Denúncia concluída</ThemedText>
                     <ThemedText style={styles.lockedNoticeText}>Esta denúncia não pode mais ser alterada, ocultada ou excluída manualmente. Ela seguirá o prazo automático de retenção do sistema.</ThemedText>
                   </View>
-                </View>
+                </>
               ) : (
                 <>
                   <ThemedText style={styles.label}>Alterar status</ThemedText>

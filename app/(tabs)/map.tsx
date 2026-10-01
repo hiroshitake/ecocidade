@@ -4,6 +4,8 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 import { router } from "expo-router";
 import {
   ActivityIndicator,
+  LayoutAnimation,
+  Platform,
   useWindowDimensions,
   ScrollView,
   StyleSheet,
@@ -11,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import * as Haptics from "expo-haptics";
 import MapComponent from "../../components/map";
 import { ThemedText } from "../../components/themed-text";
 import { C } from "../../constants/theme";

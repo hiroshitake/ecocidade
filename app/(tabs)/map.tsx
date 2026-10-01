@@ -76,6 +76,7 @@ export default function MapScreen() {
     "gps" | "gps_unavailable" | "permission_denied" | "city_fallback"
   >("gps_unavailable");
   const [selectedReportIndex, setSelectedReportIndex] = useState<number>(0);
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -414,6 +415,7 @@ export default function MapScreen() {
             reports={sortedReports}
             zones={formattedZones}
             userLocation={userLocation}
+            selectedReportId={selectedReportId}
           />
 
           <TouchableOpacity
@@ -529,7 +531,10 @@ export default function MapScreen() {
                   styles.nearbyCard,
                   selectedReportIndex === index && styles.nearbyCardActive,
                 ]}
-                onPress={() => setSelectedReportIndex(index)}
+                onPress={() => {
+                  setSelectedReportIndex(index);
+                  setSelectedReportId(rep.id);
+                }}
               >
                 <View style={styles.nearbyCardHeader}>
                   <ThemedText style={styles.nearbyCategory}>
@@ -751,8 +756,8 @@ const makeStyles = (colors: typeof C) => StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
 
   nearbyContainer: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderTopWidth: 1,
     borderTopColor: "#e5e7eb",
     backgroundColor: colors.surface,
@@ -761,9 +766,9 @@ const makeStyles = (colors: typeof C) => StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 10,
+    marginBottom: 7,
   },
-  nearbyTitle: { fontSize: 15, fontWeight: "700" },
+  nearbyTitle: { fontSize: 13, fontWeight: "700" },
   arrowGroup: { flexDirection: "row", gap: 6 },
   arrowBtn: {
     width: 32,
@@ -785,10 +790,10 @@ const makeStyles = (colors: typeof C) => StyleSheet.create({
   },
   nearbyCard: {
     backgroundColor: colors.surface2,
-    borderRadius: 12,
-    padding: 12,
-    marginRight: 12,
-    width: 220,
+    borderRadius: 10,
+    padding: 9,
+    marginRight: 9,
+    width: 190,
     borderWidth: 1.5,
     borderColor: colors.border,
   },
@@ -804,7 +809,7 @@ const makeStyles = (colors: typeof C) => StyleSheet.create({
   },
   nearbyCategory: {
     fontWeight: "700",
-    fontSize: 14,
+    fontSize: 13,
     textTransform: "capitalize",
   },
   distBadge: {
@@ -816,9 +821,9 @@ const makeStyles = (colors: typeof C) => StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 6,
   },
-  distText: { fontSize: 11, fontWeight: "700", color: colors.primary },
-  nearbyDesc: { fontSize: 12, color: colors.text2, marginBottom: 8, height: 32 },
+  distText: { fontSize: 10, fontWeight: "700", color: colors.primary },
+  nearbyDesc: { fontSize: 11, color: colors.text2, marginBottom: 6, height: 30 },
   statusRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
-  statusText: { fontSize: 11, fontWeight: "600", color: colors.text2 },
+  statusText: { fontSize: 10, fontWeight: "600", color: colors.text2 },
 });

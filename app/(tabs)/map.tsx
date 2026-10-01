@@ -81,6 +81,7 @@ export default function MapScreen() {
     "gps" | "gps_unavailable" | "permission_denied" | "city_fallback"
   >("gps_unavailable");
   const [selectedReportIndex, setSelectedReportIndex] = useState<number>(0);
+  // selectedReportId só é preenchido quando o usuário pede explicitamente para abrir os detalhes
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [isFeedCollapsed, setIsFeedCollapsed] = useState(false);
@@ -244,11 +245,14 @@ export default function MapScreen() {
         const desc = String(item.description || "").toLowerCase();
         const cat = String(item.category || "").toLowerCase();
         const proto = String(item.id || "").toLowerCase();
+        const addr = String(item.address || item.location?.address || "").toLowerCase();
+
         if (
           !title.includes(query) &&
           !desc.includes(query) &&
           !cat.includes(query) &&
-          !proto.includes(query)
+          !proto.includes(query) &&
+          !addr.includes(query)
         ) {
           return false;
         }
@@ -298,23 +302,27 @@ export default function MapScreen() {
     }));
   }, [zones]);
 
-  const handleSelectReport = (index: number, repId: string) => {
+  // Apenas seleciona visualmente no carrossel e posiciona sem abrir modal intrusivo
+  const handleSelectReport = (index: number) => {
     setSelectedReportIndex(index);
-    setSelectedReportId(repId);
     scrollViewRef.current?.scrollTo({ x: index * 260, animated: true });
+  };
+
+  const handleOpenDetails = (repId: string) => {
+    setSelectedReportId(repId);
   };
 
   const handlePrev = () => {
     if (selectedReportIndex > 0) {
       const nextIdx = selectedReportIndex - 1;
-      handleSelectReport(nextIdx, sortedReports[nextIdx].id);
+      handleSelectReport(nextIdx);
     }
   };
 
   const handleNext = () => {
     if (selectedReportIndex < sortedReports.length - 1) {
       const nextIdx = selectedReportIndex + 1;
-      handleSelectReport(nextIdx, sortedReports[nextIdx].id);
+      handleSelectReport(nextIdx);
     }
   };
 
@@ -337,13 +345,12 @@ export default function MapScreen() {
     },
   };
 
-  const activeReport = sortedReports[selectedReportIndex] || null;
-
   return (
     <View style={styles.container}>
       {/* Top Floating Civic Command Bar */}
       <View style={styles.topControlPanel}>
-        <View style={styles.topBarRow}>
+        {/* Row 1: Brand & Actions (Separado em linha própria no mobile) */}
+        <View style={styles.topHeaderRow}>
           <View style={styles.brandBadge}>
             <View style={styles.brandIconWrapper}>
               <Ionicons name="leaf" size={14} color="#fff" />
@@ -356,15 +363,70 @@ export default function MapScreen() {
             </View>
           </View>
 
-          {/* Search Input Bar */}
-          <View style={styles.searchBarContainer}>
+          {isDesktop && (
+            <View style={styles.searchBarContainerDesktop}>
+              <Ionicons name="search" size={16} color={colors.text3} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Buscar rua, categoria ou chamado..."
+                placeholderTextColor={colors.text3}
+                value={searchQuery}
+                onChangeText={(text) => {
+                  setSearchQuery(text);
+                  setSelectedReportIndex(0);
+                }}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery("")}>
+                  <Ionicons name="close-circle" size={16} color={colors.text3} />
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          <View style={styles.actionButtonsGroup}>
+            <TouchableOpacity
+              style={styles.actionIconButton}
+              onPress={() => router.push("/notifications")}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="notifications-outline" size={18} color={colors.text} />
+              {unreadNotifications > 0 && (
+                <View style={styles.notifBadge}>
+                  <ThemedText style={styles.notifBadgeText}>
+                    {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                  </ThemedText>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionIconButton}
+              onPress={loadData}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name={loading ? "sync" : "refresh-outline"}
+                size={18}
+                color={colors.primary}
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Row 2: Search Bar Full Width no Mobile */}
+        {!isDesktop && (
+          <View style={styles.searchBarContainerMobile}>
             <Ionicons name="search" size={16} color={colors.text3} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Buscar rua, categoria ou chamado..."
+              placeholder="Buscar rua, bairro, categoria..."
               placeholderTextColor={colors.text3}
               value={searchQuery}
-              onChangeText={setSearchQuery}
+              onChangeText={(text) => {
+                setSearchQuery(text);
+                setSelectedReportIndex(0);
+              }}
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery("")}>
@@ -372,38 +434,9 @@ export default function MapScreen() {
               </TouchableOpacity>
             )}
           </View>
+        )}
 
-          {/* Notification Button */}
-          <TouchableOpacity
-            style={styles.actionIconButton}
-            onPress={() => router.push("/notifications")}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="notifications-outline" size={18} color={colors.text} />
-            {unreadNotifications > 0 && (
-              <View style={styles.notifBadge}>
-                <ThemedText style={styles.notifBadgeText}>
-                  {unreadNotifications > 99 ? "99+" : unreadNotifications}
-                </ThemedText>
-              </View>
-            )}
-          </TouchableOpacity>
-
-          {/* Refresh Action */}
-          <TouchableOpacity
-            style={styles.actionIconButton}
-            onPress={loadData}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name={loading ? "sync" : "refresh-outline"}
-              size={18}
-              color={colors.primary}
-            />
-          </TouchableOpacity>
-        </View>
-
-        {/* Clean Floating Category Pills */}
+        {/* Row 3: Category Filter Chips */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -621,8 +654,8 @@ export default function MapScreen() {
                       styles.compactCard,
                       isSelected && styles.compactCardActive,
                     ]}
-                    onPress={() => handleSelectReport(index, rep.id)}
-                    activeOpacity={0.88}
+                    onPress={() => handleSelectReport(index)}
+                    activeOpacity={0.9}
                   >
                     <View style={styles.cardTopRow}>
                       <View style={styles.cardCategoryChip}>
@@ -671,11 +704,16 @@ export default function MapScreen() {
                         </ThemedText>
                       </View>
 
-                      <View style={styles.cardProtocolBadge}>
-                        <ThemedText style={styles.cardProtocolText}>
-                          #ECO-{String(rep.id).slice(0, 4)}
+                      <TouchableOpacity
+                        style={styles.detailsActionBtn}
+                        onPress={() => handleOpenDetails(rep.id)}
+                        activeOpacity={0.7}
+                      >
+                        <ThemedText style={styles.detailsActionBtnText}>
+                          Ver detalhes
                         </ThemedText>
-                      </View>
+                        <Ionicons name="chevron-forward" size={11} color={colors.primary} />
+                      </TouchableOpacity>
                     </View>
                   </TouchableOpacity>
                 );
@@ -702,7 +740,7 @@ const makeStyles = (colors: typeof C) =>
       left: 12,
       right: 12,
       zIndex: 20,
-      backgroundColor: "rgba(255, 255, 255, 0.94)",
+      backgroundColor: "rgba(255, 255, 255, 0.95)",
       borderRadius: 14,
       padding: 10,
       borderWidth: 1,
@@ -713,17 +751,16 @@ const makeStyles = (colors: typeof C) =>
       shadowRadius: 12,
       elevation: 6,
     },
-    topBarRow: {
+    topHeaderRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 8,
+      justifyContent: "space-between",
       marginBottom: 8,
     },
     brandBadge: {
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
-      paddingRight: 6,
     },
     brandIconWrapper: {
       width: 28,
@@ -747,7 +784,7 @@ const makeStyles = (colors: typeof C) =>
       lineHeight: 12,
     },
 
-    searchBarContainer: {
+    searchBarContainerDesktop: {
       flex: 1,
       flexDirection: "row",
       alignItems: "center",
@@ -758,6 +795,20 @@ const makeStyles = (colors: typeof C) =>
       gap: 6,
       borderWidth: 1,
       borderColor: colors.border,
+      marginHorizontal: 12,
+    },
+    searchBarContainerMobile: {
+      width: "100%",
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.surface2,
+      borderRadius: 8,
+      paddingHorizontal: 10,
+      height: 36,
+      gap: 6,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: 8,
     },
     searchInput: {
       flex: 1,
@@ -766,9 +817,14 @@ const makeStyles = (colors: typeof C) =>
       padding: 0,
     },
 
+    actionButtonsGroup: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+    },
     actionIconButton: {
-      width: 34,
-      height: 34,
+      width: 32,
+      height: 32,
       borderRadius: 8,
       backgroundColor: colors.surface2,
       borderWidth: 1,
@@ -778,12 +834,12 @@ const makeStyles = (colors: typeof C) =>
     },
     notifBadge: {
       position: "absolute",
-      top: 3,
-      right: 3,
+      top: 2,
+      right: 2,
       backgroundColor: "#ef4444",
       borderRadius: 6,
-      minWidth: 14,
-      height: 14,
+      minWidth: 13,
+      height: 13,
       alignItems: "center",
       justifyContent: "center",
       paddingHorizontal: 2,
@@ -828,7 +884,7 @@ const makeStyles = (colors: typeof C) =>
     /* GPS Status Pill */
     locationPill: {
       position: "absolute",
-      top: 108,
+      top: 140,
       alignSelf: "center",
       zIndex: 15,
       flexDirection: "row",
@@ -881,7 +937,7 @@ const makeStyles = (colors: typeof C) =>
     floatingControls: {
       position: "absolute",
       right: 14,
-      bottom: 145,
+      bottom: 150,
       zIndex: 25,
       gap: 8,
     },
@@ -1005,7 +1061,7 @@ const makeStyles = (colors: typeof C) =>
     },
 
     compactCard: {
-      width: 250,
+      width: 260,
       backgroundColor: "#ffffff",
       borderRadius: 10,
       padding: 10,
@@ -1079,10 +1135,18 @@ const makeStyles = (colors: typeof C) =>
       fontWeight: "600",
       color: colors.text2,
     },
-    cardProtocolBadge: {},
-    cardProtocolText: {
-      fontSize: 9,
-      color: colors.text3,
-      fontWeight: "600",
+    detailsActionBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 2,
+      paddingVertical: 2,
+      paddingHorizontal: 6,
+      borderRadius: 4,
+      backgroundColor: "rgba(37, 99, 235, 0.08)",
+    },
+    detailsActionBtnText: {
+      fontSize: 10,
+      fontWeight: "700",
+      color: colors.primary,
     },
   });

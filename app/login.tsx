@@ -7,6 +7,8 @@ import {
     ActivityIndicator,
     Alert,
     Animated,
+    Image,
+    ImageBackground,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -16,6 +18,7 @@ import {
     TextInput,
     TouchableOpacity,
     View,
+    useWindowDimensions,
 } from "react-native";
 import { InlineError } from "../components/InlineError";
 import { useAppTheme } from "../context/theme-context";
@@ -442,7 +445,7 @@ export default function LoginScreen() {
 
                 <TouchableOpacity
                   style={styles.btnPrimary}
-                  onPress={handleLogin}
+                  onPress={handleAuth}
                   disabled={loading}
                 >
                   {loading ? (

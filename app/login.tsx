@@ -305,480 +305,593 @@ export default function LoginScreen() {
   };
 
   return (
+      return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      style={{ flex: 1, backgroundColor: "#0b1329" }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <StatusBar barStyle="light-content" />
-      <ScrollView style={styles.root} contentContainerStyle={{ flexGrow: 1, justifyContent: Platform.OS === "web" ? "center" : "flex-start" }} bounces={false}>
-        <View style={styles.centerContainer}>
-        <LinearGradient
-          colors={isDark ? ["#0f172a", "#1e293b"] : ["#1e3a8a", "#0f172a"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0.4, y: 1 }}
-          style={styles.header}
-        >
-          <View style={styles.logoRow}>
-            <View style={styles.logoIcon}>
-              <Ionicons name="leaf" size={26} color="white" />
-            </View>
-            <View>
-              <Text style={styles.logoText}>
-                ECO<Text style={styles.logoGreen}>cidade</Text>
-              </Text>
-              <Text style={styles.logoSub}>
-                Zeladoria &amp; Segurança Urbana
-              </Text>
-            </View>
-          </View>
-          <Text style={styles.headline}>Sua cidade mais inteligente.</Text>
-          <Text style={styles.subheadline}>
-            Reporte problemas, acompanhe resoluções e fique seguro.
-          </Text>
-        </LinearGradient>
-
-        <Animated.View
-          style={[
-            styles.formArea,
-            {
-              opacity: Animated.multiply(screenOpacity, tabOpacity),
-              transform: [{ translateY: screenTranslateY }],
-            },
-          ]}
-        >
-          <View style={styles.tabBar}>
-            {(["login", "register"] as const).map((t) => (
-              <TouchableOpacity
-                key={t}
-                style={[styles.tabBtn, tab === t && styles.tabBtnActive]}
-                onPress={() => handleTabChange(t)}
+      <ScrollView
+        contentContainerStyle={[
+          styles.scrollContainer,
+          isDesktop && styles.scrollContainerDesktop,
+        ]}
+        bounces={false}
+      >
+        <View style={[styles.mainCard, isDesktop && styles.mainCardDesktop]}>
+          <View style={[styles.heroPanel, isDesktop && styles.heroPanelDesktop]}>
+            <ImageBackground
+              source={require("../assets/images/login-map.jpg")}
+              style={styles.heroBackground}
+              imageStyle={{ opacity: 0.35 }}
+            >
+              <LinearGradient
+                colors={["rgba(10, 25, 47, 0.85)", "rgba(11, 19, 41, 0.96)"]}
+                style={styles.heroGradient}
               >
-                <Text
-                  style={[
-                    styles.tabBtnText,
-                    tab === t && styles.tabBtnTextActive,
-                  ]}
-                >
-                  {t === "login" ? "Entrar" : "Cadastrar"}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                <View style={styles.brandContainer}>
+                  <Image
+                    source={require("../assets/images/logo.png")}
+                    style={styles.brandLogo}
+                    resizeMode="contain"
+                  />
+                  <View>
+                    <Text style={styles.brandTitle}>ECOcidade</Text>
+                    <Text style={styles.brandSubtitle}>
+                      Zeladoria &amp; Segurança Urbana
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.heroContent}>
+                  <Text style={styles.heroHeading}>
+                    {tab === "login" ? "Bem-vindo de volta!" : "Junte-se à sua cidade"}
+                  </Text>
+                  <Text style={styles.heroText}>
+                    Acompanhe solicitações de zeladoria, mapas de segurança e contribua para uma cidade mais inteligente e integrada.
+                  </Text>
+                </View>
+
+                {isDesktop && (
+                  <View style={styles.heroFooter}>
+                    <View style={styles.badgePill}>
+                      <Ionicons name="shield-checkmark" size={14} color="#60a5fa" />
+                      <Text style={styles.badgeText}>Plataforma Cívica Integrada</Text>
+                    </View>
+                  </View>
+                )}
+              </LinearGradient>
+            </ImageBackground>
           </View>
 
-          {tab === "login" && (
-            <View>
-              <Text style={styles.label}>E-MAIL</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="seu@email.com"
-                placeholderTextColor={C.text3}
-                value={email}
-                onChangeText={(value) => {
-                  setEmail(value);
-                  if (fieldErrors.email) setError("email", "");
-                }}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-              <InlineError
-                message={fieldErrors.email}
-                visible={Boolean(fieldErrors.email)}
-              />
+          <View style={[styles.formPanel, isDesktop && styles.formPanelDesktop]}>
+            <View style={styles.tabBar}>
+              {(["login", "register"] as const).map((t) => (
+                <TouchableOpacity
+                  key={t}
+                  style={[styles.tabBtn, tab === t && styles.tabBtnActive]}
+                  onPress={() => handleTabChange(t)}
+                >
+                  <Text
+                    style={[
+                      styles.tabBtnText,
+                      tab === t && styles.tabBtnTextActive,
+                    ]}
+                  >
+                    {t === "login" ? "Entrar" : "Cadastrar"}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
 
-              <Text style={styles.label}>SENHA</Text>
+            {tab === "login" && (
               <View>
+                <Text style={styles.label}>E-MAIL</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Mínimo 6 caracteres"
-                  placeholderTextColor={C.text3}
-                  value={password}
+                  placeholder="seu@email.com"
+                  placeholderTextColor="#64748b"
+                  value={email}
                   onChangeText={(value) => {
-                    setPassword(value);
-                    if (fieldErrors.password) setError("password", "");
+                    setEmail(value);
+                    if (fieldErrors.email) setError("email", "");
                   }}
-                  secureTextEntry={!showPass}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
                 />
-                <TouchableOpacity
-                  style={styles.eyeBtn}
-                  onPress={() => setShowPass((prev) => !prev)}
-                >
-                  <Ionicons
-                    name={showPass ? "eye-off" : "eye"}
-                    size={20}
-                    color={C.text3}
+                <InlineError
+                  message={fieldErrors.email}
+                  visible={Boolean(fieldErrors.email)}
+                />
+
+                <Text style={styles.label}>SENHA</Text>
+                <View>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Mínimo 6 caracteres"
+                    placeholderTextColor="#64748b"
+                    value={password}
+                    onChangeText={(value) => {
+                      setPassword(value);
+                      if (fieldErrors.password) setError("password", "");
+                    }}
+                    secureTextEntry={!showPass}
                   />
+                  <TouchableOpacity
+                    style={styles.eyeBtn}
+                    onPress={() => setShowPass((prev) => !prev)}
+                  >
+                    <Ionicons
+                      name={showPass ? "eye-off" : "eye"}
+                      size={20}
+                      color="#94a3b8"
+                    />
+                  </TouchableOpacity>
+                </View>
+                <InlineError
+                  message={fieldErrors.password}
+                  visible={Boolean(fieldErrors.password)}
+                />
+
+                <TouchableOpacity
+                  style={styles.forgotBtn}
+                  onPress={() => router.push("/forgot-password")}
+                >
+                  <Text style={styles.forgotText}>Esqueceu a senha?</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.btnPrimary}
+                  onPress={handleLogin}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="white" size="small" />
+                  ) : (
+                    <>
+                      <Ionicons name="log-in-outline" size={20} color="white" />
+                      <Text style={styles.btnText}>Acessar Conta</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                <View style={styles.dividerRow}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>ou continue com</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+
+                <TouchableOpacity
+                  style={styles.btnGoogle}
+                  onPress={handleGoogleLogin}
+                  disabled={googleLoading}
+                >
+                  {googleLoading ? (
+                    <ActivityIndicator color="#1e293b" size="small" />
+                  ) : (
+                    <>
+                      <Ionicons name="logo-google" size={18} color="#ea4335" />
+                      <Text style={styles.btnGoogleText}>Entrar com Google</Text>
+                    </>
+                  )}
                 </TouchableOpacity>
               </View>
-              <InlineError
-                message={fieldErrors.password}
-                visible={Boolean(fieldErrors.password)}
-              />
+            )}
 
-              <TouchableOpacity style={styles.forgotBtn} onPress={() => router.push("/forgot-password")}>
-                <Text style={styles.forgotText}>Esqueceu a senha?</Text>
-              </TouchableOpacity>
+            {tab === "register" && (
+              <View>
+                <Text style={styles.label}>NOME COMPLETO</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Seu nome"
+                  placeholderTextColor="#64748b"
+                  value={name}
+                  onChangeText={(value) => {
+                    setName(value);
+                    if (fieldErrors.name) setError("name", "");
+                  }}
+                />
+                <InlineError
+                  message={fieldErrors.name}
+                  visible={Boolean(fieldErrors.name)}
+                />
 
-              <TouchableOpacity
-                style={styles.btnPrimary}
-                onPress={handleAuth}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="white" size="small" />
-                ) : (
-                  <>
-                    <Ionicons name="log-in" size={20} color="white" />
-                    <Text style={styles.btnText}>Entrar</Text>
-                  </>
-                )}
-              </TouchableOpacity>
+                <Text style={styles.label}>DATA DE NASCIMENTO</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="DD/MM/AAAA"
+                  placeholderTextColor="#64748b"
+                  value={birthdate}
+                  onChangeText={(value) => {
+                    setBirthdate(formatBirthDate(value));
+                    if (fieldErrors.birthdate) setError("birthdate", "");
+                  }}
+                  keyboardType="numeric"
+                  maxLength={10}
+                />
+                <InlineError
+                  message={fieldErrors.birthdate}
+                  visible={Boolean(fieldErrors.birthdate)}
+                />
 
-              <View style={styles.dividerRow}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>ou continue com</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              <TouchableOpacity
-                style={styles.btnOutline}
-                onPress={async () => {
-                  try {
-                    setLoading(true);
-                    if (!isSupabaseConfigured()) {
-                      throw new Error("Supabase não configurado.");
-                    }
-                    await signInWithGoogle();
-                    if (Platform.OS !== "web") {
-                      await finishAuthenticatedUser();
-                    }
-                  } catch (error: any) {
-                    console.error("Erro no login com Google:", error);
-                    if (error?.message !== "O login com Google foi interrompido.") {
-                      toast.addToast(
-                        error?.message || "Não foi possível entrar com Google.",
-                        "error",
-                      );
-                    }
-                  } finally {
-                    setLoading(false);
-                  }
-                }}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color={C.primary} size="small" />
-                ) : (
-                  <Text style={styles.btnOutlineText}>🇬 Google</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {tab === "register" && (
-            <View>
-              <Text style={styles.label}>NOME COMPLETO</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Seu nome completo"
-                placeholderTextColor={C.text3}
-                value={name}
-                onChangeText={(value) => {
-                  setName(value);
-                  if (fieldErrors.name) setError("name", "");
-                }}
-              />
-              <InlineError
-                message={fieldErrors.name}
-                visible={Boolean(fieldErrors.name)}
-              />
-
-              <Text style={styles.label}>DATA DE NASCIMENTO</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="DD/MM/AAAA"
-                placeholderTextColor={C.text3}
-                value={birthdate}
-                keyboardType="numeric"
-                onChangeText={(value) => {
-                  const formattedValue = formatBirthDate(value);
-                  setBirthdate(formattedValue);
-                  if (fieldErrors.birthdate) setError("birthdate", "");
-                }}
-              />
-              <InlineError
-                message={fieldErrors.birthdate}
-                visible={Boolean(fieldErrors.birthdate)}
-              />
-
-              <Text style={styles.label}>CIDADE</Text>
-              <View
-                style={{
-                  flexDirection: "row",
-                  flexWrap: "wrap",
-                  gap: 10,
-                  marginBottom: 12,
-                }}
-              >
-                {cityOptions.map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[
-                      styles.cityOption,
-                      selectedCity === item.id && styles.cityOptionActive,
-                    ]}
-                    onPress={() => {
-                      setSelectedCity(item.id);
-                      if (fieldErrors.city) setError("city", "");
-                    }}
-                  >
-                    <Text
+                <Text style={styles.label}>CIDADE</Text>
+                <View style={styles.cityGrid}>
+                  {cityOptions.map((c) => (
+                    <TouchableOpacity
+                      key={c.id}
                       style={[
-                        styles.cityOptionText,
-                        selectedCity === item.id && styles.cityOptionTextActive,
+                        styles.cityOption,
+                        city === c.id && styles.cityOptionActive,
                       ]}
+                      onPress={() => {
+                        setCity(c.id);
+                        if (fieldErrors.city) setError("city", "");
+                      }}
                     >
-                      {item.name}
-                    </Text>
+                      <Text
+                        style={[
+                          styles.cityOptionText,
+                          city === c.id && styles.cityOptionTextActive,
+                        ]}
+                      >
+                        {c.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <InlineError
+                  message={fieldErrors.city}
+                  visible={Boolean(fieldErrors.city)}
+                />
+
+                <Text style={styles.label}>E-MAIL</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="seu@email.com"
+                  placeholderTextColor="#64748b"
+                  value={email}
+                  onChangeText={(value) => {
+                    setEmail(value);
+                    if (fieldErrors.email) setError("email", "");
+                  }}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+                <InlineError
+                  message={fieldErrors.email}
+                  visible={Boolean(fieldErrors.email)}
+                />
+
+                <Text style={styles.label}>SENHA</Text>
+                <View>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Mínimo 6 caracteres"
+                    placeholderTextColor="#64748b"
+                    value={password}
+                    onChangeText={(value) => {
+                      setPassword(value);
+                      if (fieldErrors.password) setError("password", "");
+                    }}
+                    secureTextEntry={!showPass}
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeBtn}
+                    onPress={() => setShowPass((prev) => !prev)}
+                  >
+                    <Ionicons
+                      name={showPass ? "eye-off" : "eye"}
+                      size={20}
+                      color="#94a3b8"
+                    />
                   </TouchableOpacity>
-                ))}
+                </View>
+                <InlineError
+                  message={fieldErrors.password}
+                  visible={Boolean(fieldErrors.password)}
+                />
+
+                <TouchableOpacity
+                  style={[styles.btnPrimary, { backgroundColor: "#15803d" }]}
+                  onPress={handleRegister}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="white" size="small" />
+                  ) : (
+                    <>
+                      <Ionicons name="person-add" size={20} color="white" />
+                      <Text style={styles.btnText}>Criar conta</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
               </View>
-              <InlineError
-                message={fieldErrors.city}
-                visible={Boolean(fieldErrors.city)}
-              />
+            )}
 
-              <Text style={styles.label}>E-MAIL</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="seu@email.com"
-                placeholderTextColor={C.text3}
-                value={email}
-                onChangeText={(value) => {
-                  setEmail(value);
-                  if (fieldErrors.email) setError("email", "");
-                }}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-              <InlineError
-                message={fieldErrors.email}
-                visible={Boolean(fieldErrors.email)}
-              />
-
-              <Text style={styles.label}>SENHA</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Mínimo 6 caracteres"
-                placeholderTextColor={C.text3}
-                value={password}
-                onChangeText={(value) => {
-                  setPassword(value);
-                  if (fieldErrors.password) setError("password", "");
-                }}
-                secureTextEntry
-              />
-              <InlineError
-                message={fieldErrors.password}
-                visible={Boolean(fieldErrors.password)}
-              />
-
+            <View style={styles.adminArea}>
               <TouchableOpacity
-                style={[styles.btnPrimary, { backgroundColor: C.eco }]}
-                onPress={handleRegister}
-                disabled={loading}
+                style={styles.adminBtn}
+                onPress={() => router.push("/admin-login")}
               >
-                {loading ? (
-                  <ActivityIndicator color="white" size="small" />
-                ) : (
-                  <>
-                    <Ionicons name="person-add" size={20} color="white" />
-                    <Text style={styles.btnText}>Criar conta</Text>
-                  </>
-                )}
+                <Ionicons name="shield-checkmark" size={17} color="#2563eb" />
+                <Text style={styles.adminBtnText}>
+                  Acesso de Servidor / Gestão Pública
+                </Text>
+                <Ionicons name="chevron-forward" size={15} color="#2563eb" />
               </TouchableOpacity>
             </View>
-          )}
-
-          <View style={styles.adminArea}>
-            <TouchableOpacity
-              style={styles.adminBtn}
-              onPress={() => router.push("/admin-login")}
-            >
-              <Ionicons name="shield-checkmark" size={18} color={C.primary} />
-              <Text style={styles.adminBtnText}>
-                Acesso do Servidor / Admin
-              </Text>
-              <Ionicons name="chevron-forward" size={16} color={C.primary} />
-            </TouchableOpacity>
           </View>
-        </Animated.View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-const makeStyles = (C: any, isDark: boolean) => StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
-  centerContainer: {
+const styles = StyleSheet.create({
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: "center",
+  },
+  scrollContainerDesktop: {
+    padding: 32,
+    alignItems: "center",
+  },
+  mainCard: {
     width: "100%",
-    maxWidth: 460,
-    alignSelf: "center",
-    backgroundColor: C.surface,
-    borderWidth: Platform.OS === "web" ? 1 : 0,
-    borderColor: C.border,
-    borderRadius: Platform.OS === "web" ? 16 : 0,
-    marginVertical: Platform.OS === "web" ? 32 : 0,
+    backgroundColor: "#ffffff",
     overflow: "hidden",
-    ...(Platform.OS === "web" ? S.shadow.md : {}),
   },
-  header: {
-    paddingTop: Platform.OS === "ios" ? 60 : 48,
-    paddingBottom: 40,
-    paddingHorizontal: 24,
+  mainCardDesktop: {
+    maxWidth: 960,
+    flexDirection: "row",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#1e293b",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.35,
+    shadowRadius: 28,
+    elevation: 12,
   },
-  logoRow: {
+  heroPanel: {
+    minHeight: 240,
+    backgroundColor: "#0b1329",
+  },
+  heroPanelDesktop: {
+    width: "48%",
+    minHeight: 620,
+  },
+  heroBackground: {
+    flex: 1,
+    width: "100%",
+    height: "100%",
+  },
+  heroGradient: {
+    flex: 1,
+    padding: 32,
+    justifyContent: "space-between",
+  },
+  brandContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 32,
+    gap: 12,
   },
-  logoIcon: {
+  brandLogo: {
     width: 48,
     height: 48,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.3)",
+    borderRadius: 12,
   },
-  logoText: {
-    fontSize: 26,
+  brandTitle: {
+    fontSize: 22,
     fontWeight: "800",
-    color: "white",
+    color: "#ffffff",
     letterSpacing: -0.5,
   },
-  logoGreen: { color: "#4ade80" },
-  logoSub: { fontSize: 11, color: "rgba(255,255,255,0.7)", fontWeight: "500" },
-  headline: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "white",
-    lineHeight: 34,
-    marginBottom: 8,
+  brandSubtitle: {
+    fontSize: 12,
+    color: "#94a3b8",
+    fontWeight: "500",
   },
-  subheadline: { color: "rgba(255,255,255,0.75)", fontSize: 14 },
-  formArea: { backgroundColor: C.surface, padding: 24, paddingBottom: 48 },
+  heroContent: {
+    marginVertical: 24,
+  },
+  heroHeading: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#ffffff",
+    marginBottom: 10,
+    lineHeight: 32,
+  },
+  heroText: {
+    fontSize: 14,
+    color: "#cbd5e1",
+    lineHeight: 20,
+  },
+  heroFooter: {
+    marginTop: "auto",
+  },
+  badgePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(30, 58, 138, 0.45)",
+    borderWidth: 1,
+    borderColor: "rgba(96, 165, 250, 0.3)",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+  },
+  badgeText: {
+    fontSize: 12,
+    color: "#93c5fd",
+    fontWeight: "600",
+  },
+  formPanel: {
+    padding: 24,
+    backgroundColor: "#ffffff",
+  },
+  formPanelDesktop: {
+    width: "52%",
+    padding: 40,
+    justifyContent: "center",
+  },
   tabBar: {
     flexDirection: "row",
-    backgroundColor: C.surface2,
+    backgroundColor: "#f1f5f9",
     borderRadius: 12,
     padding: 4,
     marginBottom: 24,
   },
   tabBtn: {
     flex: 1,
-    paddingVertical: 9,
-    borderRadius: 9,
+    paddingVertical: 10,
+    borderRadius: 8,
     alignItems: "center",
   },
-  tabBtnActive: { backgroundColor: C.surface, ...S.shadow.sm },
-  tabBtnText: { fontSize: 14, fontWeight: "600", color: C.text2 },
-  tabBtnTextActive: { color: C.primary },
-  label: {
-    fontSize: 12,
+  tabBtnActive: {
+    backgroundColor: "#ffffff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  tabBtnText: {
+    fontSize: 14,
     fontWeight: "600",
-    color: C.text3,
+    color: "#64748b",
+  },
+  tabBtnTextActive: {
+    color: "#1e3a8a",
+  },
+  label: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#475569",
     letterSpacing: 0.5,
     marginBottom: 6,
     textTransform: "uppercase",
   },
   input: {
-    backgroundColor: C.surface2,
-    color: C.text,
+    backgroundColor: "#f8fafc",
+    color: "#0f172a",
     borderWidth: 1.5,
-    borderColor: C.border,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    fontSize: 15,
+    borderColor: "#e2e8f0",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
     marginBottom: 8,
   },
-  eyeBtn: { position: "absolute", right: 14, top: 13 },
-  forgotBtn: { alignSelf: "flex-end", marginBottom: 24, marginTop: -8 },
-  forgotText: { fontSize: 13, color: C.primary, fontWeight: "600" },
+  eyeBtn: {
+    position: "absolute",
+    right: 14,
+    top: 13,
+  },
+  forgotBtn: {
+    alignSelf: "flex-end",
+    marginBottom: 20,
+    marginTop: -4,
+  },
+  forgotText: {
+    fontSize: 13,
+    color: "#2563eb",
+    fontWeight: "600",
+  },
   btnPrimary: {
-    backgroundColor: C.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
+    backgroundColor: "#1d4ed8",
+    borderRadius: 10,
+    paddingVertical: 13,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    ...S.shadow.sm,
   },
-  btnText: { color: "white", fontSize: 15, fontWeight: "700" },
-  btnOutline: {
+  btnText: {
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginVertical: 18,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#e2e8f0",
+  },
+  dividerText: {
+    fontSize: 12,
+    color: "#94a3b8",
+    fontWeight: "500",
+  },
+  btnGoogle: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    backgroundColor: "#ffffff",
     borderWidth: 1.5,
-    borderColor: C.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
+    borderColor: "#e2e8f0",
+    borderRadius: 10,
+    paddingVertical: 12,
   },
-  btnOutlineText: { color: C.primary, fontSize: 15, fontWeight: "600" },
+  btnGoogleText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1e293b",
+  },
+  cityGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 12,
+  },
+  cityOption: {
+    borderWidth: 1.5,
+    borderColor: "#e2e8f0",
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "#f8fafc",
+  },
+  cityOptionActive: {
+    borderColor: "#2563eb",
+    backgroundColor: "#eff6ff",
+  },
+  cityOptionText: {
+    color: "#334155",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  cityOptionTextActive: {
+    color: "#1d4ed8",
+  },
   adminArea: {
-    marginTop: 28,
-    paddingTop: 20,
+    marginTop: 24,
+    paddingTop: 18,
     borderTopWidth: 1,
-    borderTopColor: C.border,
+    borderTopColor: "#e2e8f0",
   },
   adminBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: C.surface2,
-    paddingVertical: 12,
+    backgroundColor: "#f8fafc",
+    paddingVertical: 11,
     paddingHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: "#e2e8f0",
   },
   adminBtnText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
-    color: C.primary,
-  },
-  dividerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginVertical: 20,
-  },
-  dividerLine: { flex: 1, height: 1, backgroundColor: C.border },
-  dividerText: { fontSize: 12, color: C.text3, fontWeight: "500" },
-  cityOption: {
-    borderWidth: 1.5,
-    borderColor: C.border,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    backgroundColor: C.surface2,
-  },
-  cityOptionActive: {
-    borderColor: C.primary,
-    backgroundColor: "rgba(49, 130, 206, 0.12)",
-  },
-  cityOptionText: {
-    color: C.text,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  cityOptionTextActive: {
-    color: C.primary,
+    color: "#2563eb",
   },
 });

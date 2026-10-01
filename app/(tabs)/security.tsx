@@ -6,6 +6,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Image,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -50,6 +51,7 @@ export default function SecurityScreen() {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [submittedReport, setSubmittedReport] = useState<any | null>(null);
   const [cropPhotoUri, setCropPhotoUri] = useState<string | null>(null);
+  const [photoOptionsVisible, setPhotoOptionsVisible] = useState(false);
 
   const router = useRouter();
 
@@ -242,7 +244,7 @@ export default function SecurityScreen() {
 
   const showPhotoOptions = () => {
     if (Platform.OS === "web") {
-      handlePickPhoto();
+      setPhotoOptionsVisible(true);
       return;
     }
 
@@ -430,6 +432,77 @@ export default function SecurityScreen() {
           }}
         />
 
+        <Modal
+          visible={photoOptionsVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setPhotoOptionsVisible(false)}
+        >
+          <View style={styles.photoOptionsOverlay}>
+            <View style={styles.photoOptionsCard}>
+              <View style={styles.photoOptionsHeader}>
+                <View style={{ flex: 1, paddingRight: 12 }}>
+                  <Text style={styles.photoOptionsTitle}>Adicionar foto</Text>
+                  <Text style={styles.photoOptionsSub}>
+                    Como você quer adicionar a foto?
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setPhotoOptionsVisible(false)}
+                  style={styles.photoOptionsClose}
+                >
+                  <Ionicons name="close" size={22} color={C.text2} />
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                style={styles.photoOptionButton}
+                onPress={() => {
+                  setPhotoOptionsVisible(false);
+                  handleTakePhoto();
+                }}
+              >
+                <View style={styles.photoOptionIcon}>
+                  <Ionicons name="camera" size={24} color={C.primary} />
+                </View>
+                <View style={styles.photoOptionTextWrap}>
+                  <Text style={styles.photoOptionTitle}>Tirar foto</Text>
+                  <Text style={styles.photoOptionSub}>
+                    Abrir a câmera e ajustar o recorte antes de anexar
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={C.text3} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.photoOptionButton}
+                onPress={() => {
+                  setPhotoOptionsVisible(false);
+                  handlePickPhoto();
+                }}
+              >
+                <View style={styles.photoOptionIcon}>
+                  <Ionicons name="images" size={24} color={C.primary} />
+                </View>
+                <View style={styles.photoOptionTextWrap}>
+                  <Text style={styles.photoOptionTitle}>Escolher da galeria</Text>
+                  <Text style={styles.photoOptionSub}>
+                    Selecionar e recortar uma foto existente
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={C.text3} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.photoOptionsCancel}
+                onPress={() => setPhotoOptionsVisible(false)}
+              >
+                <Text style={styles.photoOptionsCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
         {/* ── BOTÕES ── */}
         <TouchableOpacity
           style={[
@@ -562,6 +635,62 @@ const makeStyles = (colors: typeof C) => StyleSheet.create({
     gap: 8,
   },
   photoSelectedText: { fontSize: 13, color: colors.eco, fontWeight: "600" },
+
+  photoOptionsOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  photoOptionsCard: {
+    width: "100%",
+    maxWidth: 420,
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    padding: 20,
+    ...S.shadow.lg,
+  },
+  photoOptionsHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    marginBottom: 18,
+  },
+  photoOptionsTitle: { fontSize: 19, fontWeight: "800", color: colors.text },
+  photoOptionsSub: { fontSize: 13, color: colors.text3, marginTop: 4 },
+  photoOptionsClose: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.surface2,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  photoOptionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface2,
+    borderRadius: 14,
+    padding: 13,
+    marginBottom: 10,
+  },
+  photoOptionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: colors.primaryLight,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  photoOptionTextWrap: { flex: 1 },
+  photoOptionTitle: { fontSize: 14, fontWeight: "700", color: colors.text },
+  photoOptionSub: { fontSize: 12, color: colors.text3, marginTop: 3 },
+  photoOptionsCancel: { alignItems: "center", paddingVertical: 12, marginTop: 2 },
+  photoOptionsCancelText: { fontSize: 14, fontWeight: "700", color: colors.text2 },
 
   btnDanger: {
     backgroundColor: colors.danger,

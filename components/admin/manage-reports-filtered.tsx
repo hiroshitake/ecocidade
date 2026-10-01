@@ -264,8 +264,35 @@ export default function ManageReportsFiltered({ security = false }: { security?:
         <View style={styles.countBadge}><ThemedText style={styles.countText}>{reports.length}</ThemedText></View>
       </View>
 
+      <View style={styles.filterBar}>
+        {[
+          { id: 'pending', label: 'Aguardando', count: statusCounts.pending },
+          { id: 'in_progress', label: 'Em processo', count: statusCounts.in_progress },
+          { id: 'resolved', label: 'Concluídas', count: statusCounts.resolved },
+          { id: 'all', label: 'Todas', count: statusCounts.all },
+        ].map(filter => {
+          const active = statusFilter === filter.id;
+          const option = STATUS_OPTIONS.find(item => item.id === filter.id);
+          return (
+            <TouchableOpacity
+              key={filter.id}
+              style={[styles.filterButton, active && styles.filterButtonActive]}
+              onPress={() => setStatusFilter(filter.id as typeof statusFilter)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+            >
+              {option ? <MaterialCommunityIcons name={option.icon as any} size={16} color={active ? option.color : C.text3} /> : null}
+              <ThemedText style={[styles.filterText, active && { color: option?.color || C.primary }]}>{filter.label}</ThemedText>
+              <View style={[styles.filterCount, active && { backgroundColor: (option?.color || C.primary) + '18' }]}>
+                <ThemedText style={[styles.filterCountText, active && { color: option?.color || C.primary }]}>{filter.count}</ThemedText>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
       <FlatList
-        data={reports} keyExtractor={item => item.id} contentContainerStyle={styles.list} onRefresh={loadReports} refreshing={loading}
+        data={filteredReports} keyExtractor={item => item.id} contentContainerStyle={styles.list} onRefresh={loadReports} refreshing={loading}
         renderItem={({ item }) => (
           <TouchableOpacity style={[styles.card, security && styles.securityCard, item.hidden_from_public && styles.hiddenCard]} onPress={() => openReport(item)}>
             <View style={styles.cardTop}>
@@ -374,6 +401,7 @@ export default function ManageReportsFiltered({ security = false }: { security?:
 const styles = StyleSheet.create({
   container: { flex: 1 }, header: { flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface },
   headerIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' }, headerText: { flex: 1, marginLeft: 12 }, title: { fontSize: 20, fontWeight: '800', color: C.text }, subtitle: { fontSize: 11, color: C.text3, marginTop: 2 }, countBadge: { minWidth: 34, height: 34, borderRadius: 17, backgroundColor: C.surface2, alignItems: 'center', justifyContent: 'center' }, countText: { fontWeight: '800', color: C.text },
+  filterBar: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, gap: 7, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface, flexWrap: 'wrap' }, filterButton: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface2 }, filterButtonActive: { borderColor: C.primary + '55', backgroundColor: C.primary + '0A' }, filterText: { fontSize: 11, fontWeight: '800', color: C.text2 }, filterCount: { minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 5, alignItems: 'center', justifyContent: 'center', backgroundColor: C.surface }, filterCountText: { fontSize: 10, fontWeight: '900', color: C.text3 },
   filterBar: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, gap: 7, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface, flexWrap: 'wrap' }, filterButton: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface2 }, filterButtonActive: { borderColor: C.primary + '55', backgroundColor: C.primary + '0A' }, filterText: { fontSize: 11, fontWeight: '800', color: C.text2 }, filterCount: { minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 5, alignItems: 'center', justifyContent: 'center', backgroundColor: C.surface }, filterCountText: { fontSize: 10, fontWeight: '900', color: C.text3 },
   list: { padding: 16, gap: 12 }, card: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 16 }, securityCard: { borderColor: C.danger + '55' }, hiddenCard: { opacity: 0.72 }, cardTop: { flexDirection: 'row', alignItems: 'flex-start' }, cardInfo: { flex: 1 }, categoryRow: { flexDirection: 'row', alignItems: 'center', gap: 8 }, category: { fontSize: 11, fontWeight: '900', color: C.primary, letterSpacing: 0.7 }, hiddenBadge: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 999, backgroundColor: C.danger + '18' }, hiddenBadgeText: { fontSize: 8, fontWeight: '900', color: C.danger }, address: { fontSize: 13, color: C.text2, marginTop: 4 }, deleteButton: { padding: 2, marginLeft: 8 }, description: { fontSize: 14, color: C.text, marginTop: 14, lineHeight: 20 }, cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }, date: { fontSize: 11, color: C.text3 }, statusBadge: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999 }, statusText: { fontSize: 10, fontWeight: '800' }, empty: { alignItems: 'center', padding: 48 }, emptyTitle: { fontSize: 16, fontWeight: '700', color: C.text, marginTop: 12 }, emptyText: { fontSize: 12, color: C.text3, marginTop: 4, textAlign: 'center' },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 16 },

@@ -60,8 +60,8 @@ function formatDistance(distKm: number | null) {
 }
 
 export default function MapScreen() {
-  const { colors } = useAppTheme();
-  const styles = makeStyles(colors);
+  const { colors, isDark } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors, isDark), [colors, isDark]);
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
 

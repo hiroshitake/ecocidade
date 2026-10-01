@@ -1086,7 +1086,7 @@ const makeStyles = (colors: typeof C) =>
 
     compactCard: {
       width: 260,
-      backgroundColor: "#ffffff",
+      backgroundColor: colors.surface,
       borderRadius: 10,
       padding: 10,
       borderWidth: 1,

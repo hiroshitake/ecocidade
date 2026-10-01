@@ -21,18 +21,18 @@ export default function TabLayout() {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
           borderTopWidth: 1,
-          height: isMobile ? 76 : 84,
-          paddingBottom: isMobile ? 12 : 9,
-          paddingTop: isMobile ? 8 : 9,
-          shadowColor: isDark ? "#000000" : colors.primary,
-          shadowOffset: { width: 0, height: -5 },
-          shadowOpacity: isDark ? 0.28 : 0.08,
-          shadowRadius: 18,
-          elevation: 10,
+          height: isMobile ? 70 : 76,
+          paddingBottom: isMobile ? 10 : 8,
+          paddingTop: 8,
+          shadowColor: "#000000",
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: isDark ? 0.25 : 0.05,
+          shadowRadius: 8,
+          elevation: 4,
         },
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: "800",
+          fontWeight: "600",
           marginTop: 2,
         },
         tabBarIconStyle: {
@@ -46,7 +46,7 @@ export default function TabLayout() {
           title: "Mapa",
           tabBarIcon: ({ color }) => (
             <View style={styles.tabIconWrap}>
-              <IconSymbol size={25} name="map.fill" color={color} />
+              <IconSymbol size={22} name="map.fill" color={color} />
             </View>
           ),
         }}
@@ -57,7 +57,7 @@ export default function TabLayout() {
           title: "Nova Denúncia",
           tabBarIcon: ({ color }) => (
             <View style={[styles.tabIconWrap, styles.actionIcon]}>
-              <IconSymbol size={25} name="plus.circle.fill" color={color} />
+              <IconSymbol size={24} name="plus.circle.fill" color={color} />
             </View>
           ),
         }}
@@ -68,7 +68,7 @@ export default function TabLayout() {
           title: "Denúncias",
           tabBarIcon: ({ color }) => (
             <View style={styles.tabIconWrap}>
-              <IconSymbol size={25} name="list.bullet" color={color} />
+              <IconSymbol size={22} name="list.bullet" color={color} />
             </View>
           ),
         }}
@@ -79,7 +79,7 @@ export default function TabLayout() {
           title: "Segurança",
           tabBarIcon: ({ color }) => (
             <View style={styles.tabIconWrap}>
-              <IconSymbol size={25} name="shield.fill" color={color} />
+              <IconSymbol size={22} name="shield.fill" color={color} />
             </View>
           ),
         }}
@@ -90,7 +90,7 @@ export default function TabLayout() {
           title: "Perfil",
           tabBarIcon: ({ color }) => (
             <View style={styles.tabIconWrap}>
-              <IconSymbol size={25} name="person.fill" color={color} />
+              <IconSymbol size={22} name="person.fill" color={color} />
             </View>
           ),
         }}
@@ -101,13 +101,12 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   tabIconWrap: {
-    width: 34,
-    height: 34,
+    width: 32,
+    height: 32,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 12,
   },
   actionIcon: {
-    transform: [{ scale: 1.04 }],
+    transform: [{ scale: 1.05 }],
   },
 });

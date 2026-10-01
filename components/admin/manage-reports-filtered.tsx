@@ -324,6 +324,7 @@ export default function ManageReportsFiltered({ security = false }: { security?:
                     <ThemedText style={styles.lockedNoticeTitle}>Denúncia concluída</ThemedText>
                     <ThemedText style={styles.lockedNoticeText}>Esta denúncia não pode mais ser alterada, ocultada ou excluída manualmente. Ela seguirá o prazo automático de retenção do sistema.</ThemedText>
                   </View>
+                </View>
                 </>
               ) : (
                 <>

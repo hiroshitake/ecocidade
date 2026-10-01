@@ -21,6 +21,7 @@ interface MapComponentProps {
   reports?: Report[];
   zones?: Zone[];
   userLocation?: { latitude: number; longitude: number } | null;
+  followUserLocation?: boolean;
   selectedLocation?: { latitude: number; longitude: number } | null;
   selectLocation?: boolean;
   onSelectLocation?: (location: { latitude: number; longitude: number }) => void;
@@ -35,6 +36,7 @@ export default function MapComponent({
   style,
   reports = [],
   userLocation = null,
+  followUserLocation = true,
   selectedLocation = null,
   selectLocation = false,
   onSelectLocation,
@@ -55,6 +57,8 @@ export default function MapComponent({
   const userMarkerRef = useRef<any>(null);
   const selectedMarkerRef = useRef<any>(null);
   const hasSetInitialViewRef = useRef(false);
+  const previousUserLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
+  const previousSelectedLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
   const onSelectLocationRef = useRef(onSelectLocation);
 
   useEffect(() => {
@@ -270,6 +274,16 @@ export default function MapComponent({
     if (!map) return;
 
     const centerTarget = selectedLocation || userLocation;
+    const selectedLocationChanged =
+      selectedLocation &&
+      (!previousSelectedLocationRef.current ||
+        selectedLocation.latitude !== previousSelectedLocationRef.current.latitude ||
+        selectedLocation.longitude !== previousSelectedLocationRef.current.longitude);
+    const userLocationChanged =
+      userLocation &&
+      (!previousUserLocationRef.current ||
+        userLocation.latitude !== previousUserLocationRef.current.latitude ||
+        userLocation.longitude !== previousUserLocationRef.current.longitude);
 
     if (!hasSetInitialViewRef.current) {
       if (centerTarget) {
@@ -284,7 +298,12 @@ export default function MapComponent({
         map.setView([first.location!.latitude!, first.location!.longitude!], 13);
         hasSetInitialViewRef.current = true;
       }
+    } else if (selectedLocationChanged || (followUserLocation && !selectedLocation && userLocationChanged)) {
+      map.setView([centerTarget!.latitude, centerTarget!.longitude], map.getZoom ? map.getZoom() : 13);
     }
+
+    previousSelectedLocationRef.current = selectedLocation || null;
+    previousUserLocationRef.current = userLocation || null;
   }, [reports, userLocation, selectedLocation, zones, onSelectReport, onZoneClick]);
 
   useEffect(() => {

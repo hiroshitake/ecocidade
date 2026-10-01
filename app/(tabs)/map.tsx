@@ -523,14 +523,27 @@ export default function MapScreen() {
       <View style={styles.floatingControls}>
         <TouchableOpacity
           style={styles.controlFab}
-          onPress={async () => {
-            const resolvedLocation = await resolveUserLocationWithFallback().catch(() => null);
-            if (resolvedLocation?.location) {
-              setUserLocation(resolvedLocation.location);
-              setLocationSource(resolvedLocation.source);
-              setLocationReason(resolvedLocation.reason);
-            }
+          onPress={() => {
+            // Recentraliza imediatamente usando a última posição conhecida.
+            // A obtenção de GPS acontece em paralelo, sem bloquear o toque.
             setRecenterRequest((value) => value + 1);
+
+            if (userLocation) {
+              setLocationSource("gps");
+              setLocationReason("gps");
+            }
+
+            resolveUserLocationWithFallback()
+              .then((resolvedLocation) => {
+                if (!resolvedLocation?.location) return;
+                setUserLocation(resolvedLocation.location);
+                setLocationSource(resolvedLocation.source);
+                setLocationReason(resolvedLocation.reason);
+              })
+              .catch(() => {
+                // Mantém a última posição conhecida se o GPS não responder.
+              });
+
             startLocationWatch();
           }}
           activeOpacity={0.8}

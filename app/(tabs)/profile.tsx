@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { useFocusEffect } from "@react-navigation/native";
 import {
   ActivityIndicator,
   Image,
@@ -16,7 +15,6 @@ import { ErrorState } from "../../components/ErrorState";
 import { C } from "../../constants/theme";
 import { useAppTheme } from "../../context/theme-context";
 import { useToast } from "../../context/toast-context";
-import { getUnreadNotificationCount } from "../../services/notifications";
 import { formatBirthDate } from "../../functions/masks";
 import {
   getCurrentUserAvatarUrl,
@@ -40,7 +38,6 @@ const ProfileScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const { colors } = useAppTheme();
   const toast = useToast();
   const styles = makeStyles(colors);
@@ -67,22 +64,6 @@ const ProfileScreen: React.FC = () => {
   useEffect(() => {
     loadProfile();
   }, [loadProfile]);
-
-  useFocusEffect(
-    useCallback(() => {
-      let active = true;
-      getUnreadNotificationCount()
-        .then((count) => {
-          if (active) setUnreadNotifications(count);
-        })
-        .catch((error) =>
-          console.warn("Erro ao carregar contador de notificações:", error),
-        );
-      return () => {
-        active = false;
-      };
-    }, []),
-  );
 
   const handleLogout = () => setIsOpen(true);
 
@@ -136,20 +117,6 @@ const ProfileScreen: React.FC = () => {
           </View>
         )}
 
-        <TouchableOpacity style={styles.notificationBtn} onPress={() => router.push("/notifications")}>
-          <View style={styles.notificationIconWrap}>
-            <Ionicons name="notifications-outline" size={20} color={C.primary} />
-            {unreadNotifications > 0 && (
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationBadgeText}>
-                  {unreadNotifications > 99 ? "99+" : unreadNotifications}
-                </Text>
-              </View>
-            )}
-          </View>
-          <Text style={styles.notificationText}>Notificações</Text>
-        </TouchableOpacity>
-
         <TouchableOpacity style={styles.settingsBtn} onPress={() => router.push("/settings")}>
           <Ionicons name="settings-outline" size={20} color={C.primary} />
           <Text style={styles.settingsText}>Configurações</Text>
@@ -185,11 +152,6 @@ const makeStyles = (colors: typeof C) => StyleSheet.create({
   infoRow: { width: "100%", flexDirection: "row", justifyContent: "space-between", backgroundColor: colors.surface, padding: 16, borderRadius: 12, marginBottom: 24 },
   infoLabel: { fontSize: 14, color: colors.text2 },
   infoValue: { fontSize: 14, fontWeight: "600", color: colors.text },
-  notificationBtn: { width: "100%", flexDirection: "row", borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 },
-  notificationIconWrap: { position: "relative" },
-  notificationBadge: { position: "absolute", top: -7, right: -9, minWidth: 16, height: 16, paddingHorizontal: 3, borderRadius: 8, backgroundColor: colors.danger, alignItems: "center", justifyContent: "center" },
-  notificationBadgeText: { color: colors.white, fontSize: 9, fontWeight: "800" },
-  notificationText: { color: colors.primary, fontSize: 15, fontWeight: "700" },
   settingsBtn: { width: "100%", flexDirection: "row", borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 },
   settingsText: { color: colors.primary, fontSize: 15, fontWeight: "700" },
   logoutBtn: { width: "100%", flexDirection: "row", backgroundColor: colors.danger, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", gap: 8 },

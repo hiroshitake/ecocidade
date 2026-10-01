@@ -15,6 +15,7 @@ import {
   View,
 } from "react-native";
 import MapComponent from "../../components/map";
+import ImageCropper from "../../components/image-cropper";
 import { C, S } from "../../constants/theme";
 import { useAppTheme } from "../../context/theme-context";
 import {
@@ -48,6 +49,7 @@ export default function NewReportScreen() {
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [photoOptionsVisible, setPhotoOptionsVisible] = useState(false);
+  const [cropPhotoUri, setCropPhotoUri] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -74,6 +76,7 @@ export default function NewReportScreen() {
     setDescription("");
     setSubmitting(false);
     setPhotoOptionsVisible(false);
+    setCropPhotoUri(null);
   };
 
   const handlePickPhoto = async () => {
@@ -88,7 +91,7 @@ export default function NewReportScreen() {
           if (!file) return;
           const reader = new FileReader();
           reader.onload = () => {
-            if (typeof reader.result === "string") setPhotoUri(reader.result);
+            if (typeof reader.result === "string") setCropPhotoUri(reader.result);
           };
           reader.readAsDataURL(file);
         };
@@ -100,7 +103,7 @@ export default function NewReportScreen() {
         Alert.alert("Permissão necessária", "Precisamos de permissão para acessar suas fotos.");
         return;
       }
-      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, quality: 0.7 });
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [4, 3], quality: 0.7 });
       if (!result.canceled && result.assets && result.assets.length > 0) setPhotoUri(result.assets[0].uri);
     } catch (error) {
       console.error("Erro ao abrir fotos:", error);
@@ -121,7 +124,7 @@ export default function NewReportScreen() {
           if (!file) return;
           const reader = new FileReader();
           reader.onload = () => {
-            if (typeof reader.result === "string") setPhotoUri(reader.result);
+            if (typeof reader.result === "string") setCropPhotoUri(reader.result);
           };
           reader.readAsDataURL(file);
         };
@@ -133,7 +136,7 @@ export default function NewReportScreen() {
         Alert.alert("Permissão necessária", "Precisamos de permissão para acessar a câmera.");
         return;
       }
-      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, quality: 0.7 });
+      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [4, 3], quality: 0.7 });
       if (!result.canceled && result.assets && result.assets.length > 0) setPhotoUri(result.assets[0].uri);
     } catch (error) {
       console.error("Erro ao abrir câmera:", error);
@@ -264,6 +267,15 @@ export default function NewReportScreen() {
           <TouchableOpacity style={[styles.btnPrimary, { marginTop: 8, opacity: submitting ? 0.7 : 1 }]} onPress={handleSubmit} disabled={submitting}><Ionicons name="send" size={20} color="white" /><Text style={styles.btnPrimaryText}>{submitting ? "Enviando..." : "Enviar denúncia"}</Text></TouchableOpacity>
         </View>}
       </ScrollView>
+      <ImageCropper
+        visible={Boolean(cropPhotoUri)}
+        imageUri={cropPhotoUri}
+        onCancel={() => setCropPhotoUri(null)}
+        onConfirm={(croppedUri) => {
+          setPhotoUri(croppedUri);
+          setCropPhotoUri(null);
+        }}
+      />
       <Modal visible={photoOptionsVisible} transparent animationType="fade" onRequestClose={() => setPhotoOptionsVisible(false)}>
         <View style={styles.photoOptionsOverlay}><View style={styles.photoOptionsCard}>
           <View style={styles.photoOptionsHeader}><View><Text style={styles.photoOptionsTitle}>Adicionar foto</Text><Text style={styles.photoOptionsSub}>Como você quer adicionar a foto?</Text></View><TouchableOpacity onPress={() => setPhotoOptionsVisible(false)} style={styles.photoOptionsClose}><Ionicons name="close" size={22} color={C.text2} /></TouchableOpacity></View>

@@ -72,6 +72,9 @@ export async function signInWithGoogle() {
     options: {
       redirectTo,
       skipBrowserRedirect: Platform.OS !== "web",
+      queryParams: {
+        prompt: "select_account",
+      },
     },
   });
 
@@ -128,6 +131,21 @@ export function isSupabaseConfigured() {
   return Boolean(supabaseUrl && supabaseAnonKey && supabase);
 }
 
+export async function resetPasswordForEmail(email: string) {
+  if (!supabase) throw new Error("Supabase não configurado.");
+  const redirectTo = appSiteUrl;
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+    redirectTo,
+  });
+  if (error) throw error;
+}
+
+export async function updateSupabasePassword(newPassword: string) {
+  if (!supabase) throw new Error("Supabase não configurado.");
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw error;
+}
+
 export async function signInWithSupabase(email: string, password: string) {
   if (!supabase) {
     throw new Error("Supabase não configurado.");
@@ -163,6 +181,7 @@ export async function signUpWithSupabase(
   password: string,
   name: string,
   city?: string,
+  birthdate?: string,
 ) {
   if (!supabase) {
     throw new Error("Supabase não configurado.");
@@ -186,6 +205,7 @@ export async function signUpWithSupabase(
       role: "user",
       city: city || null,
       city_id: cityId,
+      birthdate: birthdate ? (() => { const [day, month, year] = birthdate.split("/").map(Number); return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`; })() : null,
       updated_at: new Date().toISOString(),
     });
 
@@ -235,6 +255,7 @@ export async function getSupabaseSessionUser() {
     role: profile?.role || "user",
     city: typeof profile?.city === "string" ? profile.city : undefined,
     city_id: typeof profile?.city_id === "string" ? profile.city_id : undefined,
+    birthdate: typeof profile?.birthdate === "string" ? profile.birthdate : undefined,
     avatar_path:
       typeof profile?.avatar_path === "string" ? profile.avatar_path : null,
   };
@@ -543,38 +564,6 @@ export async function createReportImageUrl(path: string) {
 
   if (error) throw error;
   return data.signedUrl;
-}
-
-export async function updateSupabaseReportStatus(
-  reportId: string,
-  status: string,
-) {
-  if (!supabase) {
-    throw new Error("Supabase não configurado.");
-  }
-
-  const { data, error } = await supabase
-    .from("reports")
-    .update({
-      status,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", reportId)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-export async function deleteSupabaseReport(reportId: string) {
-  if (!supabase) {
-    throw new Error("Supabase não configurado.");
-  }
-
-  const { error } = await supabase.from("reports").delete().eq("id", reportId);
-  if (error) throw error;
-  return { id: reportId };
 }
 
 export async function createSupabaseDangerZone(

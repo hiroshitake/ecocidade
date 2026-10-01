@@ -43,13 +43,16 @@ function getNotificationColor(type: string) {
 export default function NotificationsScreen() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const loadNotifications = useCallback(async () => {
     try {
       setLoading(true);
+      setLoadError(false);
       setNotifications(await getNotifications());
     } catch (error) {
       console.error("Erro ao carregar notificações:", error);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -106,6 +109,15 @@ export default function NotificationsScreen() {
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={C.primary} />
+        </View>
+      ) : loadError ? (
+        <View style={styles.center}>
+          <MaterialCommunityIcons name="cloud-off-outline" size={48} color={C.text3} />
+          <ThemedText style={styles.errorTitle}>Não foi possível carregar as notificações</ThemedText>
+          <ThemedText style={styles.errorText}>Verifique sua conexão e tente novamente.</ThemedText>
+          <TouchableOpacity style={styles.retryButton} onPress={loadNotifications}>
+            <ThemedText style={styles.retryText}>Tentar novamente</ThemedText>
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
@@ -204,7 +216,11 @@ const styles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.primary },
   message: { fontSize: 13, lineHeight: 19, color: C.text2, marginTop: 4 },
   date: { fontSize: 11, color: C.text3, marginTop: 8 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
+  errorTitle: { fontSize: 16, fontWeight: "800", color: C.text, marginTop: 12, textAlign: "center" },
+  errorText: { fontSize: 13, color: C.text3, marginTop: 6, textAlign: "center" },
+  retryButton: { marginTop: 16, paddingHorizontal: 18, paddingVertical: 11, borderRadius: 10, backgroundColor: C.primary },
+  retryText: { color: C.white, fontWeight: "800" },
   empty: { alignItems: "center", justifyContent: "center", padding: 40 },
   emptyTitle: { fontSize: 17, fontWeight: "800", color: C.text, marginTop: 14 },
   emptyText: {

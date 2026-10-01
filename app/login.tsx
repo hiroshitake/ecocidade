@@ -261,6 +261,7 @@ export default function LoginScreen() {
           password,
           name.trim(),
           cityName,
+          birthdate.trim(),
         );
         const user = await getSupabaseSessionUser();
         if (user) {
@@ -411,7 +412,7 @@ export default function LoginScreen() {
                 visible={Boolean(fieldErrors.password)}
               />
 
-              <TouchableOpacity style={styles.forgotBtn}>
+              <TouchableOpacity style={styles.forgotBtn} onPress={() => router.push("/forgot-password")}>
                 <Text style={styles.forgotText}>Esqueceu a senha?</Text>
               </TouchableOpacity>
 

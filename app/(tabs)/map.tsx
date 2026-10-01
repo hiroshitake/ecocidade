@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useRef, useState } from "react";
+import { router } from "expo-router";
 import {
   ActivityIndicator,
   ScrollView,
@@ -15,6 +16,7 @@ import { C } from "../../constants/theme";
 import { useAppTheme } from "../../context/theme-context";
 import { resolveUserLocationWithFallback } from "../../services/auth";
 import { getDangerZones, getPublicReports } from "../../services/reports";
+import { getUnreadNotificationCount } from "../../services/notifications";
 
 const categories = [
   "Todas",
@@ -74,6 +76,8 @@ export default function MapScreen() {
     "gps" | "gps_unavailable" | "permission_denied" | "city_fallback"
   >("gps_unavailable");
   const [selectedReportIndex, setSelectedReportIndex] = useState<number>(0);
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
 
   const loadData = useCallback(async () => {
@@ -201,6 +205,10 @@ export default function MapScreen() {
       loadData();
       startLocationWatch();
 
+      getUnreadNotificationCount()
+        .then(setUnreadNotifications)
+        .catch((error) => console.warn("Erro ao carregar contador de notificações:", error));
+
       return () => {
         stopLocationWatch();
       };
@@ -229,6 +237,7 @@ export default function MapScreen() {
       return {
         ...r,
         dist,
+        distanceKm: dist,
         id: String(r.id),
         category: r.category || r.title || "Denúncia",
         description: r.description || "",
@@ -407,7 +416,25 @@ export default function MapScreen() {
             reports={sortedReports}
             zones={formattedZones}
             userLocation={userLocation}
+            selectedReportId={selectedReportId}
           />
+
+          <TouchableOpacity
+            style={styles.notificationButton}
+            onPress={() => {
+              router.push("/notifications");
+            }}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="notifications-outline" size={23} color={colors.text} />
+            {unreadNotifications > 0 && (
+              <View style={styles.notificationBadge}>
+                <ThemedText style={styles.notificationBadgeText}>
+                  {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                </ThemedText>
+              </View>
+            )}
+          </TouchableOpacity>
 
           {locationReason !== "gps" && (
             <View style={styles.gpsDisabledOverlay} pointerEvents="auto">
@@ -505,7 +532,10 @@ export default function MapScreen() {
                   styles.nearbyCard,
                   selectedReportIndex === index && styles.nearbyCardActive,
                 ]}
-                onPress={() => setSelectedReportIndex(index)}
+                onPress={() => {
+                  setSelectedReportIndex(index);
+                  setSelectedReportId(rep.id);
+                }}
               >
                 <View style={styles.nearbyCardHeader}>
                   <ThemedText style={styles.nearbyCategory}>
@@ -610,6 +640,43 @@ const makeStyles = (colors: typeof C) => StyleSheet.create({
     position: "relative",
   },
   map: { flex: 1 },
+  notificationButton: {
+    position: "absolute",
+    top: 14,
+    right: 14,
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1000,
+    elevation: 1000,
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  notificationBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    minWidth: 19,
+    height: 19,
+    paddingHorizontal: 4,
+    borderRadius: 10,
+    backgroundColor: C.danger,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: colors.surface,
+  },
+  notificationBadgeText: {
+    color: C.white,
+    fontSize: 9,
+    fontWeight: "800",
+  },
   mapDisabled: {
     opacity: 0.42,
     backgroundColor: "rgba(15, 23, 42, 0.08)",
@@ -690,8 +757,8 @@ const makeStyles = (colors: typeof C) => StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
 
   nearbyContainer: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderTopWidth: 1,
     borderTopColor: "#e5e7eb",
     backgroundColor: colors.surface,
@@ -700,9 +767,9 @@ const makeStyles = (colors: typeof C) => StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 10,
+    marginBottom: 7,
   },
-  nearbyTitle: { fontSize: 15, fontWeight: "700" },
+  nearbyTitle: { fontSize: 13, fontWeight: "700" },
   arrowGroup: { flexDirection: "row", gap: 6 },
   arrowBtn: {
     width: 32,
@@ -724,10 +791,10 @@ const makeStyles = (colors: typeof C) => StyleSheet.create({
   },
   nearbyCard: {
     backgroundColor: colors.surface2,
-    borderRadius: 12,
-    padding: 12,
-    marginRight: 12,
-    width: 220,
+    borderRadius: 10,
+    padding: 9,
+    marginRight: 9,
+    width: 190,
     borderWidth: 1.5,
     borderColor: colors.border,
   },
@@ -743,7 +810,7 @@ const makeStyles = (colors: typeof C) => StyleSheet.create({
   },
   nearbyCategory: {
     fontWeight: "700",
-    fontSize: 14,
+    fontSize: 13,
     textTransform: "capitalize",
   },
   distBadge: {
@@ -755,9 +822,9 @@ const makeStyles = (colors: typeof C) => StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 6,
   },
-  distText: { fontSize: 11, fontWeight: "700", color: colors.primary },
-  nearbyDesc: { fontSize: 12, color: colors.text2, marginBottom: 8, height: 32 },
+  distText: { fontSize: 10, fontWeight: "700", color: colors.primary },
+  nearbyDesc: { fontSize: 11, color: colors.text2, marginBottom: 6, height: 30 },
   statusRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
-  statusText: { fontSize: 11, fontWeight: "600", color: colors.text2 },
+  statusText: { fontSize: 10, fontWeight: "600", color: colors.text2 },
 });

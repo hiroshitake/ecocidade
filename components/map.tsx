@@ -32,6 +32,7 @@ interface MapComponentProps {
   selectLocation?: boolean;
   onSelectLocation?: (location: { latitude: number; longitude: number }) => void;
   onSelectReport?: (report: Report) => void;
+  selectedReportId?: string | null;
   onZoneClick?: (zone: Zone) => void;
 }
 

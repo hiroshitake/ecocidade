@@ -24,6 +24,7 @@ interface MapComponentProps {
   selectLocation?: boolean;
   onSelectLocation?: (location: { latitude: number; longitude: number }) => void;
   onSelectReport?: (report: Report) => void;
+  selectedReportId?: string | null;
   onZoneClick?: (zone: Zone) => void;
 }
 
@@ -36,6 +37,7 @@ export default function MapComponent({
   selectLocation = false,
   onSelectLocation,
   onSelectReport,
+  selectedReportId = null,
   onZoneClick,
 }: MapComponentProps) {
   const mapRef = useRef<MapView | null>(null);
@@ -94,6 +96,15 @@ export default function MapComponent({
 
     previousCenteredLocationRef.current = selectedLocationCoords;
   }, [selectedLocationCoords, mapReady]);
+
+  useEffect(() => {
+    if (!selectedReportId) return;
+    const report = validReports.find((item) => String(item.id) === String(selectedReportId));
+    if (report) {
+      setSelectedReport(report);
+      onSelectReport?.(report);
+    }
+  }, [selectedReportId, reports]);
 
   useEffect(() => {
     const animation = Animated.loop(

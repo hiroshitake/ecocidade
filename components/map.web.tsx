@@ -25,6 +25,7 @@ interface MapComponentProps {
   selectLocation?: boolean;
   onSelectLocation?: (location: { latitude: number; longitude: number }) => void;
   onSelectReport?: (report: Report) => void;
+  selectedReportId?: string | null;
   onZoneClick?: (zone: Zone) => void;
 }
 
@@ -36,6 +37,7 @@ export default function MapComponent({
   selectLocation = false,
   onSelectLocation,
   onSelectReport,
+  selectedReportId = null,
   zones = [],
   onZoneClick,
 }: MapComponentProps) {
@@ -189,6 +191,15 @@ export default function MapComponent({
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!selectedReportId) return;
+    const report = reports.find((item) => String(item.id) === String(selectedReportId));
+    if (report) {
+      setSelectedReport(report);
+      onSelectReport?.(report);
+    }
+  }, [selectedReportId, reports]);
 
   useEffect(() => {
     if (!markerLayerRef.current || typeof window === "undefined") return;

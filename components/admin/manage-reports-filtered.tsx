@@ -1,12 +1,13 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, FlatList, Image, Modal, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { C } from '../../constants/theme';
 import { deleteReport, getAdminReports, setReportPublicVisibility, updateReportStatus } from '../../services/reports';
 import { createReportImageUrl, createSupabaseAvatarUrl } from '../../services/supabase';
 import { ThemedText } from '../themed-text';
 import { ThemedView } from '../themed-view';
+import ReportRetentionTimer from '../report-retention-timer';
 
 interface Report {
   id: string; category?: string; description?: string; status?: string; image_url?: string | null;
@@ -34,6 +35,9 @@ export default function ManageReportsFiltered({ security = false }: { security?:
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
+  const [imageAspectRatio, setImageAspectRatio] = useState(16 / 9);
+  const [fullscreenImage, setFullscreenImage] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'in_progress' | 'resolved'>('pending');
 
   const loadReports = useCallback(async () => {
     try {
@@ -207,6 +211,7 @@ export default function ManageReportsFiltered({ security = false }: { security?:
 
   const openReport = async (report: Report) => {
     setSelectedReport(report);
+    setImageAspectRatio(16 / 9);
     if (!report.image_url) return;
     setImageLoading(true);
     try {
@@ -219,6 +224,13 @@ export default function ManageReportsFiltered({ security = false }: { security?:
       setSelectedReport(current =>
         current?.id === report.id ? { ...current, image_url: imageUrl } : current,
       );
+      Image.getSize(
+        imageUrl,
+        (width, height) => {
+          if (width > 0 && height > 0) setImageAspectRatio(width / height);
+        },
+        () => {},
+      );
     } catch {
       setSelectedReport(current =>
         current?.id === report.id ? { ...current, image_url: null } : current,
@@ -226,6 +238,18 @@ export default function ManageReportsFiltered({ security = false }: { security?:
     }
     finally { setImageLoading(false); }
   };
+
+  const filteredReports = useMemo(() => {
+    if (statusFilter === 'all') return reports;
+    return reports.filter(report => normalizeStatus(report.status) === statusFilter);
+  }, [reports, statusFilter]);
+
+  const statusCounts = useMemo(() => ({
+    all: reports.length,
+    pending: reports.filter(report => normalizeStatus(report.status) === 'pending').length,
+    in_progress: reports.filter(report => normalizeStatus(report.status) === 'in_progress').length,
+    resolved: reports.filter(report => normalizeStatus(report.status) === 'resolved').length,
+  }), [reports]);
 
   const title = security ? 'Gerenciar Segurança' : 'Gerenciar Zeladoria';
   const subtitle = security ? 'Ocorrências de segurança registradas pelos usuários' : 'Ocorrências de zeladoria e manutenção da cidade';
@@ -240,8 +264,35 @@ export default function ManageReportsFiltered({ security = false }: { security?:
         <View style={styles.countBadge}><ThemedText style={styles.countText}>{reports.length}</ThemedText></View>
       </View>
 
+      <View style={styles.filterBar}>
+        {[
+          { id: 'pending', label: 'Aguardando', count: statusCounts.pending },
+          { id: 'in_progress', label: 'Em processo', count: statusCounts.in_progress },
+          { id: 'resolved', label: 'Concluídas', count: statusCounts.resolved },
+          { id: 'all', label: 'Todas', count: statusCounts.all },
+        ].map(filter => {
+          const active = statusFilter === filter.id;
+          const option = STATUS_OPTIONS.find(item => item.id === filter.id);
+          return (
+            <TouchableOpacity
+              key={filter.id}
+              style={[styles.filterButton, active && styles.filterButtonActive]}
+              onPress={() => setStatusFilter(filter.id as typeof statusFilter)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+            >
+              {option ? <MaterialCommunityIcons name={option.icon as any} size={16} color={active ? option.color : C.text3} /> : null}
+              <ThemedText style={[styles.filterText, active && { color: option?.color || C.primary }]}>{filter.label}</ThemedText>
+              <View style={[styles.filterCount, active && { backgroundColor: (option?.color || C.primary) + '18' }]}>
+                <ThemedText style={[styles.filterCountText, active && { color: option?.color || C.primary }]}>{filter.count}</ThemedText>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
       <FlatList
-        data={reports} keyExtractor={item => item.id} contentContainerStyle={styles.list} onRefresh={loadReports} refreshing={loading}
+        data={filteredReports} keyExtractor={item => item.id} contentContainerStyle={styles.list} onRefresh={loadReports} refreshing={loading}
         renderItem={({ item }) => (
           <TouchableOpacity style={[styles.card, security && styles.securityCard, item.hidden_from_public && styles.hiddenCard]} onPress={() => openReport(item)}>
             <View style={styles.cardTop}>
@@ -266,7 +317,7 @@ export default function ManageReportsFiltered({ security = false }: { security?:
             <View style={styles.cardBottom}><ThemedText style={styles.date}>{formatDate(item.created_at)}</ThemedText><View style={[styles.statusBadge, { backgroundColor: statusColor(item.status) + '20' }]}><ThemedText style={[styles.statusText, { color: statusColor(item.status) }]}>{statusLabel(item.status)}</ThemedText></View></View>
           </TouchableOpacity>
         )}
-        ListEmptyComponent={<View style={styles.empty}><MaterialCommunityIcons name={security ? 'shield-check-outline' : 'check-circle-outline'} size={48} color={C.text3} /><ThemedText style={styles.emptyTitle}>Nenhuma denúncia encontrada</ThemedText><ThemedText style={styles.emptyText}>Novas ocorrências aparecerão aqui.</ThemedText></View>}
+        ListEmptyComponent={<View style={styles.empty}><MaterialCommunityIcons name={security ? 'shield-check-outline' : 'check-circle-outline'} size={48} color={C.text3} /><ThemedText style={styles.emptyTitle}>{statusFilter === 'all' ? 'Nenhuma denúncia encontrada' : `Nenhuma denúncia ${STATUS_OPTIONS.find(option => option.id === statusFilter)?.label.toLowerCase() || 'neste status'}`}</ThemedText><ThemedText style={styles.emptyText}>{statusFilter === 'all' ? 'Novas ocorrências aparecerão aqui.' : 'Altere o filtro para visualizar outras denúncias.'}</ThemedText></View>}
       />
 
       <Modal visible={!!selectedReport} transparent animationType="fade" onRequestClose={() => setSelectedReport(null)}>
@@ -284,20 +335,37 @@ export default function ManageReportsFiltered({ security = false }: { security?:
                   {selectedReport.reporter?.name && selectedReport.reporter?.email ? <ThemedText style={styles.secondary}>{selectedReport.reporter.email}</ThemedText> : null}
                 </View>
               </View>
-              {imageLoading ? <View style={styles.photo}><ThemedText style={styles.emptyText}>Carregando foto...</ThemedText></View> : selectedReport.image_url ? <Image source={{ uri: selectedReport.image_url }} style={styles.photo} resizeMode="cover" /> : <View style={styles.photo}><MaterialCommunityIcons name="image-off-outline" size={34} color={C.text3} /><ThemedText style={styles.emptyText}>Sem foto</ThemedText></View>}
+              {imageLoading ? <View style={styles.photo}><ThemedText style={styles.emptyText}>Carregando foto...</ThemedText></View> : selectedReport.image_url ? (
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  style={[styles.photo, { aspectRatio: imageAspectRatio }]}
+                  onPress={() => setFullscreenImage(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Abrir foto da denúncia em tela cheia"
+                >
+                  <Image source={{ uri: selectedReport.image_url }} style={styles.photoImage} resizeMode="contain" />
+                  <View style={styles.expandHint}>
+                    <MaterialCommunityIcons name="fullscreen" size={17} color={C.white} />
+                    <ThemedText style={styles.expandHintText}>Ver em tela cheia</ThemedText>
+                  </View>
+                </TouchableOpacity>
+              ) : <View style={styles.photo}><MaterialCommunityIcons name="image-off-outline" size={34} color={C.text3} /><ThemedText style={styles.emptyText}>Sem foto</ThemedText></View>}
               <View style={styles.detail}><ThemedText style={styles.label}>Descrição</ThemedText><ThemedText style={styles.value}>{selectedReport.description || 'Sem descrição'}</ThemedText></View>
               <View style={styles.detail}><ThemedText style={styles.label}>Localização</ThemedText><ThemedText style={styles.value}>{selectedReport.location?.address || 'Localização desconhecida'}</ThemedText></View>
               <View style={styles.detail}><ThemedText style={styles.label}>Data e hora</ThemedText><ThemedText style={styles.value}>{formatDate(selectedReport.created_at)}</ThemedText></View>
               <View style={styles.detail}><ThemedText style={styles.label}>Status</ThemedText><ThemedText style={[styles.value, { color: statusColor(selectedReport.status) }]}>{statusLabel(selectedReport.status)}</ThemedText></View>
               <View style={styles.detail}><ThemedText style={styles.label}>Visibilidade</ThemedText><ThemedText style={[styles.value, { color: selectedReport.hidden_from_public ? C.danger : C.eco }]}>{selectedReport.hidden_from_public ? 'Oculta para usuários' : 'Visível conforme as regras públicas'}</ThemedText></View>
               {normalizeStatus(selectedReport.status) === 'resolved' ? (
-                <View style={styles.lockedNotice}>
+                <>
+                  <ReportRetentionTimer resolvedAt={selectedReport.resolved_at} audience="admin" />
+                  <View style={styles.lockedNotice}>
                   <MaterialCommunityIcons name="lock-outline" size={20} color={C.eco} />
                   <View style={styles.lockedNoticeCopy}>
                     <ThemedText style={styles.lockedNoticeTitle}>Denúncia concluída</ThemedText>
                     <ThemedText style={styles.lockedNoticeText}>Esta denúncia não pode mais ser alterada, ocultada ou excluída manualmente. Ela seguirá o prazo automático de retenção do sistema.</ThemedText>
                   </View>
                 </View>
+                </>
               ) : (
                 <>
                   <ThemedText style={styles.label}>Alterar status</ThemedText>
@@ -317,6 +385,15 @@ export default function ManageReportsFiltered({ security = false }: { security?:
           </>}
         </View></View>
       </Modal>
+
+      <Modal visible={fullscreenImage} transparent animationType="fade" onRequestClose={() => setFullscreenImage(false)}>
+        <View style={styles.fullscreenOverlay}>
+          <TouchableOpacity style={styles.fullscreenClose} onPress={() => setFullscreenImage(false)} accessibilityRole="button" accessibilityLabel="Fechar foto em tela cheia">
+            <MaterialCommunityIcons name="close" size={27} color={C.white} />
+          </TouchableOpacity>
+          {selectedReport?.image_url ? <Image source={{ uri: selectedReport.image_url }} style={styles.fullscreenImage} resizeMode="contain" /> : null}
+        </View>
+      </Modal>
     </ThemedView>
   );
 }
@@ -324,6 +401,11 @@ export default function ManageReportsFiltered({ security = false }: { security?:
 const styles = StyleSheet.create({
   container: { flex: 1 }, header: { flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface },
   headerIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' }, headerText: { flex: 1, marginLeft: 12 }, title: { fontSize: 20, fontWeight: '800', color: C.text }, subtitle: { fontSize: 11, color: C.text3, marginTop: 2 }, countBadge: { minWidth: 34, height: 34, borderRadius: 17, backgroundColor: C.surface2, alignItems: 'center', justifyContent: 'center' }, countText: { fontWeight: '800', color: C.text },
+  filterBar: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, gap: 7, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface, flexWrap: 'wrap' }, filterButton: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface2 }, filterButtonActive: { borderColor: C.primary + '55', backgroundColor: C.primary + '0A' }, filterText: { fontSize: 11, fontWeight: '800', color: C.text2 }, filterCount: { minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 5, alignItems: 'center', justifyContent: 'center', backgroundColor: C.surface }, filterCountText: { fontSize: 10, fontWeight: '900', color: C.text3 },
+  filterBar: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, gap: 7, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface, flexWrap: 'wrap' }, filterButton: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface2 }, filterButtonActive: { borderColor: C.primary + '55', backgroundColor: C.primary + '0A' }, filterText: { fontSize: 11, fontWeight: '800', color: C.text2 }, filterCount: { minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 5, alignItems: 'center', justifyContent: 'center', backgroundColor: C.surface }, filterCountText: { fontSize: 10, fontWeight: '900', color: C.text3 },
   list: { padding: 16, gap: 12 }, card: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 16 }, securityCard: { borderColor: C.danger + '55' }, hiddenCard: { opacity: 0.72 }, cardTop: { flexDirection: 'row', alignItems: 'flex-start' }, cardInfo: { flex: 1 }, categoryRow: { flexDirection: 'row', alignItems: 'center', gap: 8 }, category: { fontSize: 11, fontWeight: '900', color: C.primary, letterSpacing: 0.7 }, hiddenBadge: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 999, backgroundColor: C.danger + '18' }, hiddenBadgeText: { fontSize: 8, fontWeight: '900', color: C.danger }, address: { fontSize: 13, color: C.text2, marginTop: 4 }, deleteButton: { padding: 2, marginLeft: 8 }, description: { fontSize: 14, color: C.text, marginTop: 14, lineHeight: 20 }, cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }, date: { fontSize: 11, color: C.text3 }, statusBadge: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999 }, statusText: { fontSize: 10, fontWeight: '800' }, empty: { alignItems: 'center', padding: 48 }, emptyTitle: { fontSize: 16, fontWeight: '700', color: C.text, marginTop: 12 }, emptyText: { fontSize: 12, color: C.text3, marginTop: 4, textAlign: 'center' },
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 16 }, modal: { width: '100%', maxWidth: 620, maxHeight: '90%', backgroundColor: C.surface, borderRadius: 20, overflow: 'hidden' }, modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 18, borderBottomWidth: 1, borderBottomColor: C.border }, modalScroll: { flexShrink: 1 }, modalBody: { padding: 18, gap: 12, paddingBottom: 24 }, reporterRow: { flexDirection: 'row', alignItems: 'center', gap: 10 }, avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: C.surface2, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }, avatarImage: { width: '100%', height: '100%' }, reporterCopy: { flex: 1 }, photo: { height: 220, borderRadius: 14, backgroundColor: C.surface2, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }, detail: { padding: 14, borderRadius: 12, backgroundColor: C.surface2 }, label: { fontSize: 10, fontWeight: '800', color: C.text3, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 5 }, value: { fontSize: 14, color: C.text, lineHeight: 20 }, secondary: { fontSize: 11, color: C.text3, marginTop: 3 }, statusOption: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderWidth: 1, borderColor: C.border, borderRadius: 11, marginTop: 8 }, statusOptionText: { fontSize: 13, fontWeight: '700', color: C.text }, visibilityButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 12, borderWidth: 1, borderColor: C.danger + '55', borderRadius: 11, backgroundColor: C.danger + '10', marginTop: 4 }, showButton: { borderColor: C.eco + '55', backgroundColor: C.eco + '10' }, visibilityButtonText: { fontSize: 13, fontWeight: '800' }, permanentDeleteButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 12, borderWidth: 1, borderColor: C.danger + '55', borderRadius: 11, backgroundColor: C.danger + '08', marginTop: 4 }, permanentDeleteText: { fontSize: 13, fontWeight: '800', color: C.danger }, closeButton: { margin: 16, marginTop: 0, padding: 13, borderRadius: 11, backgroundColor: C.primary, alignItems: 'center' }, closeText: { color: C.white, fontWeight: '800' },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 16 },
+  fullscreenOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.94)', alignItems: 'center', justifyContent: 'center', padding: 18 },
+  fullscreenImage: { width: '100%', height: '100%' },
+  fullscreenClose: { position: 'absolute', top: 20, right: 20, zIndex: 2, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.58)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)' }, modal: { width: '100%', maxWidth: 620, maxHeight: '90%', backgroundColor: C.surface, borderRadius: 20, overflow: 'hidden' }, modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 18, borderBottomWidth: 1, borderBottomColor: C.border }, modalScroll: { flexShrink: 1 }, modalBody: { padding: 18, gap: 12, paddingBottom: 24 }, reporterRow: { flexDirection: 'row', alignItems: 'center', gap: 10 }, avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: C.surface2, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }, avatarImage: { width: '100%', height: '100%' }, reporterCopy: { flex: 1 }, photo: { width: '100%', minHeight: 180, maxHeight: 420, borderRadius: 14, backgroundColor: C.surface2, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }, photoImage: { width: '100%', height: '100%' }, expandHint: { position: 'absolute', right: 10, bottom: 10, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 9, backgroundColor: 'rgba(0,0,0,0.62)' }, expandHintText: { color: C.white, fontSize: 10, fontWeight: '700' }, detail: { padding: 14, borderRadius: 12, backgroundColor: C.surface2 }, label: { fontSize: 10, fontWeight: '800', color: C.text3, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 5 }, value: { fontSize: 14, color: C.text, lineHeight: 20 }, secondary: { fontSize: 11, color: C.text3, marginTop: 3 }, statusOption: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderWidth: 1, borderColor: C.border, borderRadius: 11, marginTop: 8 }, statusOptionText: { fontSize: 13, fontWeight: '700', color: C.text }, visibilityButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 12, borderWidth: 1, borderColor: C.danger + '55', borderRadius: 11, backgroundColor: C.danger + '10', marginTop: 4 }, showButton: { borderColor: C.eco + '55', backgroundColor: C.eco + '10' }, visibilityButtonText: { fontSize: 13, fontWeight: '800' }, permanentDeleteButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 12, borderWidth: 1, borderColor: C.danger + '55', borderRadius: 11, backgroundColor: C.danger + '08', marginTop: 4 }, permanentDeleteText: { fontSize: 13, fontWeight: '800', color: C.danger }, closeButton: { margin: 16, marginTop: 0, padding: 13, borderRadius: 11, backgroundColor: C.primary, alignItems: 'center' }, closeText: { color: C.white, fontWeight: '800' },
 });

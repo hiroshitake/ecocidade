@@ -6,6 +6,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Image,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -15,6 +16,7 @@ import {
   View,
 } from "react-native";
 import MapComponent from "../../components/map";
+import ImageCropper from "../../components/image-cropper";
 import { C, S } from "../../constants/theme";
 import { useAppTheme } from "../../context/theme-context";
 import { resolveUserLocationForSubmission } from "../../services/auth";
@@ -47,7 +49,11 @@ export default function SecurityScreen() {
   } | null>(null);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [locationReady, setLocationReady] = useState(false);
+  const [submitFeedback, setSubmitFeedback] = useState<{ type: "error" | "info"; title: string; message: string } | null>(null);
   const [submittedReport, setSubmittedReport] = useState<any | null>(null);
+  const [cropPhotoUri, setCropPhotoUri] = useState<string | null>(null);
+  const [photoOptionsVisible, setPhotoOptionsVisible] = useState(false);
 
   const router = useRouter();
 
@@ -66,34 +72,44 @@ export default function SecurityScreen() {
         setUserLocation(result.location);
         setSelectedLocation((prev) => prev ?? result.location);
         setLocationError(null);
+        setLocationReady(true);
       } else {
         setLocationError(
           "Não foi possível obter sua localização GPS. Verifique o GPS e tente novamente.",
         );
+        setLocationReady(false);
       }
     })();
   }, []);
 
   const submit = async () => {
+    setSubmitFeedback(null);
+
     if (!selectedCat) {
-      Alert.alert("Atenção", "Selecione o tipo de ocorrência.");
+      setSubmitFeedback({
+        type: "error",
+        title: "Tipo de ocorrência não selecionado",
+        message: "Selecione uma das opções acima antes de enviar a denúncia.",
+      });
       return;
     }
     if (!description.trim()) {
-      Alert.alert(
-        "Descrição obrigatória",
-        "Descreva a situação para que as autoridades possam agir adequadamente.",
-      );
+      setSubmitFeedback({
+        type: "error",
+        title: "Descrição obrigatória",
+        message: "Descreva a situação para que os responsáveis possam analisar a ocorrência.",
+      });
       return;
     }
     const locationToSubmit = selectedLocation ?? userLocation;
 
     if (!locationToSubmit) {
-      Alert.alert(
-        "Localização obrigatória",
-        locationError ||
-          "Não foi possível obter sua localização GPS. Ative o GPS e tente novamente.",
-      );
+      setSubmitFeedback({
+        type: "error",
+        title: "Localização obrigatória",
+        message:
+          "Nenhum ponto foi selecionado. Toque no mapa para definir o local da ocorrência e tente enviar novamente.",
+      });
       return;
     }
 
@@ -123,6 +139,7 @@ export default function SecurityScreen() {
         });
       }
 
+      setSubmitFeedback(null);
       setSubmittedReport(createdReport);
     } catch (error: any) {
       let msg = error?.message || "Tente novamente mais tarde.";
@@ -130,7 +147,11 @@ export default function SecurityScreen() {
         msg =
           "Você está fora da área de cobertura da sua cidade. Denúncias de segurança devem ser feitas dentro dos limites da cidade cadastrada.";
       }
-      Alert.alert("Erro ao enviar denúncia", msg);
+      setSubmitFeedback({
+        type: "error",
+        title: "Não foi possível enviar a denúncia",
+        message: msg,
+      });
     } finally {
       setSubmitting(false);
     }
@@ -151,7 +172,7 @@ export default function SecurityScreen() {
           const reader = new FileReader();
           reader.onload = () => {
             if (typeof reader.result === "string") {
-              setPhotoUri(reader.result);
+              setCropPhotoUri(reader.result);
             }
           };
           reader.readAsDataURL(file);
@@ -174,6 +195,7 @@ export default function SecurityScreen() {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
+        aspect: [4, 3],
         quality: 0.7,
       });
 
@@ -189,10 +211,26 @@ export default function SecurityScreen() {
   const handleTakePhoto = async () => {
     try {
       if (Platform.OS === "web") {
-        Alert.alert(
-          "Funcionalidade não disponível",
-          "Tirar foto não é suportado no web. Use a galeria.",
-        );
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/*";
+        input.setAttribute("capture", "environment");
+        input.style.display = "none";
+
+        input.onchange = async (event: Event) => {
+          const file = (event.target as HTMLInputElement).files?.[0];
+          if (!file) return;
+
+          const reader = new FileReader();
+          reader.onload = () => {
+            if (typeof reader.result === "string") {
+              setCropPhotoUri(reader.result);
+            }
+          };
+          reader.readAsDataURL(file);
+        };
+
+        input.click();
         return;
       }
 
@@ -208,6 +246,7 @@ export default function SecurityScreen() {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
+        aspect: [4, 3],
         quality: 0.7,
       });
 
@@ -222,7 +261,7 @@ export default function SecurityScreen() {
 
   const showPhotoOptions = () => {
     if (Platform.OS === "web") {
-      handlePickPhoto();
+      setPhotoOptionsVisible(true);
       return;
     }
 
@@ -352,6 +391,12 @@ export default function SecurityScreen() {
             onSelectLocation={setSelectedLocation}
           />
         </View>
+        <View style={styles.locationStatusCard}>
+          <Ionicons name={selectedLocation ? "location" : "location-outline"} size={18} color={selectedLocation ? C.eco : C.warning} />
+          <Text style={styles.locationStatusText}>
+            {selectedLocation ? "Localização definida. Você pode mover o ponto no mapa se necessário." : "Localização não definida. Escolha um ponto no mapa para continuar."}
+          </Text>
+        </View>
 
         {/* ── DESCRIÇÃO ── */}
         <Text style={[styles.label, { marginTop: 16 }]}>DESCRIÇÃO</Text>
@@ -400,7 +445,108 @@ export default function SecurityScreen() {
           </View>
         )}
 
+        <ImageCropper
+          visible={Boolean(cropPhotoUri)}
+          imageUri={cropPhotoUri}
+          onCancel={() => setCropPhotoUri(null)}
+          onConfirm={(croppedUri) => {
+            setPhotoUri(croppedUri);
+            setCropPhotoUri(null);
+          }}
+        />
+
+        <Modal
+          visible={photoOptionsVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setPhotoOptionsVisible(false)}
+        >
+          <View style={styles.photoOptionsOverlay}>
+            <View style={styles.photoOptionsCard}>
+              <View style={styles.photoOptionsHeader}>
+                <View style={{ flex: 1, paddingRight: 12 }}>
+                  <Text style={styles.photoOptionsTitle}>Adicionar foto</Text>
+                  <Text style={styles.photoOptionsSub}>
+                    Como você quer adicionar a foto?
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setPhotoOptionsVisible(false)}
+                  style={styles.photoOptionsClose}
+                >
+                  <Ionicons name="close" size={22} color={C.text2} />
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                style={styles.photoOptionButton}
+                onPress={() => {
+                  setPhotoOptionsVisible(false);
+                  handleTakePhoto();
+                }}
+              >
+                <View style={styles.photoOptionIcon}>
+                  <Ionicons name="camera" size={24} color={C.primary} />
+                </View>
+                <View style={styles.photoOptionTextWrap}>
+                  <Text style={styles.photoOptionTitle}>Tirar foto</Text>
+                  <Text style={styles.photoOptionSub}>
+                    Abrir a câmera e ajustar o recorte antes de anexar
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={C.text3} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.photoOptionButton}
+                onPress={() => {
+                  setPhotoOptionsVisible(false);
+                  handlePickPhoto();
+                }}
+              >
+                <View style={styles.photoOptionIcon}>
+                  <Ionicons name="images" size={24} color={C.primary} />
+                </View>
+                <View style={styles.photoOptionTextWrap}>
+                  <Text style={styles.photoOptionTitle}>Escolher da galeria</Text>
+                  <Text style={styles.photoOptionSub}>
+                    Selecionar e recortar uma foto existente
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={C.text3} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.photoOptionsCancel}
+                onPress={() => setPhotoOptionsVisible(false)}
+              >
+                <Text style={styles.photoOptionsCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
         {/* ── BOTÕES ── */}
+        {submitFeedback ? (
+          <View style={styles.submitFeedbackCard} accessibilityRole="alert">
+            <Ionicons
+              name={submitFeedback.type === "error" ? "alert-circle" : "information-circle"}
+              size={22}
+              color={C.danger}
+            />
+            <View style={styles.submitFeedbackCopy}>
+              <Text style={styles.submitFeedbackTitle}>{submitFeedback.title}</Text>
+              <Text style={styles.submitFeedbackMessage}>{submitFeedback.message}</Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setSubmitFeedback(null)}
+              accessibilityLabel="Fechar aviso"
+            >
+              <Ionicons name="close" size={20} color={C.text2} />
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
         <TouchableOpacity
           style={[
             styles.btnDanger,
@@ -495,6 +641,9 @@ const makeStyles = (colors: typeof C) => StyleSheet.create({
     color: colors.text2,
   },
 
+  locationStatusCard: { flexDirection: "row", alignItems: "center", gap: 8, padding: 10, marginTop: 8, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  locationStatusText: { flex: 1, fontSize: 12, lineHeight: 17, color: colors.text2 },
+
   miniMapWrap: { borderRadius: 12, overflow: "hidden" },
   miniMap: { height: 180 },
 
@@ -533,6 +682,62 @@ const makeStyles = (colors: typeof C) => StyleSheet.create({
   },
   photoSelectedText: { fontSize: 13, color: colors.eco, fontWeight: "600" },
 
+  photoOptionsOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  photoOptionsCard: {
+    width: "100%",
+    maxWidth: 420,
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    padding: 20,
+    ...S.shadow.lg,
+  },
+  photoOptionsHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    marginBottom: 18,
+  },
+  photoOptionsTitle: { fontSize: 19, fontWeight: "800", color: colors.text },
+  photoOptionsSub: { fontSize: 13, color: colors.text3, marginTop: 4 },
+  photoOptionsClose: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.surface2,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  photoOptionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface2,
+    borderRadius: 14,
+    padding: 13,
+    marginBottom: 10,
+  },
+  photoOptionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: colors.primaryLight,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  photoOptionTextWrap: { flex: 1 },
+  photoOptionTitle: { fontSize: 14, fontWeight: "700", color: colors.text },
+  photoOptionSub: { fontSize: 12, color: colors.text3, marginTop: 3 },
+  photoOptionsCancel: { alignItems: "center", paddingVertical: 12, marginTop: 2 },
+  photoOptionsCancelText: { fontSize: 14, fontWeight: "700", color: colors.text2 },
+
   btnDanger: {
     backgroundColor: colors.danger,
     borderRadius: 12,
@@ -544,6 +749,30 @@ const makeStyles = (colors: typeof C) => StyleSheet.create({
     ...S.shadow.danger,
   },
   btnDangerText: { color: "white", fontSize: 15, fontWeight: "700" },
+
+  submitFeedbackCard: {
+    marginTop: 16,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(217, 32, 32, 0.28)",
+    backgroundColor: "rgba(217, 32, 32, 0.08)",
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  submitFeedbackCopy: { flex: 1 },
+  submitFeedbackTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: C.danger,
+    marginBottom: 3,
+  },
+  submitFeedbackMessage: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: C.text2,
+  },
 
   emergencyNotice: {
     marginTop: 14,

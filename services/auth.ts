@@ -12,6 +12,7 @@ import {
   createSupabaseAvatarUrl,
   deleteSupabaseAvatar,
   deleteSupabaseAccount,
+  resetPasswordForEmail as resetSupabasePasswordForEmail,
 } from "./supabase";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
@@ -43,8 +44,13 @@ export async function signIn(email:string,password:string){
  if(isSupabaseConfigured()){await signInWithSupabase(email,password);const user=await getSupabaseSessionUser();if(user)await AsyncStorage.setItem(AUTH_USER_KEY,JSON.stringify(user));return {id:user?.id||"",email,name:user?.name||email,role:user?.role||"user",token:""} as AuthResponse;} throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
 }
 export async function signInAdmin(email:string,password:string){
- if(isSupabaseConfigured()){await signInWithSupabase(email,password);const user=await getSupabaseSessionUser();if(user)await AsyncStorage.setItem(AUTH_USER_KEY,JSON.stringify(user));return {id:user?.id||"",email:user?.email||email,name:user?.name||email,role:user?.role||"admin",token:""} as AuthResponse;} throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
+ if(isSupabaseConfigured()){await signInWithSupabase(email,password);const user=await getSupabaseSessionUser();if(user)await AsyncStorage.setItem(AUTH_USER_KEY,JSON.stringify(user));return {id:user?.id||"",email:user?.email||email,name:user?.name||email,role:user?.role||"user",token:""} as AuthResponse;} throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
 }
+export async function requestPasswordReset(email:string){
+ if(!isSupabaseConfigured())throw new Error("Supabase não configurado.");
+ await resetSupabasePasswordForEmail(email);
+}
+
 export async function logout(){await AsyncStorage.removeItem(AUTH_TOKEN_KEY);await AsyncStorage.removeItem(AUTH_USER_KEY);if(isSupabaseConfigured())await signOutFromSupabase();}
 export async function getCurrentUserData():Promise<AuthUser|null>{
  if(isSupabaseConfigured()){const user=await getSupabaseSessionUser();if(user){await AsyncStorage.setItem(AUTH_USER_KEY,JSON.stringify(user));return user;}}

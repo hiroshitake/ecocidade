@@ -13,6 +13,7 @@ import {
 import { C, S } from "../../constants/theme";
 import { useAppTheme } from "../../context/theme-context";
 import { getMyReports } from "../../services/reports";
+import ReportRetentionTimer from "../../components/report-retention-timer";
 
 const TABS = ["Todas", "Aguardando", "Em processo", "Concluídas"];
 
@@ -64,15 +65,18 @@ export default function ReportsScreen() {
   const [selectedReport, setSelectedReport] = useState<any | null>(null);
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     const loadReports = async () => {
       try {
+        setLoadError(false);
         const data = await getMyReports();
         setReports(data || []);
       } catch (error) {
         console.error("Erro ao carregar relatórios:", error);
+        setLoadError(true);
       } finally {
         setLoading(false);
       }
@@ -193,6 +197,32 @@ export default function ReportsScreen() {
           {loading ? (
             <View style={{ padding: 24, alignItems: "center" }}>
               <ActivityIndicator color={C.primary} />
+            </View>
+          ) : loadError ? (
+            <View style={{ padding: 24, alignItems: "center" }}>
+              <Ionicons name="cloud-offline-outline" size={38} color={C.text3} />
+              <Text style={{ color: C.text, fontWeight: "700", marginTop: 10, textAlign: "center" }}>
+                Não foi possível carregar suas denúncias
+              </Text>
+              <Text style={{ color: C.text3, textAlign: "center", marginTop: 6 }}>
+                Verifique sua conexão e tente novamente.
+              </Text>
+              <TouchableOpacity
+                style={styles.btnOutline}
+                onPress={() => {
+                  setLoading(true);
+                  setLoadError(false);
+                  getMyReports()
+                    .then((data) => setReports(data || []))
+                    .catch((error) => {
+                      console.error("Erro ao carregar relatórios:", error);
+                      setLoadError(true);
+                    })
+                    .finally(() => setLoading(false));
+                }}
+              >
+                <Text style={styles.btnOutlineText}>Tentar novamente</Text>
+              </TouchableOpacity>
             </View>
           ) : filteredReports.length === 0 ? (
             <View style={{ padding: 24, alignItems: "center" }}>
@@ -317,6 +347,13 @@ export default function ReportsScreen() {
                     {selectedReport.updatedAt}
                   </Text>
                 </View>
+              ) : null}
+
+              {selectedReport?.label === "Concluída" ? (
+                <ReportRetentionTimer
+                  resolvedAt={selectedReport?.resolved_at}
+                  audience="user"
+                />
               ) : null}
 
               <TouchableOpacity

@@ -13,12 +13,15 @@ import { ThemedText } from "./themed-text";
 import { C } from "../constants/theme";
 import { useAppTheme } from "../context/theme-context";
 import { createReportImageUrl, createSupabaseAvatarUrl } from "../services/supabase";
+import ReportRetentionTimer from "./report-retention-timer";
 
 export interface MapReport {
   id: string;
   category?: string;
   description?: string;
   status?: string;
+  resolved_at?: string | null;
+  distanceKm?: number | null;
   image_url?: string | null;
   created_at?: string | null;
   reporter?: {
@@ -84,6 +87,8 @@ export default function ReportMapModal({ report, onClose }: ReportMapModalProps)
   const { colors } = useAppTheme();
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
+  const [imageAspectRatio, setImageAspectRatio] = useState(16 / 9);
+  const [fullscreenImage, setFullscreenImage] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarLoading, setAvatarLoading] = useState(false);
 
@@ -92,6 +97,7 @@ export default function ReportMapModal({ report, onClose }: ReportMapModalProps)
 
     const loadImage = async () => {
       setImageUrl(null);
+      setImageAspectRatio(16 / 9);
       if (!report?.image_url) {
         setImageLoading(false);
         return;
@@ -100,7 +106,16 @@ export default function ReportMapModal({ report, onClose }: ReportMapModalProps)
       setImageLoading(true);
       try {
         const signedUrl = await createReportImageUrl(report.image_url);
-        if (!cancelled) setImageUrl(signedUrl);
+        if (!cancelled) {
+          setImageUrl(signedUrl);
+          Image.getSize(
+            signedUrl,
+            (width, height) => {
+              if (!cancelled && width > 0 && height > 0) setImageAspectRatio(width / height);
+            },
+            () => {},
+          );
+        }
       } catch (error) {
         console.warn("Não foi possível carregar a foto da denúncia:", error);
       } finally {
@@ -203,7 +218,19 @@ export default function ReportMapModal({ report, onClose }: ReportMapModalProps)
                   <ThemedText style={styles.placeholderText}>Carregando foto...</ThemedText>
                 </View>
               ) : imageUrl ? (
-                <Image source={{ uri: imageUrl }} style={styles.photo} resizeMode="cover" />
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  style={[styles.photo, { aspectRatio: imageAspectRatio }]}
+                  onPress={() => setFullscreenImage(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Abrir foto da denúncia em tela cheia"
+                >
+                  <Image source={{ uri: imageUrl }} style={styles.photoImage} resizeMode="contain" />
+                  <View style={styles.expandHint}>
+                    <Ionicons name="expand-outline" size={17} color="#fff" />
+                    <ThemedText style={styles.expandHintText}>Ver em tela cheia</ThemedText>
+                  </View>
+                </TouchableOpacity>
               ) : (
                 <View style={styles.photoPlaceholder}>
                   <Ionicons name="image-outline" size={34} color={C.text3} />
@@ -224,6 +251,10 @@ export default function ReportMapModal({ report, onClose }: ReportMapModalProps)
               </View>
             </View>
 
+            {String(report?.status || "").toLowerCase() === "resolved" ? (
+              <ReportRetentionTimer resolvedAt={report?.resolved_at} audience="user" />
+            ) : null}
+
             <View style={styles.infoCard}>
               <View style={styles.infoHeader}>
                 <Ionicons name="document-text-outline" size={19} color={C.primary} />
@@ -233,6 +264,20 @@ export default function ReportMapModal({ report, onClose }: ReportMapModalProps)
                 {report?.description?.trim() || "Sem descrição cadastrada."}
               </ThemedText>
             </View>
+
+            {report?.distanceKm != null ? (
+              <View style={styles.distanceCard}>
+                <Ionicons name="navigate-outline" size={20} color={C.primary} />
+                <View style={styles.distanceCopy}>
+                  <ThemedText style={styles.label}>Distância</ThemedText>
+                  <ThemedText style={styles.distanceValue}>
+                    {report.distanceKm < 1
+                      ? `${Math.round(report.distanceKm * 1000)} m de você`
+                      : `${report.distanceKm.toFixed(1)} km de você`}
+                  </ThemedText>
+                </View>
+              </View>
+            ) : null}
 
             <View style={styles.infoGrid}>
               <View style={styles.infoCardSmall}>
@@ -264,6 +309,27 @@ export default function ReportMapModal({ report, onClose }: ReportMapModalProps)
           </View>
         </View>
       </View>
+
+      <Modal
+        visible={fullscreenImage}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFullscreenImage(false)}
+      >
+        <View style={styles.fullscreenOverlay}>
+          <TouchableOpacity
+            style={styles.fullscreenClose}
+            onPress={() => setFullscreenImage(false)}
+            accessibilityRole="button"
+            accessibilityLabel="Fechar foto em tela cheia"
+          >
+            <Ionicons name="close" size={26} color="#fff" />
+          </TouchableOpacity>
+          {imageUrl ? (
+            <Image source={{ uri: imageUrl }} style={styles.fullscreenImage} resizeMode="contain" />
+          ) : null}
+        </View>
+      </Modal>
     </Modal>
   );
 }
@@ -346,14 +412,59 @@ const styles = StyleSheet.create({
   label: { fontSize: 11, color: C.text3, fontWeight: "600" },
   photoCard: {
     width: "100%",
-    height: 230,
+    minHeight: 180,
+    maxHeight: 420,
     borderRadius: 16,
     overflow: "hidden",
     backgroundColor: C.surface2,
     borderWidth: 1,
     borderColor: C.border,
   },
-  photo: { width: "100%", height: "100%" },
+  photo: {
+    width: "100%",
+    maxHeight: 420,
+    borderRadius: 16,
+    overflow: "hidden",
+    backgroundColor: C.surface2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  photoImage: { width: "100%", height: "100%" },
+  expandHint: {
+    position: "absolute",
+    right: 10,
+    bottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 9,
+    backgroundColor: "rgba(0,0,0,0.62)",
+  },
+  expandHintText: { color: "#fff", fontSize: 10, fontWeight: "700" },
+  fullscreenOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.94)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 18,
+  },
+  fullscreenImage: { width: "100%", height: "100%" },
+  fullscreenClose: {
+    position: "absolute",
+    top: 20,
+    right: 20,
+    zIndex: 2,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.58)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.22)",
+  },
   photoPlaceholder: {
     flex: 1,
     alignItems: "center",
@@ -391,6 +502,19 @@ const styles = StyleSheet.create({
   infoHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
   sectionTitle: { fontSize: 14, fontWeight: "800", color: C.text },
   description: { marginTop: 9, fontSize: 13, lineHeight: 19, color: C.text2 },
+  distanceCard: {
+    minHeight: 64,
+    borderRadius: 14,
+    backgroundColor: C.surface2,
+    borderWidth: 1,
+    borderColor: C.border,
+    padding: 13,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  distanceCopy: { flex: 1 },
+  distanceValue: { marginTop: 3, fontSize: 14, fontWeight: "800", color: C.text },
   infoGrid: { flexDirection: "row", gap: 10 },
   infoCardSmall: {
     flex: 1,

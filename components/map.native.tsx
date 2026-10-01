@@ -25,6 +25,7 @@ interface MapComponentProps {
   onSelectLocation?: (location: { latitude: number; longitude: number }) => void;
   onSelectReport?: (report: Report) => void;
   selectedReportId?: string | null;
+  recenterRequest?: number;
   onZoneClick?: (zone: Zone) => void;
 }
 
@@ -38,6 +39,7 @@ export default function MapComponent({
   onSelectLocation,
   onSelectReport,
   selectedReportId = null,
+  recenterRequest = 0,
   onZoneClick,
 }: MapComponentProps) {
   const mapRef = useRef<MapView | null>(null);
@@ -96,6 +98,19 @@ export default function MapComponent({
 
     previousCenteredLocationRef.current = selectedLocationCoords;
   }, [selectedLocationCoords, mapReady]);
+
+  useEffect(() => {
+    if (!recenterRequest || !userLocation || !mapRef.current || !mapReady) return;
+    mapRef.current.animateToRegion(
+      {
+        latitude: userLocation.latitude,
+        longitude: userLocation.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      },
+      700,
+    );
+  }, [recenterRequest, userLocation, mapReady]);
 
   useEffect(() => {
     if (!selectedReportId) {

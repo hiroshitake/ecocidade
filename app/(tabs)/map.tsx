@@ -522,7 +522,15 @@ export default function MapScreen() {
       </View>
 
       {/* Floating Side Action Controls */}
-      <View style={styles.floatingControls}>
+      <View
+        style={[
+          styles.floatingControls,
+          !isDesktop &&
+            (isFeedCollapsed
+              ? styles.floatingControlsCollapsed
+              : styles.floatingControlsExpanded),
+        ]}
+      >
         <TouchableOpacity
           style={styles.controlFab}
           onPress={() => {
@@ -626,6 +634,7 @@ export default function MapScreen() {
             <TouchableOpacity
               style={styles.toggleCollapseBtn}
               onPress={() => setIsFeedCollapsed(!isFeedCollapsed)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Ionicons
                 name={isFeedCollapsed ? "chevron-up" : "chevron-down"}
@@ -959,6 +968,12 @@ const makeStyles = (colors: typeof C, isDark: boolean) =>
       bottom: 150,
       zIndex: 25,
       gap: 8,
+    },
+    floatingControlsExpanded: {
+      bottom: 220,
+    },
+    floatingControlsCollapsed: {
+      bottom: 64,
     },
     controlFab: {
       width: 40,

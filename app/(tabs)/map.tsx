@@ -524,13 +524,9 @@ export default function MapScreen() {
         <TouchableOpacity
           style={styles.controlFab}
           onPress={() => {
-            // Recentraliza imediatamente usando a última posição conhecida.
-            // A obtenção de GPS acontece em paralelo, sem bloquear o toque.
-            setRecenterRequest((value) => value + 1);
-
             if (userLocation) {
-              setLocationSource("gps");
-              setLocationReason("gps");
+              setRecenterRequest((value) => value + 1);
+              return;
             }
 
             resolveUserLocationWithFallback()
@@ -539,12 +535,9 @@ export default function MapScreen() {
                 setUserLocation(resolvedLocation.location);
                 setLocationSource(resolvedLocation.source);
                 setLocationReason(resolvedLocation.reason);
+                setRecenterRequest((value) => value + 1);
               })
-              .catch(() => {
-                // Mantém a última posição conhecida se o GPS não responder.
-              });
-
-            startLocationWatch();
+              .catch(() => {});
           }}
           activeOpacity={0.8}
         >

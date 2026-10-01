@@ -50,7 +50,6 @@ export default function MapComponent({
     (report) => report.location?.latitude != null && report.location?.longitude != null,
   );
   const hasCenteredRef = useRef(false);
-  const previousCenteredLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
 
   const selectedLocationCoords = selectedLocation || userLocation;
 
@@ -78,12 +77,7 @@ export default function MapComponent({
   useEffect(() => {
     if (!selectedLocationCoords || !mapRef.current || !mapReady) return;
 
-    const locationChanged =
-      !previousCenteredLocationRef.current ||
-      selectedLocationCoords.latitude !== previousCenteredLocationRef.current.latitude ||
-      selectedLocationCoords.longitude !== previousCenteredLocationRef.current.longitude;
-
-    if (!hasCenteredRef.current || locationChanged) {
+    if (!hasCenteredRef.current) {
       mapRef.current.animateToRegion(
         {
           latitude: selectedLocationCoords.latitude,
@@ -95,8 +89,6 @@ export default function MapComponent({
       );
       hasCenteredRef.current = true;
     }
-
-    previousCenteredLocationRef.current = selectedLocationCoords;
   }, [selectedLocationCoords, mapReady]);
 
   useEffect(() => {

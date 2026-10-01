@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { ConfirmationModal } from "../components/ConfirmationModal";
 import { C, S } from "../constants/theme";
@@ -12,6 +12,7 @@ import { changeUserPassword, deleteUserAccount, deleteUserAvatar, getCurrentUser
 export default function SettingsScreen() {
   const toast = useToast();
   const { mode, setMode, colors } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [passwordSaving, setPasswordSaving] = useState(false);
@@ -309,12 +310,12 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
-  loading: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: C.bg },
+const makeStyles = (colors: typeof C) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg },
+  loading: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.bg },
   container: { width: "100%", maxWidth: 760, alignSelf: "center", padding: 20, paddingBottom: 56 },
   topBar: { flexDirection: "row", alignItems: "center", marginBottom: 28 },
-  backButton: { width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: C.surface },
+  backButton: { width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface },
   topSpacer: { width: 42 },
   headerText: { flex: 1, alignItems: "center", paddingHorizontal: 12 },
   title: { fontSize: 25, fontWeight: "800" },
@@ -324,7 +325,7 @@ const styles = StyleSheet.create({
   groupDescription: { fontSize: 13, marginBottom: 10 },
   card: { borderRadius: S.radius.xl, padding: 17, marginBottom: 10, borderWidth: 1 },
   profilePreview: { flexDirection: "row", alignItems: "center" },
-  smallAvatar: { width: 50, height: 50, borderRadius: 25, backgroundColor: C.surface2 },
+  smallAvatar: { width: 50, height: 50, borderRadius: 25, backgroundColor: colors.surface2 },
   profileInfo: { flex: 1, marginLeft: 12 },
   profileName: { fontSize: 15, fontWeight: "800" },
   profileEmail: { fontSize: 13, marginTop: 3 },
@@ -335,24 +336,24 @@ const styles = StyleSheet.create({
   rowTitle: { fontSize: 15, fontWeight: "800" },
   rowDescription: { fontSize: 12.5, lineHeight: 18, marginTop: 3 },
   expandedContent: { paddingTop: 2 },
-  divider: { height: 1, backgroundColor: C.border, marginVertical: 15 },
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: 15 },
   avatarWrap: { alignItems: "center", marginBottom: 12 },
-  avatar: { width: 104, height: 104, borderRadius: 52, backgroundColor: C.surface2 },
-  avatarFallback: { backgroundColor: C.primary, alignItems: "center", justifyContent: "center" },
-  avatarButton: { flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: C.primary, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10, marginTop: -12 },
-  avatarButtonText: { color: C.white, fontSize: 13, fontWeight: "700" },
+  avatar: { width: 104, height: 104, borderRadius: 52, backgroundColor: colors.surface2 },
+  avatarFallback: { backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
+  avatarButton: { flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10, marginTop: -12 },
+  avatarButtonText: { color: colors.white, fontSize: 13, fontWeight: "700" },
   label: { fontSize: 13, fontWeight: "700", marginBottom: 7, marginTop: 10 },
   input: { minHeight: 48, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, fontSize: 15 },
   disabledInput: { opacity: 0.65 },
-  primaryButton: { minHeight: 48, borderRadius: 12, backgroundColor: C.primary, alignItems: "center", justifyContent: "center", marginTop: 18 },
-  primaryText: { color: C.white, fontSize: 15, fontWeight: "800" },
+  primaryButton: { minHeight: 48, borderRadius: 12, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", marginTop: 18 },
+  primaryText: { color: colors.white, fontSize: 15, fontWeight: "800" },
   themeOptions: { flexDirection: "row", gap: 8, marginTop: 14 },
   themeOption: { flex: 1, minHeight: 72, borderRadius: 14, borderWidth: 1, alignItems: "center", justifyContent: "center", gap: 5 },
-  comingSoon: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8, backgroundColor: C.surface2 },
-  comingSoonText: { fontSize: 11, fontWeight: "700", color: C.text3 },
-  deleteButton: { minHeight: 44, borderRadius: 11, borderWidth: 1, borderColor: C.danger + "80", alignItems: "center", justifyContent: "center", marginTop: 12 },
-  deleteText: { color: C.danger, fontSize: 14, fontWeight: "800" },
-  dangerCard: { borderColor: C.danger + "40" },
+  comingSoon: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8, backgroundColor: colors.surface2 },
+  comingSoonText: { fontSize: 11, fontWeight: "700", color: colors.text3 },
+  deleteButton: { minHeight: 44, borderRadius: 11, borderWidth: 1, borderColor: colors.danger + "80", alignItems: "center", justifyContent: "center", marginTop: 12 },
+  deleteText: { color: colors.danger, fontSize: 14, fontWeight: "800" },
+  dangerCard: { borderColor: colors.danger + "40" },
   infoRow: { minHeight: 46, flexDirection: "row", alignItems: "center", gap: 12 },
   infoText: { flex: 1, fontSize: 14, fontWeight: "700" },
   version: { textAlign: "center", fontSize: 12, marginTop: 2 },

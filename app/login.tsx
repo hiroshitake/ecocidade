@@ -36,6 +36,8 @@ import {
 } from "../services/supabase";
 
 export default function LoginScreen() {
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 800;
   const [tab, setTab] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

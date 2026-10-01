@@ -750,7 +750,7 @@ export default function MapScreen() {
   );
 }
 
-const makeStyles = (colors: typeof C) =>
+const makeStyles = (colors: typeof C, isDark: boolean) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -764,11 +764,11 @@ const makeStyles = (colors: typeof C) =>
       left: 12,
       right: 12,
       zIndex: 20,
-      backgroundColor: "rgba(255, 255, 255, 0.95)",
+      backgroundColor: isDark ? "rgba(17, 24, 39, 0.94)" : "rgba(255, 255, 255, 0.95)",
       borderRadius: 14,
       padding: 10,
       borderWidth: 1,
-      borderColor: "rgba(226, 232, 240, 0.9)",
+      borderColor: colors.border,
       shadowColor: "#0f172a",
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.1,
@@ -914,12 +914,12 @@ const makeStyles = (colors: typeof C) =>
       flexDirection: "row",
       alignItems: "center",
       gap: 6,
-      backgroundColor: "rgba(255, 255, 255, 0.95)",
+      backgroundColor: isDark ? "rgba(17, 24, 39, 0.94)" : "rgba(255, 255, 255, 0.95)",
       paddingHorizontal: 12,
       paddingVertical: 5,
       borderRadius: 14,
       borderWidth: 1,
-      borderColor: "rgba(245, 158, 11, 0.4)",
+      borderColor: isDark ? "rgba(245, 158, 11, 0.3)" : "rgba(245, 158, 11, 0.4)",
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.08,
@@ -929,7 +929,7 @@ const makeStyles = (colors: typeof C) =>
     locationPillText: {
       fontSize: 11,
       fontWeight: "600",
-      color: "#92400e",
+      color: isDark ? "#fbbf24" : "#92400e",
     },
 
     /* Map Surface */
@@ -969,7 +969,7 @@ const makeStyles = (colors: typeof C) =>
       width: 40,
       height: 40,
       borderRadius: 10,
-      backgroundColor: "rgba(255, 255, 255, 0.95)",
+      backgroundColor: isDark ? "rgba(17, 24, 39, 0.94)" : "rgba(255, 255, 255, 0.95)",
       borderWidth: 1,
       borderColor: colors.border,
       alignItems: "center",
@@ -988,13 +988,13 @@ const makeStyles = (colors: typeof C) =>
       left: 12,
       right: 12,
       zIndex: 20,
-      backgroundColor: "rgba(255, 255, 255, 0.96)",
+      backgroundColor: isDark ? "rgba(17, 24, 39, 0.95)" : "rgba(255, 255, 255, 0.96)",
       borderRadius: 14,
       paddingHorizontal: 12,
       paddingTop: 10,
       paddingBottom: 10,
       borderWidth: 1,
-      borderColor: "rgba(226, 232, 240, 0.9)",
+      borderColor: colors.border,
       shadowColor: "#0f172a",
       shadowOffset: { width: 0, height: -2 },
       shadowOpacity: 0.1,

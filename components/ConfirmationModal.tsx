@@ -35,7 +35,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       statusBarTranslucent
     >
       <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onDismiss}>
-        <View style={[styles.modal, { backgroundColor: colors.surface }]}>
+        <View style={[styles.modal, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.header}>
             <View style={[styles.icon, { backgroundColor: destructive ? colors.dangerLight : colors.primaryLight }]}>
               <Text style={[styles.iconText, { color: destructive ? colors.danger : colors.primary }]}>
@@ -85,6 +85,7 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 380,
     borderRadius: S.radius.xl,
+    borderWidth: 1,
     overflow: "hidden",
     elevation: 20,
     shadowColor: "#000",

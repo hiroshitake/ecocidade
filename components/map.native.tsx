@@ -98,13 +98,17 @@ export default function MapComponent({
   }, [selectedLocationCoords, mapReady]);
 
   useEffect(() => {
-    if (!selectedReportId) return;
+    if (!selectedReportId) {
+      setSelectedReport(null);
+      return;
+    }
+
     const report = validReports.find((item) => String(item.id) === String(selectedReportId));
     if (report) {
       setSelectedReport(report);
       onSelectReport?.(report);
     }
-  }, [selectedReportId, reports]);
+  }, [selectedReportId]);
 
   useEffect(() => {
     const animation = Animated.loop(

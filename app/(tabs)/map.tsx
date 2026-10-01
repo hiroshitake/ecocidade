@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
-import React, { useCallback, useRef, useState } from "react";\nimport { router } from "expo-router";
+import React, { useCallback, useRef, useState } from "react";
+import { router } from "expo-router";
 import {
   ActivityIndicator,
   ScrollView,
@@ -14,7 +15,8 @@ import { ThemedView } from "../../components/themed-view";
 import { C } from "../../constants/theme";
 import { useAppTheme } from "../../context/theme-context";
 import { resolveUserLocationWithFallback } from "../../services/auth";
-import { getDangerZones, getPublicReports } from "../../services/reports";\nimport { getUnreadNotificationCount } from "../../services/notifications";
+import { getDangerZones, getPublicReports } from "../../services/reports";
+import { getUnreadNotificationCount } from "../../services/notifications";
 
 const categories = [
   "Todas",
@@ -73,7 +75,8 @@ export default function MapScreen() {
   const [locationReason, setLocationReason] = useState<
     "gps" | "gps_unavailable" | "permission_denied" | "city_fallback"
   >("gps_unavailable");
-  const [selectedReportIndex, setSelectedReportIndex] = useState<number>(0);\n  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [selectedReportIndex, setSelectedReportIndex] = useState<number>(0);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
 
   const loadData = useCallback(async () => {

@@ -92,7 +92,7 @@ export default function DangerZoneLocationMonitor() {
       const zones = zonesRef.current;
 
       for (const zone of zones) {
-        const radius = Math.max(100, Number(zone.radius) || 300);
+        const radius = Math.max(0, Number(zone.radius) || 300);
         const distance = distanceMeters(
           latitude,
           longitude,

@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { Appearance, Platform, useColorScheme as useNativeColorScheme } from "react-native";
+import { Appearance, useColorScheme as useNativeColorScheme } from "react-native";
 import { Colors } from "../constants/theme";
 
 export type ThemeMode = "system" | "light" | "dark";
@@ -52,6 +52,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+
     AsyncStorage.getItem(STORAGE_KEY)
       .then((value) => {
         if (!mounted) return;
@@ -61,16 +62,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       })
       .catch(() => {});
 
-    // Listen to appearance changes
     const appearanceListener = Appearance.addChangeListener(({ colorScheme }) => {
       if (mounted && colorScheme) {
         setSystemScheme(colorScheme);
       }
     });
 
-    // Listen to web matchMedia changes if on web
     let mediaQuery: MediaQueryList | null = null;
     let mediaHandler: ((e: MediaQueryListEvent) => void) | null = null;
+
     if (typeof window !== "undefined" && window.matchMedia) {
       try {
         mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
@@ -86,6 +86,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return () => {
       mounted = false;
       appearanceListener.remove();
+
       if (mediaQuery && mediaHandler) {
         try {
           mediaQuery.removeEventListener("change", mediaHandler);
@@ -96,32 +97,44 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const setMode = (nextMode: ThemeMode) => {
     setModeState(nextMode);
+
     if (typeof window !== "undefined" && window.localStorage) {
       try {
         window.localStorage.setItem(STORAGE_KEY, nextMode);
       } catch {}
     }
+
     AsyncStorage.setItem(STORAGE_KEY, nextMode).catch(() => undefined);
   };
 
   const isDark = mode === "dark" || (mode === "system" && systemScheme === "dark");
   const colors = isDark ? Colors.dark : Colors.light;
 
-  // Keep the browser UI (theme color, address/navigation chrome and form controls)
-  // synchronized with the app theme, including after a full page reload.
   useEffect(() => {
     if (typeof document === "undefined") return;
 
     const backgroundColor = isDark ? "#0b0f19" : "#f8fafc";
     document.documentElement.style.colorScheme = isDark ? "dark" : "light";
 
-    let meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
-    if (!meta) {
-      meta = document.createElement("meta");
-      meta.name = "theme-color";
-      document.head.appendChild(meta);
+    const metas = Array.from(
+      document.querySelectorAll('meta[name="theme-color"]')
+    ) as HTMLMetaElement[];
+
+    const activeMeta = metas.find((meta) => meta.media);
+    const themeMeta =
+      metas.find((meta) => !meta.media) ??
+      (() => {
+        const meta = document.createElement("meta");
+        meta.name = "theme-color";
+        document.head.appendChild(meta);
+        return meta;
+      })();
+
+    themeMeta.content = backgroundColor;
+
+    if (activeMeta) {
+      activeMeta.content = backgroundColor;
     }
-    meta.content = backgroundColor;
   }, [isDark]);
 
   const value = useMemo(
@@ -147,6 +160,9 @@ export function useAppTheme() {
   return context;
 }
 
-export function getThemeScheme(mode: ThemeMode, systemScheme: "light" | "dark" | null | undefined) {
+export function getThemeScheme(
+  mode: ThemeMode,
+  systemScheme: "light" | "dark" | null | undefined
+) {
   return mode === "system" ? (systemScheme ?? getSystemSchemeSync()) : mode;
 }

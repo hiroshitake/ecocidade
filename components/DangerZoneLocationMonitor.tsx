@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import { Platform } from "react-native";
+import { usePathname } from "expo-router";
 import DangerZoneAlertModal, { type DangerZoneAlertType } from "./DangerZoneAlertModal";
 import { getCurrentUserData } from "../services/auth";
 import {
@@ -55,6 +56,9 @@ function classifyZone(distance: number, radius: number): ZoneState {
 }
 
 export default function DangerZoneLocationMonitor() {
+  const pathname = usePathname();
+  const isMapScreen = pathname === "/map" || pathname === "/(tabs)/map";
+
   const zonesRef = useRef<Zone[]>([]);
   const stateRef = useRef<Record<string, ZoneState>>({});
   const watchRef = useRef<any>(null);
@@ -71,6 +75,13 @@ export default function DangerZoneLocationMonitor() {
     zoneName?: string;
     severity?: string;
   } | null>(null);
+
+  useEffect(() => {
+    if (!isMapScreen) {
+      setAlert(null);
+      pendingAlertRef.current = null;
+    }
+  }, [isMapScreen]);
 
   const stopWatch = useCallback(() => {
     try {
@@ -303,7 +314,7 @@ export default function DangerZoneLocationMonitor() {
 
   return (
     <DangerZoneAlertModal
-      visible={Boolean(alert)}
+      visible={Boolean(alert) && isMapScreen}
       type={alert?.type || "near"}
       zoneName={alert?.zoneName}
       severity={alert?.severity}

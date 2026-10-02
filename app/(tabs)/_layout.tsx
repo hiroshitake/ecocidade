@@ -12,24 +12,12 @@ function RaisedNewReportTabButton(props: any) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 0.88,
-      useNativeDriver: true,
-      friction: 5,
-      tension: 100,
-    }).start();
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    } catch {}
+    Animated.spring(scaleAnim, { toValue: 0.88, useNativeDriver: true, friction: 5, tension: 100 }).start();
+    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch {}
   };
 
   const handlePressOut = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      friction: 4,
-      tension: 80,
-      useNativeDriver: true,
-    }).start();
+    Animated.spring(scaleAnim, { toValue: 1, friction: 4, tension: 80, useNativeDriver: true }).start();
   };
 
   return (
@@ -78,6 +66,12 @@ export default function TabLayout() {
           height: isMobile ? 70 : 76,
           paddingBottom: isMobile ? 10 : 8,
           paddingTop: 8,
+          ...(isMobile ? {} : {
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
+          }),
           shadowColor: "#000000",
           shadowOffset: { width: 0, height: -2 },
           shadowOpacity: isDark ? 0.25 : 0.05,
@@ -85,96 +79,25 @@ export default function TabLayout() {
           elevation: 4,
           overflow: "visible",
         },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "600",
-          marginTop: 2,
-        },
-        tabBarIconStyle: {
-          marginTop: 0,
-        },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: "600", marginTop: 2 },
+        tabBarIconStyle: { marginTop: 0 },
       }}
     >
-      <Tabs.Screen
-        name="map"
-        options={{
-          title: "Mapa",
-          tabBarIcon: ({ color }) => (
-            <View style={styles.tabIconWrap}>
-              <IconSymbol size={22} name="map.fill" color={color} />
-            </View>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="reports"
-        options={{
-          title: "Minhas Denúncias",
-          tabBarIcon: ({ color }) => (
-            <View style={styles.tabIconWrap}>
-              <IconSymbol size={22} name="list.bullet" color={color} />
-            </View>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="new-report"
-        options={{
-          title: "Nova Denúncia",
-          tabBarLabel: () => null,
-          tabBarButton: (props) => <RaisedNewReportTabButton {...props} />,
-        }}
-      />
-      <Tabs.Screen
-        name="security"
-        options={{
-          title: "Segurança",
-          tabBarIcon: ({ color }) => (
-            <View style={styles.tabIconWrap}>
-              <IconSymbol size={22} name="shield.fill" color={color} />
-            </View>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "Perfil",
-          tabBarIcon: ({ color }) => (
-            <View style={styles.tabIconWrap}>
-              <IconSymbol size={22} name="person.fill" color={color} />
-            </View>
-          ),
-        }}
-      />
+      <Tabs.Screen name="map" options={{ title: "Mapa", tabBarIcon: ({ color }) => <View style={styles.tabIconWrap}><IconSymbol size={22} name="map.fill" color={color} /></View> }} />
+      <Tabs.Screen name="reports" options={{ title: "Minhas Denúncias", tabBarIcon: ({ color }) => <View style={styles.tabIconWrap}><IconSymbol size={22} name="list.bullet" color={color} /></View> }} />
+      <Tabs.Screen name="new-report" options={{ title: "Nova Denúncia", tabBarLabel: () => null, tabBarButton: (props) => <RaisedNewReportTabButton {...props} /> }} />
+      <Tabs.Screen name="security" options={{ title: "Segurança", tabBarIcon: ({ color }) => <View style={styles.tabIconWrap}><IconSymbol size={22} name="shield.fill" color={color} /></View> }} />
+      <Tabs.Screen name="profile" options={{ title: "Perfil", tabBarIcon: ({ color }) => <View style={styles.tabIconWrap}><IconSymbol size={22} name="person.fill" color={color} /></View> }} />
     </Tabs>
   );
 }
 
 const styles = StyleSheet.create({
-  tabIconWrap: {
-    width: 32,
-    height: 32,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  raisedButtonOuterWrap: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  tabIconWrap: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
+  raisedButtonOuterWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
   raisedButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: "center",
-    justifyContent: "center",
-    top: -14,
-    borderWidth: 3,
-    shadowColor: "#0f52ba",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 8,
+    width: 52, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center",
+    top: -14, borderWidth: 3, shadowColor: "#0f52ba",
+    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 6, elevation: 8,
   },
 });

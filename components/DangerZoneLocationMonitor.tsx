@@ -68,7 +68,6 @@ export default function DangerZoneLocationMonitor() {
     zoneName?: string;
     severity?: string;
   } | null>(null);
-  const suppressAlertsRef = useRef(areDangerZoneAlertsSuppressed());
 
   const [alert, setAlert] = React.useState<{
     type: DangerZoneAlertType;
@@ -138,7 +137,7 @@ export default function DangerZoneLocationMonitor() {
         if (nextState === "inside" && previousState === "outside") {
           const nearAlert = { ...nextAlert, type: "near" as const };
 
-          if (!suppressAlertsRef.current) {
+          if (!areDangerZoneAlertsSuppressed()) {
             setAlert((current) => {
               if (current) {
                 pendingAlertRef.current = nextAlert;
@@ -163,7 +162,7 @@ export default function DangerZoneLocationMonitor() {
 
         if (
           (nextState === "near" || nextState === "inside") &&
-          !suppressAlertsRef.current
+          !areDangerZoneAlertsSuppressed()
         ) {
           setAlert((current) => {
             if (current) {
@@ -325,7 +324,6 @@ export default function DangerZoneLocationMonitor() {
       }}
       onDisableAlerts={() => {
         suppressDangerZoneAlertsForSession();
-        suppressAlertsRef.current = true;
         pendingAlertRef.current = null;
         setAlert(null);
       }}

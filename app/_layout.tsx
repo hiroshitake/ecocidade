@@ -3,12 +3,14 @@ import { StatusBar } from "expo-status-bar";
 import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from "@react-navigation/native";
 import { ThemeProvider, useAppTheme } from "../context/theme-context";
 import { ToastProvider } from "../context/toast-context";
+import DangerZoneLocationMonitor from "../components/DangerZoneLocationMonitor";
 
 function AppChrome() {
   const { isDark } = useAppTheme();
   return (
     <NavigationThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
       <StatusBar style={isDark ? "light" : "dark"} />
+      <DangerZoneLocationMonitor />
       <Stack
         screenOptions={{
           headerShown: false,

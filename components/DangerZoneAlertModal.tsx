@@ -1,6 +1,6 @@
 import React from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { S } from "../constants/theme";
 import { useAppTheme } from "../context/theme-context";
 
@@ -12,6 +12,7 @@ interface DangerZoneAlertModalProps {
   zoneName?: string;
   severity?: string;
   onConfirm: () => void;
+  onDisableAlerts: () => void;
 }
 
 const severityLabels: Record<string, string> = {
@@ -29,20 +30,44 @@ export default function DangerZoneAlertModal({
   zoneName,
   severity,
   onConfirm,
+  onDisableAlerts,
 }: DangerZoneAlertModalProps) {
   const { colors } = useAppTheme();
   const inside = type === "inside";
-  const level = severityLabels[String(severity || "media").toLowerCase()] || String(severity || "média");
+  const level =
+    severityLabels[String(severity || "media").toLowerCase()] ||
+    String(severity || "média");
 
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={() => undefined}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={() => undefined}
+    >
       <View style={styles.overlay}>
         <View
           accessibilityViewIsModal
-          style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          style={[
+            styles.card,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+            },
+          ]}
         >
-          <View style={[styles.iconCircle, { backgroundColor: colors.dangerLight }]}>
-            <Ionicons name={inside ? "warning" : "alert-circle"} size={30} color={colors.danger} />
+          <View
+            style={[
+              styles.iconCircle,
+              { backgroundColor: colors.dangerLight },
+            ]}
+          >
+            <Ionicons
+              name={inside ? "warning" : "alert-circle"}
+              size={30}
+              color={colors.danger}
+            />
           </View>
 
           <View style={styles.content}>
@@ -50,18 +75,40 @@ export default function DangerZoneAlertModal({
               {inside ? "ATENÇÃO DE SEGURANÇA" : "AVISO DE SEGURANÇA"}
             </Text>
             <Text style={[styles.title, { color: colors.text }]}>
-              {inside ? "Você adentrou em uma zona perigosa" : "Você está perto de uma zona de risco"}
+              {inside
+                ? "Você adentrou em uma zona perigosa"
+                : "Você está perto de uma zona de risco"}
             </Text>
             <Text style={[styles.description, { color: colors.text2 }]}>
-              {inside
-                ? <>Você adentrou em uma zona perigosa de nível <Text style={styles.bold}>{level}</Text>. Tome cuidado.</>
-                : "Você está perto de uma zona de risco. Tome cuidado e fique atento."}
+              {inside ? (
+                <>
+                  Você adentrou em uma zona perigosa de nível{" "}
+                  <Text style={styles.bold}>{level}</Text>. Tome cuidado.
+                </>
+              ) : (
+                "Você está perto de uma zona de risco. Tome cuidado e fique atento."
+              )}
             </Text>
 
             {zoneName ? (
-              <View style={[styles.zoneBadge, { backgroundColor: colors.surface2, borderColor: colors.border }]}>
-                <Ionicons name="location-outline" size={16} color={colors.text3} />
-                <Text numberOfLines={1} style={[styles.zoneName, { color: colors.text2 }]}>
+              <View
+                style={[
+                  styles.zoneBadge,
+                  {
+                    backgroundColor: colors.surface2,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="location-outline"
+                  size={16}
+                  color={colors.text3}
+                />
+                <Text
+                  numberOfLines={1}
+                  style={[styles.zoneName, { color: colors.text2 }]}
+                >
                   {zoneName}
                 </Text>
               </View>
@@ -75,11 +122,23 @@ export default function DangerZoneAlertModal({
               onPress={onDisableAlerts}
               style={({ pressed }) => [
                 styles.secondaryButton,
-                { borderColor: colors.border, opacity: pressed ? 0.65 : 1 },
+                {
+                  borderColor: colors.border,
+                  opacity: pressed ? 0.65 : 1,
+                },
               ]}
             >
-              <Ionicons name="notifications-off-outline" size={16} color={colors.text2} />
-              <Text style={[styles.secondaryButtonText, { color: colors.text2 }]}>
+              <Ionicons
+                name="notifications-off-outline"
+                size={16}
+                color={colors.text2}
+              />
+              <Text
+                style={[
+                  styles.secondaryButtonText,
+                  { color: colors.text2 },
+                ]}
+              >
                 NÃO ME AVISE NOVAMENTE
               </Text>
             </Pressable>
@@ -90,7 +149,10 @@ export default function DangerZoneAlertModal({
               onPress={onConfirm}
               style={({ pressed }) => [
                 styles.button,
-                { backgroundColor: colors.danger, opacity: pressed ? 0.82 : 1 },
+                {
+                  backgroundColor: colors.danger,
+                  opacity: pressed ? 0.82 : 1,
+                },
               ]}
             >
               <Text style={styles.buttonText}>{inside ? "OK" : "EU SEI"}</Text>

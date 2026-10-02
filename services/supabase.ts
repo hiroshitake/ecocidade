@@ -133,7 +133,7 @@ export function isSupabaseConfigured() {
 
 export async function resetPasswordForEmail(email: string) {
   if (!supabase) throw new Error("Supabase não configurado.");
-  const redirectTo = appSiteUrl;
+  const redirectTo = `${appSiteUrl}/reset-password`;
   const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
     redirectTo,
   });

@@ -71,6 +71,21 @@ export default function DangerZoneAlertModal({
           <View style={[styles.footer, { borderTopColor: colors.border }]}>
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel="Não me avise novamente"
+              onPress={onDisableAlerts}
+              style={({ pressed }) => [
+                styles.secondaryButton,
+                { borderColor: colors.border, opacity: pressed ? 0.65 : 1 },
+              ]}
+            >
+              <Ionicons name="notifications-off-outline" size={16} color={colors.text2} />
+              <Text style={[styles.secondaryButtonText, { color: colors.text2 }]}>
+                NÃO ME AVISE NOVAMENTE
+              </Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
               accessibilityLabel={inside ? "OK" : "Eu sei"}
               onPress={onConfirm}
               style={({ pressed }) => [
@@ -169,6 +184,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
+  },
+  secondaryButton: {
+    minHeight: 42,
+    marginBottom: 10,
+    borderRadius: S.radius.md,
+    borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+  },
+  secondaryButtonText: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.25,
   },
   buttonText: {
     color: "#fff",

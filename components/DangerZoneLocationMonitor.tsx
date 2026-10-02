@@ -3,6 +3,10 @@ import { Platform } from "react-native";
 import DangerZoneAlertModal, { type DangerZoneAlertType } from "./DangerZoneAlertModal";
 import { getCurrentUserData } from "../services/auth";
 import {
+  areDangerZoneAlertsSuppressed,
+  suppressDangerZoneAlertsForSession,
+} from "../services/danger-zone-alerts";
+import {
   getDangerZones,
   notifyDangerZoneLocationEvent,
 } from "../services/reports";
@@ -60,7 +64,7 @@ export default function DangerZoneLocationMonitor() {
     zoneName?: string;
     severity?: string;
   } | null>(null);
-  const suppressAlertsRef = useRef(false);
+  const suppressAlertsRef = useRef(areDangerZoneAlertsSuppressed());
 
   const [alert, setAlert] = React.useState<{
     type: DangerZoneAlertType;
@@ -309,6 +313,7 @@ export default function DangerZoneLocationMonitor() {
         setAlert(pending);
       }}
       onDisableAlerts={() => {
+        suppressDangerZoneAlertsForSession();
         suppressAlertsRef.current = true;
         pendingAlertRef.current = null;
         setAlert(null);

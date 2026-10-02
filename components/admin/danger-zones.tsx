@@ -1,14 +1,11 @@
 import React from 'react';
 import { Platform } from 'react-native';
 
-let Component: React.ComponentType<any>;
-
-if (Platform.OS === 'web') {
-  Component = require('./danger-zones.web').default;
-} else {
-  Component = require('./danger-zones.native').default;
-}
-
-export default function DangerZonesScreen() {
-  return <Component />;
+export default function DangerZonesScreen(props: any) {
+  if (Platform.OS === 'web') {
+    const Component = require('./danger-zones.web').default;
+    return <Component {...props} />;
+  }
+  const Component = require('./danger-zones.native').default;
+  return <Component {...props} />;
 }

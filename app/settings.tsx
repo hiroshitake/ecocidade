@@ -50,6 +50,14 @@ export default function SettingsScreen() {
 
   useEffect(() => { load(); }, []);
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace("/(tabs)/profile");
+  };
+
   const pickAvatar = async () => {
     if (!userId) return;
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -114,7 +122,7 @@ export default function SettingsScreen() {
     <View style={[styles.root, { backgroundColor: colors.bg }]}>
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}>
+          <TouchableOpacity onPress={handleBack} style={[styles.backButton, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]} accessibilityRole="button" accessibilityLabel="Voltar para o perfil">
             <Ionicons name="arrow-back" size={22} color={colors.text} />
           </TouchableOpacity>
           <View style={styles.headerText}>

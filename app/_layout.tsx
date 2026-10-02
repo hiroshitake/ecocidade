@@ -7,7 +7,6 @@ import DangerZoneLocationMonitor from "../components/DangerZoneLocationMonitor";
 
 function AppChrome() {
   const { isDark } = useAppTheme();
-
   return (
     <NavigationThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
       <StatusBar style={isDark ? "light" : "dark"} />
@@ -15,9 +14,7 @@ function AppChrome() {
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: {
-            backgroundColor: isDark ? "#0b0f19" : "#f8fafc",
-          },
+          contentStyle: { backgroundColor: isDark ? "#0b0f19" : "#f8fafc" },
           animation: "fade",
         }}
       >
@@ -31,7 +28,6 @@ function AppChrome() {
     </NavigationThemeProvider>
   );
 }
-
 export default function RootLayout() {
   return (
     <ThemeProvider>

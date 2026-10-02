@@ -89,6 +89,7 @@ export default function MapScreen() {
   const [recenterRequest, setRecenterRequest] = useState(0);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [isFeedCollapsed, setIsFeedCollapsed] = useState(false);
+  const [isRefreshingMap, setIsRefreshingMap] = useState(false);
 
   const toggleFeedCollapse = () => {
     try {
@@ -157,7 +158,7 @@ export default function MapScreen() {
   const startLocationWatch = useCallback(() => {
     stopLocationWatch();
 
-    if (typeof navigator !== "undefined" && navigator.geolocation) {
+    if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.geolocation) {
       try {
         const watchId = navigator.geolocation.watchPosition(
           (position) => {
@@ -241,6 +242,18 @@ export default function MapScreen() {
       };
     }, [loadData, startLocationWatch, stopLocationWatch]),
   );
+
+  const handleRefreshMap = useCallback(async () => {
+    if (isRefreshingMap) return;
+
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      setIsRefreshingMap(true);
+      await loadData();
+    } finally {
+      setIsRefreshingMap(false);
+    }
+  }, [isRefreshingMap, loadData]);
 
   const filteredReports = useMemo(() => {
     return reports.filter((item) => {
@@ -417,11 +430,12 @@ export default function MapScreen() {
 
             <TouchableOpacity
               style={styles.actionIconButton}
-              onPress={loadData}
+              onPress={handleRefreshMap}
+              disabled={isRefreshingMap}
               activeOpacity={0.8}
             >
               <Ionicons
-                name={loading ? "sync" : "refresh-outline"}
+                name={isRefreshingMap ? "sync" : "refresh-outline"}
                 size={18}
                 color={colors.primary}
               />

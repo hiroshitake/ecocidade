@@ -1,22 +1,34 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from "@react-navigation/native";
+import { ThemeProvider as NavigationThemeProvider } from "@react-navigation/native";
 import { ThemeProvider, useAppTheme } from "../context/theme-context";
 import { ToastProvider } from "../context/toast-context";
 import DangerZoneLocationMonitor from "../components/DangerZoneLocationMonitor";
 
 function AppChrome() {
-  const { isDark } = useAppTheme();
+  const { isDark, colors } = useAppTheme();
+
+  const navigationTheme = {
+    dark: isDark,
+    colors: {
+      primary: colors.primary,
+      background: colors.bg,
+      card: colors.surface,
+      text: colors.text,
+      border: colors.border,
+      notification: colors.danger,
+    },
+  };
 
   return (
-    <NavigationThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
+    <NavigationThemeProvider value={navigationTheme}>
       <StatusBar style={isDark ? "light" : "dark"} />
       <DangerZoneLocationMonitor />
       <Stack
         screenOptions={{
           headerShown: false,
           contentStyle: {
-            backgroundColor: isDark ? "#0b0f19" : "#f8fafc",
+            backgroundColor: colors.bg,
           },
           animation: "fade",
         }}

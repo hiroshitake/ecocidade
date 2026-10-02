@@ -9,12 +9,14 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <style dangerouslySetInnerHTML={{ __html: `
           html, body, #root {
-            margin: 0;
+            width: 100%;
+            height: 100%;
             min-height: 100%;
+            margin: 0;
             background: var(--ecocidade-bg, #f8fafc) !important;
           }
-          #root {
-            min-height: 100vh;
+          body {
+            overflow: hidden;
           }
         ` }} />
         <script dangerouslySetInnerHTML={{ __html: `
@@ -29,18 +31,12 @@ export default function Root({ children }: PropsWithChildren) {
               document.documentElement.style.colorScheme = scheme;
               document.documentElement.style.setProperty("--ecocidade-bg", color);
               document.documentElement.style.backgroundColor = color;
-              document.documentElement.style.setProperty("color-scheme", scheme);
-              if (document.body) {
-                document.body.style.backgroundColor = color;
-              }
-              const meta = document.createElement("meta");
-              meta.name = "theme-color";
-              meta.content = color;
-              document.head.appendChild(meta);
-            } catch {
-              document.documentElement.style.setProperty("--ecocidade-bg", "#f8fafc");
-            document.documentElement.style.backgroundColor = "#f8fafc";
-            }
+              document.body && (document.body.style.backgroundColor = color);
+              const meta = document.querySelector('meta[name="theme-color"]') || document.createElement("meta");
+              meta.setAttribute("name", "theme-color");
+              meta.setAttribute("content", color);
+              if (!meta.parentNode) document.head.appendChild(meta);
+            } catch {}
           })();
         ` }} />
         <meta name="color-scheme" content="light dark" />

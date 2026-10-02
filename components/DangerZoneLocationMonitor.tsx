@@ -60,7 +60,9 @@ export default function DangerZoneLocationMonitor() {
     zoneName?: string;
     severity?: string;
   } | null>(null);
-  const suppressAlertsRef = useRef(false);\n\n  const suppressAlertsRef = useRef(false);\n\n  const [alert, setAlert] = React.useState<{
+  const suppressAlertsRef = useRef(false);
+
+  const [alert, setAlert] = React.useState<{
     type: DangerZoneAlertType;
     zoneName?: string;
     severity?: string;
@@ -105,7 +107,6 @@ export default function DangerZoneLocationMonitor() {
 
         if (previousState === nextState) continue;
 
-        // A distant initial state does not need a database write.
         if (nextState === "outside" && previousState === undefined) {
           stateRef.current[zone.id] = "outside";
           continue;
@@ -119,18 +120,19 @@ export default function DangerZoneLocationMonitor() {
           severity: zone.severity,
         };
 
-        // GPS can jump from outside directly to inside. In that case,
-        // still show the proximity warning first, then the entry warning.
         if (nextState === "inside" && previousState === "outside") {
           const nearAlert = { ...nextAlert, type: "near" as const };
-          setAlert((current) => {
-            if (current) {
+
+          if (!suppressAlertsRef.current) {
+            setAlert((current) => {
+              if (current) {
+                pendingAlertRef.current = nextAlert;
+                return current;
+              }
               pendingAlertRef.current = nextAlert;
-              return current;
-            }
-            pendingAlertRef.current = nextAlert;
-            return nearAlert;
-          });
+              return nearAlert;
+            });
+          }
 
           try {
             await notifyDangerZoneLocationEvent(zone.id, "near");
@@ -144,7 +146,10 @@ export default function DangerZoneLocationMonitor() {
           continue;
         }
 
-        if (nextState === "near" || nextState === "inside") {
+        if (
+          (nextState === "near" || nextState === "inside") &&
+          !suppressAlertsRef.current
+        ) {
           setAlert((current) => {
             if (current) {
               pendingAlertRef.current = nextAlert;
@@ -264,8 +269,6 @@ export default function DangerZoneLocationMonitor() {
       try {
         const user = await getCurrentUserData();
 
-        // O monitor também fica ativo para administradores para permitir
-        // testes e para que contas administrativas possam receber alertas.
         if (!mounted || !user) return;
 
         await loadZones();
@@ -304,6 +307,11 @@ export default function DangerZoneLocationMonitor() {
         const pending = pendingAlertRef.current;
         pendingAlertRef.current = null;
         setAlert(pending);
+      }}
+      onDisableAlerts={() => {
+        suppressAlertsRef.current = true;
+        pendingAlertRef.current = null;
+        setAlert(null);
       }}
     />
   );

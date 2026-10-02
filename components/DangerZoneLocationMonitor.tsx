@@ -113,13 +113,38 @@ export default function DangerZoneLocationMonitor() {
 
         stateRef.current[zone.id] = nextState;
 
-        if (nextState === "near" || nextState === "inside") {
-          const nextAlert = {
-            type: nextState as DangerZoneAlertType,
-            zoneName: zone.name,
-            severity: zone.severity,
-          };
+        const nextAlert = {
+          type: nextState as DangerZoneAlertType,
+          zoneName: zone.name,
+          severity: zone.severity,
+        };
 
+        // GPS can jump from outside directly to inside. In that case,
+        // still show the proximity warning first, then the entry warning.
+        if (nextState === "inside" && previousState === "outside") {
+          const nearAlert = { ...nextAlert, type: "near" as const };
+          setAlert((current) => {
+            if (current) {
+              pendingAlertRef.current = nextAlert;
+              return current;
+            }
+            pendingAlertRef.current = nextAlert;
+            return nearAlert;
+          });
+
+          try {
+            await notifyDangerZoneLocationEvent(zone.id, "near");
+            await notifyDangerZoneLocationEvent(zone.id, "inside");
+          } catch (error) {
+            console.debug(
+              "Não foi possível registrar evento da área de perigo:",
+              error,
+            );
+          }
+          continue;
+        }
+
+        if (nextState === "near" || nextState === "inside") {
           setAlert((current) => {
             if (current) {
               pendingAlertRef.current = nextAlert;

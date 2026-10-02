@@ -1,0 +1,32 @@
+import { ScrollViewStyleReset } from "expo-router/html";
+import type { PropsWithChildren } from "react";
+
+/**
+ * Root HTML document for Expo Router Web.
+ *
+ * The theme-color entries are resolved by the browser before the React
+ * application starts, preventing a light browser navigation bar on reload
+ * when the system is using dark mode.
+ */
+export default function Root({ children }: PropsWithChildren) {
+  return (
+    <html lang="pt-BR">
+      <head>
+        <meta charSet="utf-8" />
+        <meta
+          name="theme-color"
+          media="(prefers-color-scheme: dark)"
+          content="#0b0f19"
+        />
+        <meta
+          name="theme-color"
+          media="(prefers-color-scheme: light)"
+          content="#f8fafc"
+        />
+        <meta name="color-scheme" content="light dark" />
+        <ScrollViewStyleReset />
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}

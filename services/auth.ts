@@ -14,6 +14,7 @@ import {
   deleteSupabaseAccount,
   resetPasswordForEmail as resetSupabasePasswordForEmail,
 } from "./supabase";
+import { resetDangerZoneAlertsForSession } from "./danger-zone-alerts";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
 const AUTH_TOKEN_KEY = "ecocidade.token";
@@ -51,7 +52,12 @@ export async function requestPasswordReset(email:string){
  await resetSupabasePasswordForEmail(email);
 }
 
-export async function logout(){await AsyncStorage.removeItem(AUTH_TOKEN_KEY);await AsyncStorage.removeItem(AUTH_USER_KEY);if(isSupabaseConfigured())await signOutFromSupabase();}
+export async function logout(){
+  resetDangerZoneAlertsForSession();
+  await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+  await AsyncStorage.removeItem(AUTH_USER_KEY);
+  if(isSupabaseConfigured())await signOutFromSupabase();
+}
 export async function getCurrentUserData():Promise<AuthUser|null>{
  if(isSupabaseConfigured()){const user=await getSupabaseSessionUser();if(user){await AsyncStorage.setItem(AUTH_USER_KEY,JSON.stringify(user));return user;}}
  const storedUser=await AsyncStorage.getItem(AUTH_USER_KEY);if(!storedUser)return null;try{return JSON.parse(storedUser) as AuthUser;}catch{return null;}
@@ -90,10 +96,10 @@ export async function deleteUserAccount(){
  const {data,error}=await deleteSupabaseAccount();
  if(error)throw error;
  await AsyncStorage.removeItem(AUTH_TOKEN_KEY);await AsyncStorage.removeItem(AUTH_USER_KEY);await supabase.auth.signOut();
+ resetDangerZoneAlertsForSession();
  return data;
 }
-export async function getUserCityCenterFallback():Promise<{latitude:number;longitude:number}|null>{
- const user=await getCurrentUserData();const cityName=user?.city?.trim();if(!cityName||!supabase)return null;
+export async function getUserCityCenterFallback():Promise<{latitude:number;longitude:number}|null>{const user=await getCurrentUserData();const cityName=user?.city?.trim();if(!cityName||!supabase)return null;
  try{const {data,error}=await supabase.from("cities").select("latitude, longitude").ilike("name",cityName).maybeSingle();if(error)return null;const latitude=Number(data?.latitude),longitude=Number(data?.longitude);if(!Number.isFinite(latitude)||!Number.isFinite(longitude))return null;return {latitude,longitude};}catch{return null;}
 }
 
@@ -102,17 +108,9 @@ export async function resolveUserLocationWithFallback():Promise<{location:{latit
  const isLocalhostWeb=Platform.OS==="web"&&typeof window!=="undefined"&&/localhost|127\.0\.0\.1/.test(window.location.hostname);
  if(isLocalhostWeb){const fallback=await fallbackPromise;return {location:fallback,source:fallback?"city":"none",reason:fallback?"city_fallback":"gps_unavailable"};}
  if(Platform.OS==="web"&&typeof navigator!=="undefined"&&navigator.geolocation){
-  return await new Promise(resolve=>{
-   let settled=false;
-   const finish=(result:any)=>{if(settled)return;settled=true;clearTimeout(timer);resolve(result);};
-   const timer=setTimeout(async()=>{const fallback=await fallbackPromise;finish({location:fallback,source:fallback?"city":"none",reason:fallback?"city_fallback":"gps_unavailable"});},10000);
-   navigator.geolocation.getCurrentPosition(position=>finish({location:{latitude:position.coords.latitude,longitude:position.coords.longitude},source:"gps",reason:"gps"}),async error=>{const fallback=await fallbackPromise;finish({location:fallback,source:fallback?"city":"none",reason:error?.code===1?"permission_denied":fallback?"city_fallback":"gps_unavailable"});},{enableHighAccuracy:true,timeout:10000,maximumAge:0});
-  });
+  return await new Promise(resolve=>{let settled=false;const finish=(result:any)=>{if(settled)return;settled=true;clearTimeout(timer);resolve(result);};const timer=setTimeout(async()=>{const fallback=await fallbackPromise;finish({location:fallback,source:fallback?"city":"none",reason:fallback?"city_fallback":"gps_unavailable"});},10000);navigator.geolocation.getCurrentPosition(position=>finish({location:{latitude:position.coords.latitude,longitude:position.coords.longitude},source:"gps",reason:"gps"}),async error=>{const fallback=await fallbackPromise;finish({location:fallback,source:fallback?"city":"none",reason:error?.code===1?"permission_denied":fallback?"city_fallback":"gps_unavailable"});},{enableHighAccuracy:true,timeout:10000,maximumAge:0});});
  }
- try{
-  const location=await import("expo-location");const {status}=await location.default.requestForegroundPermissionsAsync();if(status!=="granted"){const fallback=await fallbackPromise;return {location:fallback,source:fallback?"city":"none",reason:"permission_denied"};}
-  const loc=await location.default.getCurrentPositionAsync({accuracy:location.default.Accuracy.High});return {location:{latitude:loc.coords.latitude,longitude:loc.coords.longitude},source:"gps",reason:"gps"};
- }catch{const fallback=await fallbackPromise;return {location:fallback,source:fallback?"city":"none",reason:fallback?"city_fallback":"gps_unavailable"};}
+ try{const location=await import("expo-location");const {status}=await location.default.requestForegroundPermissionsAsync();if(status!=="granted"){const fallback=await fallbackPromise;return {location:fallback,source:fallback?"city":"none",reason:"permission_denied"};}const loc=await location.default.getCurrentPositionAsync({accuracy:location.default.Accuracy.High});return {location:{latitude:loc.coords.latitude,longitude:loc.coords.longitude},source:"gps",reason:"gps"};}catch{const fallback=await fallbackPromise;return {location:fallback,source:fallback?"city":"none",reason:fallback?"city_fallback":"gps_unavailable"};}
 }
 
 export async function resolveUserLocationForSubmission(){const result=await resolveUserLocationWithFallback();if(result.source!=="gps")return {...result,location:null,source:"none" as const};return result;}

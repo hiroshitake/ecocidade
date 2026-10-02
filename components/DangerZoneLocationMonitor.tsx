@@ -60,7 +60,7 @@ export default function DangerZoneLocationMonitor() {
     zoneName?: string;
     severity?: string;
   } | null>(null);
-  const [alert, setAlert] = React.useState<{
+  const suppressAlertsRef = useRef(false);\n\n  const [alert, setAlert] = React.useState<{
     type: DangerZoneAlertType;
     zoneName?: string;
     severity?: string;

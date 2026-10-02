@@ -7,16 +7,6 @@ export default function Root({ children }: PropsWithChildren) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-        <style dangerouslySetInnerHTML={{ __html: `
-          html, body, #root {
-            margin: 0;
-            min-height: 100%;
-            background: var(--ecocidade-bg, #f8fafc) !important;
-          }
-          #root {
-            min-height: 100vh;
-          }
-        ` }} />
         <script dangerouslySetInnerHTML={{ __html: `
           (() => {
             try {
@@ -39,6 +29,17 @@ export default function Root({ children }: PropsWithChildren) {
         ` }} />
         <meta name="color-scheme" content="light dark" />
         <ScrollViewStyleReset />
+        <style dangerouslySetInnerHTML={{ __html: `
+          html, body, #root {
+            margin: 0;
+            background: var(--ecocidade-bg, #f8fafc) !important;
+          }
+          @supports (height: 100dvh) {
+            html, body, #root {
+              height: 100dvh;
+            }
+          }
+        ` }} />
       </head>
       <body>{children}</body>
     </html>

@@ -4,9 +4,8 @@ import type { PropsWithChildren } from "react";
 /**
  * Root HTML document for Expo Router Web.
  *
- * The theme-color entries are resolved by the browser before the React
- * application starts, preventing a light browser navigation bar on reload
- * when the system is using dark mode.
+ * The inline theme bootstrap runs before React hydration so the browser can
+ * use the user's saved EcoCidade theme when choosing its navigation chrome.
  */
 export default function Root({ children }: PropsWithChildren) {
   return (
@@ -25,6 +24,30 @@ export default function Root({ children }: PropsWithChildren) {
           content="#f8fafc"
         />
         <meta name="color-scheme" content="light dark" />
+
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (() => {
+                try {
+                  const key = "@ecocidade/theme-mode";
+                  const stored = window.localStorage.getItem(key);
+                  const dark =
+                    stored === "dark" ||
+                    (stored !== "light" &&
+                      window.matchMedia("(prefers-color-scheme: dark)").matches);
+                  const color = dark ? "#0b0f19" : "#f8fafc";
+
+                  document.documentElement.style.colorScheme = dark ? "dark" : "light";
+
+                  const metas = document.querySelectorAll('meta[name="theme-color"]');
+                  metas.forEach((meta) => meta.setAttribute("content", color));
+                } catch {}
+              })();
+            `,
+          }}
+        />
+
         <ScrollViewStyleReset />
       </head>
       <body>{children}</body>

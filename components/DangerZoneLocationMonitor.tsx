@@ -55,6 +55,11 @@ export default function DangerZoneLocationMonitor() {
   const stateRef = useRef<Record<string, ZoneState>>({});
   const watchRef = useRef<any>(null);
   const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pendingAlertRef = useRef<{
+    type: DangerZoneAlertType;
+    zoneName?: string;
+    severity?: string;
+  } | null>(null);
   const [alert, setAlert] = React.useState<{
     type: DangerZoneAlertType;
     zoneName?: string;
@@ -109,10 +114,18 @@ export default function DangerZoneLocationMonitor() {
         stateRef.current[zone.id] = nextState;
 
         if (nextState === "near" || nextState === "inside") {
-          setAlert({
-            type: nextState,
+          const nextAlert = {
+            type: nextState as DangerZoneAlertType,
             zoneName: zone.name,
             severity: zone.severity,
+          };
+
+          setAlert((current) => {
+            if (current) {
+              pendingAlertRef.current = nextAlert;
+              return current;
+            }
+            return nextAlert;
           });
         }
 
@@ -262,7 +275,11 @@ export default function DangerZoneLocationMonitor() {
       type={alert?.type || "near"}
       zoneName={alert?.zoneName}
       severity={alert?.severity}
-      onConfirm={() => setAlert(null)}
+      onConfirm={() => {
+        const pending = pendingAlertRef.current;
+        pendingAlertRef.current = null;
+        setAlert(pending);
+      }}
     />
   );
 }

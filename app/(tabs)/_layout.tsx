@@ -66,12 +66,6 @@ export default function TabLayout() {
           height: isMobile ? 70 : 76,
           paddingBottom: isMobile ? 10 : 8,
           paddingTop: 8,
-          ...(isMobile ? {} : {
-            position: "absolute",
-            left: 0,
-            right: 0,
-            bottom: 0,
-          }),
           shadowColor: "#000000",
           shadowOffset: { width: 0, height: -2 },
           shadowOpacity: isDark ? 0.25 : 0.05,

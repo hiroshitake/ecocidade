@@ -107,6 +107,23 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const isDark = mode === "dark" || (mode === "system" && systemScheme === "dark");
   const colors = isDark ? Colors.dark : Colors.light;
 
+  // Keep the browser UI (theme color, address/navigation chrome and form controls)
+  // synchronized with the app theme, including after a full page reload.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    const backgroundColor = isDark ? "#0b0f19" : "#f8fafc";
+    document.documentElement.style.colorScheme = isDark ? "dark" : "light";
+
+    let meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "theme-color";
+      document.head.appendChild(meta);
+    }
+    meta.content = backgroundColor;
+  }, [isDark]);
+
   const value = useMemo(
     () => ({
       mode,

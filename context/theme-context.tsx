@@ -116,25 +116,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const backgroundColor = isDark ? "#0b0f19" : "#f8fafc";
     document.documentElement.style.colorScheme = isDark ? "dark" : "light";
 
-    const metas = Array.from(
-      document.querySelectorAll('meta[name="theme-color"]')
-    ) as HTMLMetaElement[];
+    let themeMeta = document.querySelector(
+      'meta[name="theme-color"]:not([media])'
+    ) as HTMLMetaElement | null;
 
-    const activeMeta = metas.find((meta) => meta.media);
-    const themeMeta =
-      metas.find((meta) => !meta.media) ??
-      (() => {
-        const meta = document.createElement("meta");
-        meta.name = "theme-color";
-        document.head.appendChild(meta);
-        return meta;
-      })();
+    if (!themeMeta) {
+      themeMeta = document.createElement("meta");
+      themeMeta.name = "theme-color";
+      document.head.appendChild(themeMeta);
+    }
 
     themeMeta.content = backgroundColor;
-
-    if (activeMeta) {
-      activeMeta.content = backgroundColor;
-    }
   }, [isDark]);
 
   const value = useMemo(

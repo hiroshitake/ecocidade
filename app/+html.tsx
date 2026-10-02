@@ -9,14 +9,12 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <style dangerouslySetInnerHTML={{ __html: `
           html, body, #root {
-            width: 100%;
-            height: 100%;
-            min-height: 100%;
             margin: 0;
+            min-height: 100%;
             background: var(--ecocidade-bg, #f8fafc) !important;
           }
-          body {
-            overflow: hidden;
+          #root {
+            min-height: 100vh;
           }
         ` }} />
         <script dangerouslySetInnerHTML={{ __html: `
@@ -31,7 +29,7 @@ export default function Root({ children }: PropsWithChildren) {
               document.documentElement.style.colorScheme = scheme;
               document.documentElement.style.setProperty("--ecocidade-bg", color);
               document.documentElement.style.backgroundColor = color;
-              document.body && (document.body.style.backgroundColor = color);
+              if (document.body) document.body.style.backgroundColor = color;
               const meta = document.querySelector('meta[name="theme-color"]') || document.createElement("meta");
               meta.setAttribute("name", "theme-color");
               meta.setAttribute("content", color);

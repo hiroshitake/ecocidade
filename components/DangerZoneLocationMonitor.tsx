@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import { Platform } from "react-native";
+import DangerZoneAlertModal, { type DangerZoneAlertType } from "./DangerZoneAlertModal";
+import { useAppTheme } from "../context/theme-context";
 import { getCurrentUserData } from "../services/auth";
 import {
   getDangerZones,
@@ -7,7 +9,7 @@ import {
 } from "../services/reports";
 import { isSupabaseConfigured } from "../services/supabase";
 
-const WARNING_DISTANCE_METERS = 200;
+const WARNING_DISTANCE_METERS = 20;
 
 type ZoneState = "outside" | "near" | "inside";
 
@@ -17,6 +19,8 @@ interface Zone {
   longitude: number;
   radius: number;
   active?: boolean;
+  name?: string;
+  severity?: string;
 }
 
 function distanceMeters(
@@ -48,10 +52,16 @@ function classifyZone(distance: number, radius: number): ZoneState {
 }
 
 export default function DangerZoneLocationMonitor() {
+  const { isDark } = useAppTheme();
   const zonesRef = useRef<Zone[]>([]);
   const stateRef = useRef<Record<string, ZoneState>>({});
   const watchRef = useRef<any>(null);
   const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [alert, setAlert] = React.useState<{
+    type: DangerZoneAlertType;
+    zoneName?: string;
+    severity?: string;
+  } | null>(null);
 
   const stopWatch = useCallback(() => {
     try {
@@ -100,6 +110,14 @@ export default function DangerZoneLocationMonitor() {
 
         stateRef.current[zone.id] = nextState;
 
+        if (nextState === "near" || nextState === "inside") {
+          setAlert({
+            type: nextState,
+            zoneName: zone.name,
+            severity: zone.severity,
+          });
+        }
+
         try {
           await notifyDangerZoneLocationEvent(zone.id, nextState);
         } catch (error) {
@@ -124,6 +142,8 @@ export default function DangerZoneLocationMonitor() {
           longitude: Number(zone.longitude),
           radius: Number(zone.radius) || 300,
           active: zone.active,
+          name: zone.name,
+          severity: zone.severity,
         }))
         .filter(
           (zone) =>
@@ -238,5 +258,13 @@ export default function DangerZoneLocationMonitor() {
     };
   }, [loadZones, startWatch, stopWatch]);
 
-  return null;
+  return (
+    <DangerZoneAlertModal
+      visible={Boolean(alert)}
+      type={alert?.type || "near"}
+      zoneName={alert?.zoneName}
+      severity={alert?.severity}
+      onConfirm={() => setAlert(null)}
+    />
+  );
 }

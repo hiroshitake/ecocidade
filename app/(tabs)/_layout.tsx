@@ -71,14 +71,6 @@ export default function TabLayout() {
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarShowLabel: !isMobile,
-        tabBarBackground: () => (
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: isDark ? "#111827" : colors.surface,
-            }}
-          />
-        ),
         tabBarStyle: {
           backgroundColor: isDark ? "#111827" : colors.surface,
           borderTopColor: isDark ? "#1f2937" : colors.border,

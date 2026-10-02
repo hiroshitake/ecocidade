@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { Appearance, Platform, useColorScheme as useNativeColorScheme } from "react-native";
 import { Colors } from "../constants/theme";
 
@@ -25,12 +25,22 @@ const getSystemSchemeSync = (): "light" | "dark" => {
   return Appearance.getColorScheme() ?? "light";
 };
 const ThemeContext = createContext<ThemeContextValue | null>(null);
+const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const nativeScheme = useNativeColorScheme();
-  const initialStored = getStoredModeSync();
-  const [mode, setModeState] = useState<ThemeMode>(initialStored ?? "system");
-  const [systemScheme, setSystemScheme] = useState<"light" | "dark">(nativeScheme ?? getSystemSchemeSync());
+  const isWeb = Platform.OS === "web";
+  const [mode, setModeState] = useState<ThemeMode>("system");
+  const [systemScheme, setSystemScheme] = useState<"light" | "dark">(
+    isWeb ? "light" : (nativeScheme ?? getSystemSchemeSync())
+  );
+
+  useIsomorphicLayoutEffect(() => {
+    if (!isWeb) return;
+    const stored = getStoredModeSync();
+    if (stored) setModeState(stored);
+    setSystemScheme(getSystemSchemeSync());
+  }, [isWeb]);
 
   useEffect(() => {
     const appearanceListener = Appearance.addChangeListener(({ colorScheme }) => {
@@ -45,7 +55,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         mediaQuery.addEventListener("change", mediaHandler);
       } catch {}
     }
-    if (Platform.OS !== "web") {
+    if (!isWeb) {
       AsyncStorage.getItem(STORAGE_KEY).then((value) => {
         if (value === "light" || value === "dark" || value === "system") setModeState(value);
       }).catch(() => {});
@@ -56,14 +66,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         try { mediaQuery.removeEventListener("change", mediaHandler); } catch {}
       }
     };
-  }, []);
+  }, [isWeb]);
 
   const setMode = (nextMode: ThemeMode) => {
     setModeState(nextMode);
     if (typeof window !== "undefined" && window.localStorage) {
       try { window.localStorage.setItem(STORAGE_KEY, nextMode); } catch {}
     }
-    if (Platform.OS !== "web") AsyncStorage.setItem(STORAGE_KEY, nextMode).catch(() => undefined);
+    if (!isWeb) AsyncStorage.setItem(STORAGE_KEY, nextMode).catch(() => undefined);
   };
 
   const isDark = mode === "dark" || (mode === "system" && systemScheme === "dark");
@@ -73,6 +83,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (typeof document === "undefined") return;
     const backgroundColor = isDark ? Colors.dark.bg : Colors.light.bg;
     document.documentElement.style.colorScheme = isDark ? "dark" : "light";
+    document.documentElement.style.setProperty("--ecocidade-bg", backgroundColor);
     document.documentElement.style.backgroundColor = backgroundColor;
     if (document.body) document.body.style.backgroundColor = backgroundColor;
     const themeMeta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;

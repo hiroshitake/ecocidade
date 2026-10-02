@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import { Platform } from "react-native";
 import DangerZoneAlertModal, { type DangerZoneAlertType } from "./DangerZoneAlertModal";
-import { useAppTheme } from "../context/theme-context";
 import { getCurrentUserData } from "../services/auth";
 import {
   getDangerZones,
@@ -52,7 +51,6 @@ function classifyZone(distance: number, radius: number): ZoneState {
 }
 
 export default function DangerZoneLocationMonitor() {
-  const { isDark } = useAppTheme();
   const zonesRef = useRef<Zone[]>([]);
   const stateRef = useRef<Record<string, ZoneState>>({});
   const watchRef = useRef<any>(null);

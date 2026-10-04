@@ -26,6 +26,7 @@ interface AuthUser {
   name: string;
   role: string;
   city?: string;
+  city_id?: string;
   birthdate?: string;
   avatar_path?: string | null;
 }
@@ -59,8 +60,19 @@ export async function logout(){
   if(isSupabaseConfigured())await signOutFromSupabase();
 }
 export async function getCurrentUserData():Promise<AuthUser|null>{
- if(isSupabaseConfigured()){const user=await getSupabaseSessionUser();if(user){await AsyncStorage.setItem(AUTH_USER_KEY,JSON.stringify(user));return user;}}
- const storedUser=await AsyncStorage.getItem(AUTH_USER_KEY);if(!storedUser)return null;try{return JSON.parse(storedUser) as AuthUser;}catch{return null;}
+ if(isSupabaseConfigured()){
+   const user=await getSupabaseSessionUser();
+   if(!user){
+     await AsyncStorage.removeItem(AUTH_USER_KEY);
+     return null;
+   }
+   await AsyncStorage.setItem(AUTH_USER_KEY,JSON.stringify(user));
+   return user;
+ }
+
+ const storedUser=await AsyncStorage.getItem(AUTH_USER_KEY);
+ if(!storedUser)return null;
+ try{return JSON.parse(storedUser) as AuthUser;}catch{return null;}
 }
 export async function updateUserProfile(userId:string,updates:Partial<AuthUser>){
  if(isSupabaseConfigured()){const allowedUpdates:Record<string, unknown>={};if(typeof updates.name==="string")allowedUpdates.name=updates.name;if("avatar_path" in updates)allowedUpdates.avatar_path=updates.avatar_path ?? null;const data=await updateSupabaseProfile(userId,allowedUpdates);const currentUser=await getCurrentUserData();if(currentUser?.id===userId)await AsyncStorage.setItem(AUTH_USER_KEY,JSON.stringify({...currentUser,...data}));return data;} throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");

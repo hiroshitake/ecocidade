@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Image,
@@ -59,12 +59,24 @@ export default function SecurityScreen() {
   const [photoOptionsVisible, setPhotoOptionsVisible] = useState(false);
 
   const router = useRouter();
+  const resetFormOnNextFocusRef = useRef(false);
 
   // Ao voltar para a tela de segurança, a confirmação anterior não deve permanecer.
-  // A confirmação só é válida para a denúncia que acabou de ser enviada.
+  // Após uma denúncia enviada, o formulário também é limpo no próximo foco.
   useFocusEffect(
     useCallback(() => {
       setSubmittedReport(null);
+
+      if (resetFormOnNextFocusRef.current) {
+        resetFormOnNextFocusRef.current = false;
+        setSelectedCat(null);
+        setDescription("");
+        setSelectedLocation(null);
+        setPhotoUri(null);
+        setSubmitFeedback(null);
+        setCropPhotoUri(null);
+        setPhotoOptionsVisible(false);
+      }
     }, []),
   );
 
@@ -143,6 +155,7 @@ export default function SecurityScreen() {
       }
 
       setSubmitFeedback(null);
+      resetFormOnNextFocusRef.current = true;
       setSubmittedReport(createdReport);
     } catch (error: any) {
       let msg = error?.message || "Tente novamente mais tarde.";

@@ -1,13 +1,19 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import { Platform } from "react-native";
+import { usePathname } from "expo-router";
+import DangerZoneAlertModal, { type DangerZoneAlertType } from "./DangerZoneAlertModal";
 import { getCurrentUserData } from "../services/auth";
+import {
+  areDangerZoneAlertsSuppressed,
+  suppressDangerZoneAlertsForSession,
+} from "../services/danger-zone-alerts";
 import {
   getDangerZones,
   notifyDangerZoneLocationEvent,
 } from "../services/reports";
 import { isSupabaseConfigured } from "../services/supabase";
 
-const WARNING_DISTANCE_METERS = 200;
+const WARNING_DISTANCE_METERS = 20;
 
 type ZoneState = "outside" | "near" | "inside";
 
@@ -17,6 +23,8 @@ interface Zone {
   longitude: number;
   radius: number;
   active?: boolean;
+  name?: string;
+  severity?: string;
 }
 
 function distanceMeters(
@@ -48,10 +56,31 @@ function classifyZone(distance: number, radius: number): ZoneState {
 }
 
 export default function DangerZoneLocationMonitor() {
+  const pathname = usePathname();
+  const isMapScreen = pathname === "/map" || pathname === "/(tabs)/map";
+
   const zonesRef = useRef<Zone[]>([]);
   const stateRef = useRef<Record<string, ZoneState>>({});
   const watchRef = useRef<any>(null);
   const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pendingAlertRef = useRef<{
+    type: DangerZoneAlertType;
+    zoneName?: string;
+    severity?: string;
+  } | null>(null);
+
+  const [alert, setAlert] = React.useState<{
+    type: DangerZoneAlertType;
+    zoneName?: string;
+    severity?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!isMapScreen) {
+      setAlert(null);
+      pendingAlertRef.current = null;
+    }
+  }, [isMapScreen]);
 
   const stopWatch = useCallback(() => {
     try {
@@ -79,7 +108,7 @@ export default function DangerZoneLocationMonitor() {
       const zones = zonesRef.current;
 
       for (const zone of zones) {
-        const radius = Math.max(100, Number(zone.radius) || 300);
+        const radius = Math.max(0, Number(zone.radius) || 300);
         const distance = distanceMeters(
           latitude,
           longitude,
@@ -92,13 +121,57 @@ export default function DangerZoneLocationMonitor() {
 
         if (previousState === nextState) continue;
 
-        // A distant initial state does not need a database write.
         if (nextState === "outside" && previousState === undefined) {
           stateRef.current[zone.id] = "outside";
           continue;
         }
 
         stateRef.current[zone.id] = nextState;
+
+        const nextAlert = {
+          type: nextState as DangerZoneAlertType,
+          zoneName: zone.name,
+          severity: zone.severity,
+        };
+
+        if (nextState === "inside" && previousState === "outside") {
+          const nearAlert = { ...nextAlert, type: "near" as const };
+
+          if (!areDangerZoneAlertsSuppressed()) {
+            setAlert((current) => {
+              if (current) {
+                pendingAlertRef.current = nextAlert;
+                return current;
+              }
+              pendingAlertRef.current = nextAlert;
+              return nearAlert;
+            });
+          }
+
+          try {
+            await notifyDangerZoneLocationEvent(zone.id, "near");
+            await notifyDangerZoneLocationEvent(zone.id, "inside");
+          } catch (error) {
+            console.debug(
+              "Não foi possível registrar evento da área de perigo:",
+              error,
+            );
+          }
+          continue;
+        }
+
+        if (
+          (nextState === "near" || nextState === "inside") &&
+          !areDangerZoneAlertsSuppressed()
+        ) {
+          setAlert((current) => {
+            if (current) {
+              pendingAlertRef.current = nextAlert;
+              return current;
+            }
+            return nextAlert;
+          });
+        }
 
         try {
           await notifyDangerZoneLocationEvent(zone.id, nextState);
@@ -124,6 +197,8 @@ export default function DangerZoneLocationMonitor() {
           longitude: Number(zone.longitude),
           radius: Number(zone.radius) || 300,
           active: zone.active,
+          name: zone.name,
+          severity: zone.severity,
         }))
         .filter(
           (zone) =>
@@ -208,8 +283,6 @@ export default function DangerZoneLocationMonitor() {
       try {
         const user = await getCurrentUserData();
 
-        // O monitor também fica ativo para administradores para permitir
-        // testes e para que contas administrativas possam receber alertas.
         if (!mounted || !user) return;
 
         await loadZones();
@@ -238,5 +311,22 @@ export default function DangerZoneLocationMonitor() {
     };
   }, [loadZones, startWatch, stopWatch]);
 
-  return null;
+  return (
+    <DangerZoneAlertModal
+      visible={Boolean(alert) && isMapScreen}
+      type={alert?.type || "near"}
+      zoneName={alert?.zoneName}
+      severity={alert?.severity}
+      onConfirm={() => {
+        const pending = pendingAlertRef.current;
+        pendingAlertRef.current = null;
+        setAlert(pending);
+      }}
+      onDisableAlerts={() => {
+        suppressDangerZoneAlertsForSession();
+        pendingAlertRef.current = null;
+        setAlert(null);
+      }}
+    />
+  );
 }

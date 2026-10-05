@@ -158,7 +158,7 @@ begin
       'danger_zone_near',
       'Área de perigo próxima',
       format(
-        'Você está a até 200 m da área de perigo "%s". Tenha atenção ao circular pelo local.',
+        'Você está a até 20 m da borda da área de perigo "%s". Tenha atenção ao circular pelo local.',
         zone_record.name
       )
     );

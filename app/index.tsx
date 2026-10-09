@@ -4,7 +4,7 @@ import { Redirect } from "expo-router";
 import { C } from "../constants/theme";
 import { getSupabaseSessionUser, isSupabaseConfigured, supabase } from "../services/supabase";
 
-type Destination = "/login" | "/map" | "/google-profile" | "/reset-password";
+type Destination = "/login" | "/map" | "/google-profile" | "/reset-password" | "/(admin)/dashboard";
 
 export default function Index() {
   const [checking, setChecking] = React.useState(true);
@@ -35,7 +35,15 @@ export default function Index() {
 
         const user = await getSupabaseSessionUser();
         if (!active) return;
-        if (user) setDestination(user.city_id || user.city ? "/map" : "/google-profile");
+        if (user) {
+          setDestination(
+            user.role === "admin"
+              ? "/(admin)/dashboard"
+              : user.city_id || user.city
+                ? "/map"
+                : "/google-profile",
+          );
+        }
       } catch (error) {
         console.error("Erro ao verificar sessão inicial:", error);
       } finally {

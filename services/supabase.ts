@@ -243,11 +243,21 @@ export async function getSupabaseSessionUser() {
     return null;
   }
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", user.id)
     .maybeSingle();
+
+  // Never downgrade a signed-in administrator to a citizen because a profile
+  // request failed or the profile row is missing.
+  if (profileError) {
+    throw new Error(`Não foi possível verificar o perfil da conta: ${profileError.message}`);
+  }
+  if (!profile) {
+    throw new Error("O perfil desta conta não foi encontrado. Entre em contato com o suporte.");
+  }
+
   return {
     id: user.id,
     email: user.email || "",

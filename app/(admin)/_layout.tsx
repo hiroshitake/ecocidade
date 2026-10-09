@@ -37,7 +37,9 @@ export default function AdminLayout() {
 
         setAuthorized(true);
       } catch (error) {
+        console.error('Erro ao verificar autorização administrativa:', error);
         setAuthorized(false);
+        router.replace('/admin-login');
       } finally {
         setChecking(false);
       }

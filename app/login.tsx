@@ -112,9 +112,9 @@ export default function LoginScreen() {
     if (!currentUser) return false;
 
     await AsyncStorage.setItem("ecocidade.user", JSON.stringify(currentUser));
-    if (currentUser.role === "admin") {
-      router.replace("/(admin)/dashboard");
-    } else if (!currentUser.city_id && !currentUser.city) {
+    // This is the citizen login entry point. Admin accounts may also use
+    // the citizen area, so do not route by role here.
+    if (!currentUser.city_id && !currentUser.city) {
       router.replace("/google-profile");
     } else {
       router.replace("/map");
@@ -226,9 +226,9 @@ export default function LoginScreen() {
         currentUser = await getCurrentUserData();
       }
 
-      if (currentUser?.role === "admin") {
-        router.replace("/(admin)/dashboard");
-      } else if (currentUser && !currentUser.city_id && !currentUser.city) {
+      // Keep the destination tied to the login screen the person used,
+      // not their role. Admins can access the citizen area as well.
+      if (currentUser && !currentUser.city_id && !currentUser.city) {
         router.replace("/google-profile");
       } else {
         router.replace("/map");

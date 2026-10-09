@@ -4,7 +4,7 @@ import { Redirect } from "expo-router";
 import { C } from "../constants/theme";
 import { getSupabaseSessionUser, isSupabaseConfigured, supabase } from "../services/supabase";
 
-type Destination = "/login" | "/map" | "/google-profile" | "/reset-password" | "/(admin)/dashboard";
+type Destination = "/login" | "/map" | "/google-profile" | "/reset-password";
 
 export default function Index() {
   const [checking, setChecking] = React.useState(true);
@@ -36,13 +36,9 @@ export default function Index() {
         const user = await getSupabaseSessionUser();
         if (!active) return;
         if (user) {
-          setDestination(
-            user.role === "admin"
-              ? "/(admin)/dashboard"
-              : user.city_id || user.city
-                ? "/map"
-                : "/google-profile",
-          );
+          // The root entry defaults to the citizen experience for every role.
+          // The admin dashboard is entered through /admin-login.
+          setDestination(user.city_id || user.city ? "/map" : "/google-profile");
         }
       } catch (error) {
         console.error("Erro ao verificar sessão inicial:", error);

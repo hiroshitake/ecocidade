@@ -62,6 +62,25 @@ function formatDistance(distKm: number | null) {
   return `${distKm.toFixed(1)} km`;
 }
 
+const CATEGORY_LABELS: Record<string, string> = {
+  buraco: "Buraco",
+  poste: "Iluminação",
+  vazamento: "Vazamento",
+  bueiro: "Bueiro",
+  mato: "Mato",
+  calcada: "Calçada",
+  "calçada": "Calçada",
+  lixo: "Lixo",
+  sinalizacao: "Sinalização",
+  "sinalização": "Sinalização",
+  outro: "Outro",
+};
+
+function formatCategoryLabel(category: unknown) {
+  const value = String(category || "").trim();
+  return CATEGORY_LABELS[value.toLocaleLowerCase("pt-BR")] || value || "Denúncia";
+}
+
 export default function MapScreen() {
   const { colors, isDark } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors, isDark), [colors, isDark]);
@@ -715,7 +734,7 @@ export default function MapScreen() {
                     <View style={styles.cardTopRow}>
                       <View style={styles.cardCategoryChip}>
                         <ThemedText style={styles.cardCategoryText}>
-                          {rep.category}
+                          {formatCategoryLabel(rep.category)}
                         </ThemedText>
                       </View>
                       {rep.dist !== null && (

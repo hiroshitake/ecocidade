@@ -24,6 +24,8 @@ export default function SettingsScreen() {
   const [name, setName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarPath, setAvatarPath] = useState<string | null>(null);
+  const [removeAvatarOpen, setRemoveAvatarOpen] = useState(false);
+  const [removingAvatar, setRemovingAvatar] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -77,6 +79,27 @@ export default function SettingsScreen() {
     } catch (error) {
       toast.addToast(error instanceof Error ? error.message : "Não foi possível atualizar a foto.", "error");
     } finally { setSaving(false); }
+  };
+
+  const removeAvatar = async () => {
+    if (!userId || !avatarPath) return;
+    const oldPath = avatarPath;
+    try {
+      setRemovingAvatar(true);
+      await updateUserProfile(userId, { avatar_path: null });
+      setAvatarPath(null);
+      setAvatarUrl(null);
+      try {
+        await deleteUserAvatar(oldPath);
+        toast.addToast("Foto de perfil removida.", "success");
+      } catch {
+        toast.addToast("A foto foi removida do perfil, mas não foi possível limpar o arquivo antigo.", "error");
+      }
+    } catch (error) {
+      toast.addToast(error instanceof Error ? error.message : "Não foi possível remover a foto de perfil.", "error");
+    } finally {
+      setRemovingAvatar(false);
+    }
   };
 
   const saveProfile = async () => {
@@ -159,10 +182,22 @@ export default function SettingsScreen() {
                 <View style={[styles.divider, { backgroundColor: colors.border }]} />
                 <View style={styles.avatarWrap}>
                   {avatarUrl ? <Image source={{ uri: avatarUrl }} style={styles.avatar} /> : <View style={[styles.avatar, styles.avatarFallback]}><Ionicons name="person" size={42} color={C.white} /></View>}
-                  <TouchableOpacity style={styles.avatarButton} onPress={pickAvatar} disabled={saving}>
+                  <TouchableOpacity style={styles.avatarButton} onPress={pickAvatar} disabled={saving || removingAvatar}>
                     <Ionicons name="camera" size={18} color={C.white} />
                     <Text style={styles.avatarButtonText}>Alterar foto</Text>
                   </TouchableOpacity>
+                  {avatarPath && (
+                    <TouchableOpacity
+                      style={[styles.removeAvatarButton, { borderColor: colors.border, backgroundColor: colors.surface2 }]}
+                      onPress={() => setRemoveAvatarOpen(true)}
+                      disabled={saving || removingAvatar}
+                      accessibilityRole="button"
+                      accessibilityLabel="Remover foto de perfil"
+                    >
+                      <Ionicons name="trash-outline" size={16} color={colors.danger} />
+                      <Text style={[styles.removeAvatarButtonText, { color: colors.danger }]}>Remover foto</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
                 <Text style={[styles.label, { color: colors.text2 }]}>Nome</Text>
                 <TextInput value={name} onChangeText={setName} placeholder="Seu nome" placeholderTextColor={colors.text3} style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.bg }]} />
@@ -312,6 +347,7 @@ export default function SettingsScreen() {
         </View>
       </ScrollView>
 
+      <ConfirmationModal title="Remover foto de perfil?" description="Sua foto será removida da conta e você ficará com o avatar padrão. Essa ação não afeta suas denúncias." confirmText={removingAvatar ? "Removendo..." : "Remover foto"} cancelText="Cancelar" visible={removeAvatarOpen} destructive onDismiss={() => setRemoveAvatarOpen(false)} onConfirm={removeAvatar} />
       <ConfirmationModal title="Excluir conta?" description="Sua conta e seus dados pessoais serão removidos. Suas denúncias não serão apagadas: elas permanecerão no sistema para preservar o histórico e auxiliar a prefeitura. Essa ação não pode ser desfeita." confirmText={deleting ? "Excluindo..." : "Excluir minha conta"} cancelText="Cancelar" visible={deleteOpen} destructive onDismiss={() => setDeleteOpen(false)} onConfirm={confirmDelete} />
       <ConfirmationModal title="Sair da conta?" description="Sua sessão será encerrada neste dispositivo. Seus dados permanecerão salvos." confirmText={loggingOut ? "Saindo..." : "Sair"} cancelText="Cancelar" visible={logoutOpen} onDismiss={() => setLogoutOpen(false)} onConfirm={confirmLogout} />
     </View>
@@ -350,6 +386,8 @@ const makeStyles = (colors: typeof C) => StyleSheet.create({
   avatarFallback: { backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
   avatarButton: { flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10, marginTop: -12 },
   avatarButtonText: { color: colors.white, fontSize: 13, fontWeight: "700" },
+  removeAvatarButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10, marginTop: 8, borderWidth: 1 },
+  removeAvatarButtonText: { fontSize: 13, fontWeight: "700" },
   label: { fontSize: 13, fontWeight: "700", marginBottom: 7, marginTop: 10 },
   input: { minHeight: 48, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, fontSize: 15 },
   disabledInput: { opacity: 0.65 },

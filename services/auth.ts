@@ -45,8 +45,28 @@ export async function signUp(email:string,password:string,name:string,city?:stri
 export async function signIn(email:string,password:string){
  if(isSupabaseConfigured()){await signInWithSupabase(email,password);const user=await getSupabaseSessionUser();if(user)await AsyncStorage.setItem(AUTH_USER_KEY,JSON.stringify(user));return {id:user?.id||"",email,name:user?.name||email,role:user?.role||"user",token:""} as AuthResponse;} throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
 }
-export async function signInAdmin(email:string,password:string){
- if(isSupabaseConfigured()){await signInWithSupabase(email,password);const user=await getSupabaseSessionUser();if(user)await AsyncStorage.setItem(AUTH_USER_KEY,JSON.stringify(user));return {id:user?.id||"",email:user?.email||email,name:user?.name||email,role:user?.role||"user",token:""} as AuthResponse;} throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
+export async function signInAdmin(email: string, password: string) {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase não configurado. Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY.");
+  }
+
+  await signInWithSupabase(email, password);
+  const user = await getSupabaseSessionUser();
+  if (!user) {
+    throw new Error("Não foi possível verificar a conta autenticada.");
+  }
+  if (user.role !== "admin") {
+    throw new Error("A conta autenticada não possui permissão de administrador.");
+  }
+
+  await AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+  return {
+    id: user.id,
+    email: user.email || email,
+    name: user.name || email,
+    role: user.role,
+    token: "",
+  } as AuthResponse;
 }
 export async function requestPasswordReset(email:string){
  if(!isSupabaseConfigured())throw new Error("Supabase não configurado.");

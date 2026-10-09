@@ -35,7 +35,11 @@ export default function Index() {
 
         const user = await getSupabaseSessionUser();
         if (!active) return;
-        if (user) setDestination(user.city_id || user.city ? "/map" : "/google-profile");
+        if (user) {
+          // The root entry defaults to the citizen experience for every role.
+          // The admin dashboard is entered through /admin-login.
+          setDestination(user.city_id || user.city ? "/map" : "/google-profile");
+        }
       } catch (error) {
         console.error("Erro ao verificar sessão inicial:", error);
       } finally {

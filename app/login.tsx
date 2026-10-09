@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { usePathname, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
@@ -105,11 +105,15 @@ export default function LoginScreen() {
     city: "",
   });
   const router = useRouter();
+  const pathname = usePathname();
   const toast = useToast();
   const finishAuthenticatedUser = async () => {
     const currentUser = await getSupabaseSessionUser();
     if (!currentUser) return false;
+
     await AsyncStorage.setItem("ecocidade.user", JSON.stringify(currentUser));
+    // This is the citizen login entry point. Admin accounts may also use
+    // the citizen area, so do not route by role here.
     if (!currentUser.city_id && !currentUser.city) {
       router.replace("/google-profile");
     } else {
@@ -119,7 +123,7 @@ export default function LoginScreen() {
   };
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) return;
+    if (!isSupabaseConfigured() || pathname !== "/login") return;
 
     let mounted = true;
     finishAuthenticatedUser().catch((error) =>
@@ -137,7 +141,7 @@ export default function LoginScreen() {
       mounted = false;
       subscription?.data.subscription.unsubscribe();
     };
-  }, []);
+  }, [pathname]);
 
 
 
@@ -222,8 +226,13 @@ export default function LoginScreen() {
         currentUser = await getCurrentUserData();
       }
 
-      // After login, do not force city selection. Always go to map.
-      router.replace("/map");
+      // Keep the destination tied to the login screen the person used,
+      // not their role. Admins can access the citizen area as well.
+      if (currentUser && !currentUser.city_id && !currentUser.city) {
+        router.replace("/google-profile");
+      } else {
+        router.replace("/map");
+      }
     } catch (error: any) {
       console.error("Erro no login:", error);
       let msg = error.message || "Não foi possível entrar.";
